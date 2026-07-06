@@ -15,6 +15,9 @@ import { HotelProvider } from "@/lib/hotel/store";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Toaster } from "@/components/ui/sonner";
+import { I18nProvider, useI18n } from "@/lib/i18n";
+import { Button } from "@/components/ui/button";
+import { Languages } from "lucide-react";
 
 function NotFoundComponent() {
   return (

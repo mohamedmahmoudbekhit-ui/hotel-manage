@@ -3,9 +3,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { MONTH_NAMES } from "@/lib/hotel/utils";
+import { useI18n } from "@/lib/i18n";
 
 export function MonthSelector() {
   const { months, currentMonthKey, setCurrentMonthKey, addMonth } = useHotel();
+  const { formatMonthKey } = useI18n();
   const keys = Object.keys(months).sort((a, b) => {
     const ma = months[a], mb = months[b];
     return ma.year !== mb.year ? ma.year - mb.year : ma.monthIndex - mb.monthIndex;
@@ -22,11 +24,11 @@ export function MonthSelector() {
     <div className="flex items-center gap-2">
       <Select value={currentMonthKey} onValueChange={setCurrentMonthKey}>
         <SelectTrigger className="w-[180px]">
-          <SelectValue />
+          <SelectValue>{formatMonthKey(currentMonthKey)}</SelectValue>
         </SelectTrigger>
         <SelectContent>
           {keys.map((k) => (
-            <SelectItem key={k} value={k}>{k}</SelectItem>
+            <SelectItem key={k} value={k}>{formatMonthKey(k)}</SelectItem>
           ))}
         </SelectContent>
       </Select>

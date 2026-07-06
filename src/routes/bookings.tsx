@@ -11,21 +11,23 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Plus, Trash2 } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
 
 export const Route = createFileRoute("/bookings")({
   head: () => ({
     meta: [
-      { title: "Bookings — Guesthouse OS" },
+      { title: "Bookings — 7 Heaven" },
       { name: "description", content: "Monthly bookings grid with dropdowns for booking type, room, and status." },
     ],
   }),
   component: BookingsPage,
 });
 
+// Solid, high-contrast backgrounds with matching foregrounds.
 const typeStyles: Record<BookingType, string> = {
-  Airbnb: "bg-airbnb/15 text-airbnb-foreground border-airbnb/30 hover:bg-airbnb/25",
-  Booking: "bg-booking/15 text-booking-foreground border-booking/30 hover:bg-booking/25",
-  Offline: "bg-offline/25 text-offline-foreground border-offline/40 hover:bg-offline/35",
+  Airbnb: "bg-airbnb text-airbnb-foreground border-airbnb hover:bg-airbnb/90 shadow-sm",
+  Booking: "bg-booking text-booking-foreground border-booking hover:bg-booking/90 shadow-sm",
+  Offline: "bg-offline text-offline-foreground border-offline hover:bg-offline/90 shadow-sm",
 };
 const typeDot: Record<BookingType, string> = {
   Airbnb: "bg-airbnb",
@@ -33,23 +35,24 @@ const typeDot: Record<BookingType, string> = {
   Offline: "bg-offline",
 };
 const statusStyles: Record<BookingStatus, string> = {
-  Confirmed: "ring-1 ring-success/40",
-  Pending: "ring-1 ring-warning/50 opacity-90",
-  Cancelled: "ring-1 ring-destructive/40 opacity-50 line-through",
+  Confirmed: "",
+  Pending: "ring-2 ring-warning/70 opacity-95",
+  Cancelled: "opacity-50 line-through",
 };
 
 function BookingsPage() {
   const { currentMonth, settings, updateCell } = useHotel();
-  const t = computeMonthTotals(currentMonth, settings.rooms);
+  const { t, formatMonthKey } = useI18n();
+  const totals = computeMonthTotals(currentMonth, settings.rooms);
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-4 px-4 py-6 sm:px-6 lg:px-8">
       <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 sm:flex sm:flex-wrap sm:items-end sm:justify-between">
         <div className="min-w-0">
-          <h1 className="truncate text-2xl font-bold tracking-tight sm:text-3xl">Bookings</h1>
+          <h1 className="truncate text-2xl font-bold tracking-tight sm:text-3xl">{t("bookings.title")}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {currentMonth.key} · <span className="text-foreground">{t.bookingsCount}</span> bookings ·{" "}
-            <span className="text-foreground">{formatCurrency(t.totalRevenue, settings.currency)}</span>
+            {formatMonthKey(currentMonth.key)} · <span className="text-foreground">{totals.bookingsCount}</span> {t("common.bookings")} ·{" "}
+            <span className="text-foreground">{formatCurrency(totals.totalRevenue, settings.currency)}</span>
           </p>
         </div>
         <MonthSelector />
@@ -59,26 +62,26 @@ function BookingsPage() {
         {BOOKING_TYPES.map((tp) => (
           <div key={tp} className="flex items-center gap-1.5">
             <span className={cn("h-2.5 w-2.5 rounded-full", typeDot[tp])} />
-            <span className="text-muted-foreground">{tp}</span>
+            <span className="text-muted-foreground">{t(`type.${tp}`)}</span>
           </div>
         ))}
-        <span className="ml-auto text-muted-foreground">Tap a cell to edit</span>
+        <span className="ms-auto text-muted-foreground">{t("common.tapCell")}</span>
       </div>
 
       <div className="overflow-x-auto rounded-2xl border bg-card shadow-soft">
         <table className="w-full min-w-[720px] border-separate border-spacing-0 text-sm">
           <thead className="sticky top-0 z-10 bg-muted/60 backdrop-blur">
             <tr>
-              <th className="sticky left-0 z-20 bg-muted/80 px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Day</th>
+              <th className="sticky start-0 z-20 bg-muted/80 px-3 py-3 text-start text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("bookings.day")}</th>
               {settings.rooms.map((r) => (
-                <th key={r} className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">{r}</th>
+                <th key={r} className="px-3 py-3 text-start text-xs font-semibold uppercase tracking-wider text-muted-foreground">{r}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {Array.from({ length: currentMonth.daysInMonth }, (_, i) => i + 1).map((day) => (
               <tr key={day} className="group">
-                <td className="sticky left-0 z-10 border-t bg-card px-3 py-2 text-xs font-semibold text-muted-foreground group-hover:bg-muted/40">{day}</td>
+                <td className="sticky start-0 z-10 border-t bg-card px-3 py-2 text-xs font-semibold text-muted-foreground group-hover:bg-muted/40">{day}</td>
                 {settings.rooms.map((room) => {
                   const cell = currentMonth.cells[room]?.[day] ?? null;
                   return (
@@ -115,6 +118,7 @@ function CellEditor({
   usdRate: number;
   currency: string;
 }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [price, setPrice] = useState(cell?.price.toString() ?? "");
   const [type, setType] = useState<BookingType>(cell?.type ?? "Offline");
@@ -139,17 +143,19 @@ function CellEditor({
         {cell ? (
           <button
             className={cn(
-              "w-full rounded-lg border px-2 py-1.5 text-left text-xs transition",
+              "w-full rounded-lg border px-2 py-1.5 text-start text-xs font-medium transition",
               typeStyles[cell.type],
               statusStyles[cell.status],
             )}
           >
             <div className="flex items-center justify-between gap-1">
-              <span className="font-semibold tabular-nums">{cell.price}</span>
-              <span className={cn("h-1.5 w-1.5 rounded-full", typeDot[cell.type])} />
+              <span className="font-bold tabular-nums">{cell.price}</span>
+              <span className="rounded-full bg-white/25 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide">
+                {cell.type === "Offline" ? currency : "USD"}
+              </span>
             </div>
-            <div className="mt-0.5 truncate text-[10px] opacity-80">
-              {cell.type === "Offline" ? currency : "USD"} · {cell.status[0]}
+            <div className="mt-0.5 truncate text-[10px] opacity-90">
+              {t(`type.${cell.type}`)} · {t(`status.${cell.status}`)}
             </div>
           </button>
         ) : (
@@ -161,7 +167,7 @@ function CellEditor({
       <PopoverContent className="w-72" align="start">
         <div className="space-y-3">
           <div className="space-y-1.5">
-            <Label htmlFor="price" className="text-xs">Price</Label>
+            <Label htmlFor="price" className="text-xs">{t("bookings.price")}</Label>
             <Input
               id="price"
               type="number"
@@ -173,12 +179,14 @@ function CellEditor({
               placeholder="0.00"
             />
             <p className="text-[10px] text-muted-foreground">
-              {type === "Offline" ? `In ${currency}` : `In USD (× ${usdRate} = ${(parseFloat(price) * usdRate || 0).toFixed(0)} ${currency})`}
+              {type === "Offline"
+                ? `${t("bookings.inCurrency")} ${currency}`
+                : `${t("bookings.inUsd")} (× ${usdRate} = ${(parseFloat(price) * usdRate || 0).toFixed(0)} ${currency})`}
             </p>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1.5">
-              <Label className="text-xs">Type</Label>
+              <Label className="text-xs">{t("bookings.type")}</Label>
               <Select value={type} onValueChange={(v) => setType(v as BookingType)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -186,7 +194,7 @@ function CellEditor({
                     <SelectItem key={tp} value={tp}>
                       <span className="flex items-center gap-2">
                         <span className={cn("h-2 w-2 rounded-full", typeDot[tp])} />
-                        {tp}
+                        {t(`type.${tp}`)}
                       </span>
                     </SelectItem>
                   ))}
@@ -194,31 +202,31 @@ function CellEditor({
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Status</Label>
+              <Label className="text-xs">{t("bookings.status")}</Label>
               <Select value={status} onValueChange={(v) => setStatus(v as BookingStatus)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Confirmed">Confirmed</SelectItem>
-                  <SelectItem value="Pending">Pending</SelectItem>
-                  <SelectItem value="Cancelled">Cancelled</SelectItem>
+                  <SelectItem value="Confirmed">{t("status.Confirmed")}</SelectItem>
+                  <SelectItem value="Pending">{t("status.Pending")}</SelectItem>
+                  <SelectItem value="Cancelled">{t("status.Cancelled")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
           {cell && parseFloat(price) > 0 && (
             <div className="rounded-md bg-muted p-2 text-xs">
-              Revenue: <span className="font-semibold">{formatCurrency(cellRevenueLocal({ price: parseFloat(price) || 0, type, status }, usdRate), currency)}</span>
+              {t("bookings.revenue")}: <span className="font-semibold">{formatCurrency(cellRevenueLocal({ price: parseFloat(price) || 0, type, status }, usdRate), currency)}</span>
             </div>
           )}
           <div className="flex items-center justify-between gap-2 pt-1">
             {cell ? (
               <Button variant="ghost" size="sm" onClick={() => { onDelete(); setOpen(false); }} className="text-destructive hover:text-destructive">
-                <Trash2 className="mr-1 h-3.5 w-3.5" /> Remove
+                <Trash2 className="me-1 h-3.5 w-3.5" /> {t("common.remove")}
               </Button>
             ) : <span />}
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button size="sm" onClick={save}>Save</Button>
+              <Button variant="outline" size="sm" onClick={() => setOpen(false)}>{t("common.cancel")}</Button>
+              <Button size="sm" onClick={save}>{t("common.save")}</Button>
             </div>
           </div>
         </div>

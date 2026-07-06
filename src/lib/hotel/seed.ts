@@ -49,7 +49,14 @@ function buildJune(settings: Settings): MonthData {
   for (const [day, room, type, price] of JUNE_2026_RAW) {
     m.cells[room][day] = { price, type, status: "Confirmed" };
   }
-  m.expenses = 31383;
+  m.expenseItems = [
+    { id: "j-1", label: "Cleaning & housekeeping", amount: 8000, date: "2026-06-05" },
+    { id: "j-2", label: "Electricity & water", amount: 5000, date: "2026-06-10" },
+    { id: "j-3", label: "Laundry", amount: 4000, date: "2026-06-15" },
+    { id: "j-4", label: "Maintenance & supplies", amount: 6383, date: "2026-06-20" },
+    { id: "j-5", label: "Staff", amount: 8000, date: "2026-06-28" },
+  ];
+  m.expenses = m.expenseItems.reduce((s, i) => s + i.amount, 0);
   m.usdRate = 49.28;
   m.managementPct = 0.25;
   return m;

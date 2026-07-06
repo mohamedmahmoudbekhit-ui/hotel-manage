@@ -7,21 +7,28 @@ export interface Cell {
   status: BookingStatus;
 }
 
+export interface ExpenseItem {
+  id: string;
+  label: string;
+  amount: number;
+  date?: string; // ISO yyyy-mm-dd
+}
+
 export interface MonthData {
   key: string; // e.g. "June 2026"
   year: number;
   monthIndex: number; // 0-11
   daysInMonth: number;
-  // cells[roomId][day] -> Cell | null
   cells: Record<string, Record<number, Cell | null>>;
-  expenses: number;
+  expenses: number; // derived = sum(expenseItems)
+  expenseItems: ExpenseItem[];
   usdRate: number;
-  managementPct: number; // e.g. 0.25
+  managementPct: number;
 }
 
 export interface Settings {
-  rooms: string[]; // ["Room 1", ...]
-  currency: string; // "EGP"
+  rooms: string[];
+  currency: string;
   defaultUsdRate: number;
   defaultManagementPct: number;
 }

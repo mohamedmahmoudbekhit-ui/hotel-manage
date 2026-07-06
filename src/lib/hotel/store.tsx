@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import type { Cell, MonthData, Settings } from "./types";
+import type { Cell, ExpenseItem, MonthData, Settings } from "./types";
 import { DEFAULT_SETTINGS, seedMonths } from "./seed";
-import { emptyMonth } from "./utils";
+import { emptyMonth, sumExpenses } from "./utils";
 
 interface State {
   settings: Settings;
@@ -16,19 +16,35 @@ interface Ctx extends State {
   updateMonthMeta: (patch: Partial<Pick<MonthData, "expenses" | "usdRate" | "managementPct">>) => void;
   updateSettings: (patch: Partial<Settings>) => void;
   addMonth: (year: number, monthIndex: number) => void;
+  addExpense: (item: Omit<ExpenseItem, "id">) => void;
+  updateExpense: (id: string, patch: Partial<Omit<ExpenseItem, "id">>) => void;
+  removeExpense: (id: string) => void;
   resetAll: () => void;
 }
 
-const KEY = "hotel-mgmt-v1";
+const KEY = "hotel-mgmt-v2";
+
+function migrate(m: MonthData): MonthData {
+  if (!Array.isArray(m.expenseItems)) {
+    const items: ExpenseItem[] = m.expenses > 0
+      ? [{ id: "legacy", label: "Legacy total", amount: m.expenses }]
+      : [];
+    return { ...m, expenseItems: items, expenses: sumExpenses(items) };
+  }
+  return { ...m, expenses: sumExpenses(m.expenseItems) };
+}
 
 function loadInitial(): State {
   if (typeof window !== "undefined") {
     try {
-      const raw = window.localStorage.getItem(KEY);
-      if (raw) return JSON.parse(raw) as State;
-    } catch {
-      /* ignore */
-    }
+      const raw = window.localStorage.getItem(KEY) ?? window.localStorage.getItem("hotel-mgmt-v1");
+      if (raw) {
+        const parsed = JSON.parse(raw) as State;
+        const months: Record<string, MonthData> = {};
+        for (const [k, v] of Object.entries(parsed.months)) months[k] = migrate(v);
+        return { ...parsed, months };
+      }
+    } catch { /* ignore */ }
   }
   const months = seedMonths(DEFAULT_SETTINGS);
   const firstKey = Object.keys(months)[0];
@@ -52,11 +68,7 @@ export function HotelProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!hydrated) return;
-    try {
-      window.localStorage.setItem(KEY, JSON.stringify(state));
-    } catch {
-      /* ignore */
-    }
+    try { window.localStorage.setItem(KEY, JSON.stringify(state)); } catch { /* ignore */ }
   }, [state, hydrated]);
 
   const setCurrentMonthKey = useCallback((k: string) => {
@@ -86,7 +98,6 @@ export function HotelProvider({ children }: { children: ReactNode }) {
   const updateSettings = useCallback((patch: Partial<Settings>) => {
     setState((s) => {
       const nextSettings = { ...s.settings, ...patch };
-      // If rooms changed, ensure each month has cell buckets for each room
       const nextMonths = { ...s.months };
       for (const key of Object.keys(nextMonths)) {
         const m = nextMonths[key];
@@ -111,6 +122,31 @@ export function HotelProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const mutateExpenses = useCallback((fn: (items: ExpenseItem[]) => ExpenseItem[]) => {
+    setState((s) => {
+      const m = s.months[s.currentMonthKey];
+      if (!m) return s;
+      const items = fn(m.expenseItems ?? []);
+      return {
+        ...s,
+        months: { ...s.months, [s.currentMonthKey]: { ...m, expenseItems: items, expenses: sumExpenses(items) } },
+      };
+    });
+  }, []);
+
+  const addExpense = useCallback((item: Omit<ExpenseItem, "id">) => {
+    const id = (typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `e-${Date.now()}-${Math.random()}`);
+    mutateExpenses((items) => [...items, { id, ...item }]);
+  }, [mutateExpenses]);
+
+  const updateExpense = useCallback((id: string, patch: Partial<Omit<ExpenseItem, "id">>) => {
+    mutateExpenses((items) => items.map((it) => (it.id === id ? { ...it, ...patch } : it)));
+  }, [mutateExpenses]);
+
+  const removeExpense = useCallback((id: string) => {
+    mutateExpenses((items) => items.filter((it) => it.id !== id));
+  }, [mutateExpenses]);
+
   const resetAll = useCallback(() => {
     const months = seedMonths(DEFAULT_SETTINGS);
     setState({ settings: DEFAULT_SETTINGS, months, currentMonthKey: "June 2026" });
@@ -129,6 +165,9 @@ export function HotelProvider({ children }: { children: ReactNode }) {
     updateMonthMeta,
     updateSettings,
     addMonth,
+    addExpense,
+    updateExpense,
+    removeExpense,
     resetAll,
   };
 

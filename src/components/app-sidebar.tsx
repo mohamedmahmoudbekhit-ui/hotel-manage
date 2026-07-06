@@ -11,18 +11,20 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-
-const items = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
-  { title: "Bookings", url: "/bookings", icon: CalendarDays },
-  { title: "Charts", url: "/charts", icon: BarChart3 },
-  { title: "Monthly Summary", url: "/summary", icon: LineChart },
-  { title: "Settings", url: "/settings", icon: SettingsIcon },
-];
+import { useI18n } from "@/lib/i18n";
 
 export function AppSidebar() {
   const pathname = useRouterState({ select: (r) => r.location.pathname });
+  const { t } = useI18n();
   const isActive = (p: string) => (p === "/" ? pathname === "/" : pathname.startsWith(p));
+
+  const items = [
+    { title: t("nav.dashboard"), url: "/", icon: LayoutDashboard },
+    { title: t("nav.bookings"), url: "/bookings", icon: CalendarDays },
+    { title: t("nav.charts"), url: "/charts", icon: BarChart3 },
+    { title: t("nav.summary"), url: "/summary", icon: LineChart },
+    { title: t("nav.settings"), url: "/settings", icon: SettingsIcon },
+  ];
 
   return (
     <Sidebar collapsible="icon">
@@ -32,14 +34,14 @@ export function AppSidebar() {
             <Hotel className="h-5 w-5" />
           </div>
           <div className="min-w-0">
-            <div className="truncate text-sm font-semibold text-sidebar-foreground">Guesthouse OS</div>
-            <div className="truncate text-xs text-sidebar-foreground/60">Revenue & Occupancy</div>
+            <div className="truncate text-sm font-semibold text-sidebar-foreground">{t("brand.name")}</div>
+            <div className="truncate text-xs text-sidebar-foreground/60">{t("brand.tagline")}</div>
           </div>
         </div>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Workspace</SidebarGroupLabel>
+          <SidebarGroupLabel>{t("nav.workspace")}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {items.map((item) => (

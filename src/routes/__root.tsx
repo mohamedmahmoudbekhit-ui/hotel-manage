@@ -15,6 +15,9 @@ import { HotelProvider } from "@/lib/hotel/store";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Toaster } from "@/components/ui/sonner";
+import { I18nProvider, useI18n } from "@/lib/i18n";
+import { Button } from "@/components/ui/button";
+import { Languages } from "lucide-react";
 
 function NotFoundComponent() {
   return (
@@ -71,15 +74,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Dashboard — Guesthouse OS" },
-      { name: "description", content: "Live KPIs: revenue, occupancy, bookings, and top rooms for your guesthouse." },
-      { name: "author", content: "Guesthouse OS" },
-      { property: "og:title", content: "Dashboard — Guesthouse OS" },
-      { property: "og:description", content: "Live KPIs: revenue, occupancy, bookings, and top rooms for your guesthouse." },
+      { title: "Dashboard — 7 Heaven" },
+      { name: "description", content: "Live KPIs: revenue, occupancy, bookings, and top rooms for 7 Heaven guesthouse." },
+      { name: "author", content: "7 Heaven" },
+      { property: "og:title", content: "Dashboard — 7 Heaven" },
+      { property: "og:description", content: "Live KPIs: revenue, occupancy, bookings, and top rooms for 7 Heaven guesthouse." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "Dashboard — Guesthouse OS" },
-      { name: "twitter:description", content: "Live KPIs: revenue, occupancy, bookings, and top rooms for your guesthouse." },
+      { name: "twitter:title", content: "Dashboard — 7 Heaven" },
+      { name: "twitter:description", content: "Live KPIs: revenue, occupancy, bookings, and top rooms for 7 Heaven guesthouse." },
       { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/1b74ffbe-8c39-4a52-9707-180c1cd56897/id-preview-099def68--f4dd8833-5876-4d69-8be5-c752e209f94e.lovable.app-1783255092497.png" },
       { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/1b74ffbe-8c39-4a52-9707-180c1cd56897/id-preview-099def68--f4dd8833-5876-4d69-8be5-c752e209f94e.lovable.app-1783255092497.png" },
     ],
@@ -106,27 +109,40 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+function AppShell() {
+  const { t, toggle, lang, dir } = useI18n();
+  return (
+    <SidebarProvider>
+      <div className="flex min-h-screen w-full bg-background" dir={dir}>
+        <AppSidebar />
+        <div className="flex flex-1 flex-col">
+          <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-background/80 px-4 backdrop-blur">
+            <SidebarTrigger />
+            <div className="text-sm font-medium text-muted-foreground">{t("brand.name")}</div>
+            <Button variant="ghost" size="sm" onClick={toggle} className="ms-auto gap-1.5" aria-label="Toggle language">
+              <Languages className="h-4 w-4" />
+              <span className="text-xs font-semibold uppercase">{lang === "en" ? "AR" : "EN"}</span>
+            </Button>
+          </header>
+          <main className="flex-1">
+            <Outlet />
+          </main>
+        </div>
+      </div>
+      <Toaster />
+    </SidebarProvider>
+  );
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   return (
     <QueryClientProvider client={queryClient}>
-      <HotelProvider>
-        <SidebarProvider>
-          <div className="flex min-h-screen w-full bg-background">
-            <AppSidebar />
-            <div className="flex flex-1 flex-col">
-              <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-background/80 px-4 backdrop-blur">
-                <SidebarTrigger />
-                <div className="text-sm font-medium text-muted-foreground">Guesthouse OS</div>
-              </header>
-              <main className="flex-1">
-                <Outlet />
-              </main>
-            </div>
-          </div>
-          <Toaster />
-        </SidebarProvider>
-      </HotelProvider>
+      <I18nProvider>
+        <HotelProvider>
+          <AppShell />
+        </HotelProvider>
+      </I18nProvider>
     </QueryClientProvider>
   );
 }

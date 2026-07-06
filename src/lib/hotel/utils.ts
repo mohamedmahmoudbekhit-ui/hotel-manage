@@ -130,7 +130,14 @@ export function emptyMonth(year: number, monthIndex: number, settings: Settings)
     daysInMonth: dim,
     cells,
     expenses: 0,
+    expenseItems: [],
     usdRate: settings.defaultUsdRate,
     managementPct: settings.defaultManagementPct,
   };
 }
+
+export function sumExpenses(items: { amount: number }[] | undefined): number {
+  if (!items) return 0;
+  return items.reduce((s, i) => s + (Number.isFinite(i.amount) ? i.amount : 0), 0);
+}
+

@@ -8,7 +8,7 @@ const en: Dict = {
   "brand.name": "7 Heaven",
   "brand.tagline": "Revenue & Occupancy",
   "nav.workspace": "Workspace",
-  "nav.dashboard": "Dashboard",
+  "nav.expenses": "Expenses",
   "nav.bookings": "Bookings",
   "nav.charts": "Charts",
   "nav.summary": "Monthly Summary",

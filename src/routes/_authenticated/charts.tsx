@@ -5,7 +5,7 @@ import { computeMonthTotals, formatCurrency } from "@/lib/hotel/utils";
 import { PieChart, Pie, Cell as RCell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, LineChart, Line, Legend } from "recharts";
 import { useI18n } from "@/lib/i18n";
 
-export const Route = createFileRoute("/charts")({
+export const Route = createFileRoute("/_authenticated/charts")({
   head: () => ({
     meta: [
       { title: "Charts — 7 Heaven" },

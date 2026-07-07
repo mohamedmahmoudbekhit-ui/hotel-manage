@@ -11,13 +11,9 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
-import { HotelProvider } from "@/lib/hotel/store";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/app-sidebar";
 import { Toaster } from "@/components/ui/sonner";
-import { I18nProvider, useI18n } from "@/lib/i18n";
-import { Button } from "@/components/ui/button";
-import { Languages } from "lucide-react";
+import { I18nProvider } from "@/lib/i18n";
+import { supabase } from "@/integrations/supabase/client";
 
 function NotFoundComponent() {
   return (
@@ -25,14 +21,9 @@ function NotFoundComponent() {
       <div className="max-w-md text-center">
         <h1 className="text-7xl font-bold text-foreground">404</h1>
         <h2 className="mt-4 text-xl font-semibold text-foreground">Page not found</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          The page you're looking for doesn't exist or has been moved.
-        </p>
+        <p className="mt-2 text-sm text-muted-foreground">The page you're looking for doesn't exist or has been moved.</p>
         <div className="mt-6">
-          <Link
-            to="/"
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-          >
+          <Link to="/" className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
             Go home
           </Link>
         </div>
@@ -54,10 +45,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
         <h1 className="text-xl font-semibold tracking-tight text-foreground">This page didn't load</h1>
         <p className="mt-2 text-sm text-muted-foreground">Something went wrong. Try again or head home.</p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
-          <button
-            onClick={() => { router.invalidate(); reset(); }}
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-          >
+          <button onClick={() => { router.invalidate(); reset(); }} className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
             Try again
           </button>
           <a href="/" className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-accent">
@@ -74,17 +62,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Dashboard — 7 Heaven" },
-      { name: "description", content: "Live KPIs: revenue, occupancy, bookings, and top rooms for 7 Heaven guesthouse." },
+      { title: "7 Heaven — Hotel Management" },
+      { name: "description", content: "Sign in to manage bookings, revenue, expenses and occupancy for your hotel with 7 Heaven." },
       { name: "author", content: "7 Heaven" },
-      { property: "og:title", content: "Dashboard — 7 Heaven" },
-      { property: "og:description", content: "Live KPIs: revenue, occupancy, bookings, and top rooms for 7 Heaven guesthouse." },
+      { property: "og:title", content: "7 Heaven — Hotel Management" },
+      { property: "og:description", content: "Sign in to manage bookings, revenue, expenses and occupancy for your hotel." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "Dashboard — 7 Heaven" },
-      { name: "twitter:description", content: "Live KPIs: revenue, occupancy, bookings, and top rooms for 7 Heaven guesthouse." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/1b74ffbe-8c39-4a52-9707-180c1cd56897/id-preview-099def68--f4dd8833-5876-4d69-8be5-c752e209f94e.lovable.app-1783255092497.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/1b74ffbe-8c39-4a52-9707-180c1cd56897/id-preview-099def68--f4dd8833-5876-4d69-8be5-c752e209f94e.lovable.app-1783255092497.png" },
+      { name: "twitter:title", content: "7 Heaven — Hotel Management" },
+      { name: "twitter:description", content: "Sign in to manage bookings, revenue, expenses and occupancy for your hotel." },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
@@ -109,29 +95,17 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
-function AppShell() {
-  const { t, toggle, lang, dir } = useI18n();
-  return (
-    <SidebarProvider>
-      <div className="flex min-h-screen w-full bg-background" dir={dir}>
-        <AppSidebar />
-        <div className="flex flex-1 flex-col">
-          <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-background/80 px-4 backdrop-blur">
-            <SidebarTrigger />
-            <div className="text-sm font-medium text-muted-foreground">{t("brand.name")}</div>
-            <Button variant="ghost" size="sm" onClick={toggle} className="ms-auto gap-1.5" aria-label="Toggle language">
-              <Languages className="h-4 w-4" />
-              <span className="text-xs font-semibold uppercase">{lang === "en" ? "AR" : "EN"}</span>
-            </Button>
-          </header>
-          <main className="flex-1">
-            <Outlet />
-          </main>
-        </div>
-      </div>
-      <Toaster />
-    </SidebarProvider>
-  );
+function AuthSync() {
+  const router = useRouter();
+  useEffect(() => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "USER_UPDATED") {
+        router.invalidate();
+      }
+    });
+    return () => sub.subscription.unsubscribe();
+  }, [router]);
+  return null;
 }
 
 function RootComponent() {
@@ -139,9 +113,9 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <I18nProvider>
-        <HotelProvider>
-          <AppShell />
-        </HotelProvider>
+        <AuthSync />
+        <Outlet />
+        <Toaster />
       </I18nProvider>
     </QueryClientProvider>
   );

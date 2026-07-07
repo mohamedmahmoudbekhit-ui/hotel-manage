@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import { Plus, Trash2 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 
-export const Route = createFileRoute("/bookings")({
+export const Route = createFileRoute("/_authenticated/bookings")({
   head: () => ({
     meta: [
       { title: "Bookings — 7 Heaven" },

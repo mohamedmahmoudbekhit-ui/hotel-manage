@@ -6,7 +6,7 @@ import { MonthSelector } from "@/components/month-selector";
 import { DollarSign, TrendingUp, CalendarCheck, Percent, Trophy, PiggyBank, BedDouble, Wallet } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
     meta: [
       { title: "Dashboard — 7 Heaven" },

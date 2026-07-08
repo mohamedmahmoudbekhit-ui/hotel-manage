@@ -8,30 +8,24 @@ import { useI18n } from "@/lib/i18n";
 export const Route = createFileRoute("/_authenticated/charts")({
   head: () => ({
     meta: [
-      { title: "Charts — 7 Heaven" },
-      { name: "description", content: "Interactive charts: booking distribution, revenue by source, occupancy trend, and revenue per room." },
+      { title: "Charts — Hotel Management" },
+      { name: "description", content: "Interactive charts: bookings by channel, revenue by source, occupancy trend, and revenue per room." },
     ],
   }),
   component: ChartsPage,
 });
 
-const COLORS = {
-  Airbnb: "var(--airbnb)",
-  Booking: "var(--booking)",
-  Offline: "var(--offline)",
-};
-
 function ChartsPage() {
   const { currentMonth, settings, months } = useHotel();
   const { t, formatMonthKey } = useI18n();
-  const totals = computeMonthTotals(currentMonth, settings.rooms);
+  const totals = computeMonthTotals(currentMonth, settings.rooms, settings);
 
-  const pieData = (["Airbnb", "Booking", "Offline"] as const).map((k) => ({
-    name: t(`type.${k}`), key: k, value: totals.bookingsByType[k],
-  })).filter((d) => d.value > 0);
+  const pieData = settings.channels
+    .map((ch) => ({ name: ch.name, key: ch.id, color: ch.color, value: totals.bookingsByChannel[ch.id] ?? 0 }))
+    .filter((d) => d.value > 0);
 
-  const barData = (["Airbnb", "Booking", "Offline"] as const).map((k) => ({
-    name: t(`type.${k}`), key: k, revenue: Math.round(totals.revenueByType[k]),
+  const barData = settings.channels.map((ch) => ({
+    name: ch.name, key: ch.id, color: ch.color, revenue: Math.round(totals.revenueByChannel[ch.id] ?? 0),
   }));
 
   const roomData = settings.rooms.map((r) => ({
@@ -42,7 +36,7 @@ function ChartsPage() {
     a.year !== b.year ? a.year - b.year : a.monthIndex - b.monthIndex,
   );
   const trendData = sortedMonths.map((m) => {
-    const tt = computeMonthTotals(m, settings.rooms);
+    const tt = computeMonthTotals(m, settings.rooms, settings);
     return { name: formatMonthKey(m.key), occupancy: +tt.occupancyRate.toFixed(1), revenue: Math.round(tt.totalRevenue) };
   });
 
@@ -62,7 +56,7 @@ function ChartsPage() {
             <PieChart>
               <Pie data={pieData} dataKey="value" nameKey="name" innerRadius={60} outerRadius={100} paddingAngle={2}>
                 {pieData.map((entry) => (
-                  <RCell key={entry.key} fill={COLORS[entry.key as keyof typeof COLORS]} />
+                  <RCell key={entry.key} fill={entry.color} />
                 ))}
               </Pie>
               <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid var(--border)", background: "var(--popover)" }} />
@@ -83,7 +77,7 @@ function ChartsPage() {
               />
               <Bar dataKey="revenue" radius={[8, 8, 0, 0]}>
                 {barData.map((d) => (
-                  <RCell key={d.key} fill={COLORS[d.key as keyof typeof COLORS]} />
+                  <RCell key={d.key} fill={d.color} />
                 ))}
               </Bar>
             </BarChart>

@@ -75,6 +75,7 @@ const en: Dict = {
   "kpi.pctOfRevenue": "% of revenue",
   "kpi.emptyDaysPerRoom": "Empty Days per Room",
   "kpi.nights": "nights",
+  "kpi.revenueSuffix": "Revenue",
 
   "bookings.title": "Bookings",
   "bookings.day": "Day",

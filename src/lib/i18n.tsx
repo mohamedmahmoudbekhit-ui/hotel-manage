@@ -155,7 +155,7 @@ const en: Dict = {
 };
 
 const ar: Dict = {
-  "brand.name": "سفن هيفن",
+  "brand.name": "إدارة الفندق",
   "brand.tagline": "الإيرادات والإشغال",
   "nav.workspace": "مساحة العمل",
   "nav.dashboard": "لوحة التحكم",

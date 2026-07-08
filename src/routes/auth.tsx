@@ -12,8 +12,8 @@ import { useI18n } from "@/lib/i18n";
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Sign in — 7 Heaven" },
-      { name: "description", content: "Sign in or create your 7 Heaven account to manage your hotel." },
+      { title: "Sign in — Hotel Management" },
+      { name: "description", content: "Sign in or create your Hotel Management account to manage your hotel." },
     ],
   }),
   component: AuthPage,

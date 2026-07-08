@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useHotel } from "@/lib/hotel/store";
-import { computeMonthTotals, formatCurrency } from "@/lib/hotel/utils";
+import { computeMonthTotals, formatCurrency, pickTextColor } from "@/lib/hotel/utils";
 import { KpiCard } from "@/components/kpi-card";
 import { MonthSelector } from "@/components/month-selector";
 import { DollarSign, TrendingUp, CalendarCheck, Percent, Trophy, PiggyBank, BedDouble, Wallet } from "lucide-react";
@@ -9,9 +9,9 @@ import { useI18n } from "@/lib/i18n";
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
     meta: [
-      { title: "Dashboard — 7 Heaven" },
-      { name: "description", content: "Live KPIs: revenue, occupancy, bookings, and top rooms for 7 Heaven guesthouse." },
-      { property: "og:title", content: "7 Heaven Dashboard" },
+      { title: "Dashboard — Hotel Management" },
+      { name: "description", content: "Live KPIs: revenue, occupancy, bookings, and top rooms for your hotel." },
+      { property: "og:title", content: "Hotel Management Dashboard" },
       { property: "og:description", content: "Live KPIs: revenue, occupancy, bookings, and top rooms." },
     ],
   }),
@@ -21,7 +21,7 @@ export const Route = createFileRoute("/_authenticated/")({
 function Dashboard() {
   const { currentMonth, settings } = useHotel();
   const { t, formatMonthKey } = useI18n();
-  const totals = computeMonthTotals(currentMonth, settings.rooms);
+  const totals = computeMonthTotals(currentMonth, settings.rooms, settings);
   const cur = settings.currency;
 
   return (
@@ -41,10 +41,31 @@ function Dashboard() {
         <KpiCard label={t("kpi.avgPerBooking")} value={formatCurrency(totals.avgRevenuePerBooking, cur)} icon={<TrendingUp className="h-5 w-5" />} accent="warning" />
       </section>
 
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <KpiCard label={t("kpi.airbnbRev")} value={formatCurrency(totals.revenueByType.Airbnb, cur)} icon={<Wallet className="h-5 w-5" />} accent="airbnb" hint={`${totals.bookingsByType.Airbnb} ${t("common.bookings")}`} />
-        <KpiCard label={t("kpi.bookingRev")} value={formatCurrency(totals.revenueByType.Booking, cur)} icon={<Wallet className="h-5 w-5" />} accent="booking" hint={`${totals.bookingsByType.Booking} ${t("common.bookings")}`} />
-        <KpiCard label={t("kpi.offlineRev")} value={formatCurrency(totals.revenueByType.Offline, cur)} icon={<Wallet className="h-5 w-5" />} accent="offline" hint={`${totals.bookingsByType.Offline} ${t("common.bookings")}`} />
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {settings.channels.map((ch) => {
+          const fg = pickTextColor(ch.color);
+          return (
+            <div
+              key={ch.id}
+              className="group relative overflow-hidden rounded-2xl border p-5 shadow-soft transition hover:shadow-card"
+              style={{ background: `linear-gradient(135deg, ${ch.color}22, transparent 70%)` }}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{ch.name} {t("kpi.revenueSuffix")}</div>
+                  <div className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">{formatCurrency(totals.revenueByChannel[ch.id] ?? 0, cur)}</div>
+                  <div className="mt-1 text-xs text-muted-foreground">{totals.bookingsByChannel[ch.id] ?? 0} {t("common.bookings")}</div>
+                </div>
+                <div
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-xl"
+                  style={{ background: ch.color, color: fg }}
+                >
+                  <Wallet className="h-5 w-5" />
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </section>
 
       <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">

@@ -1,10 +1,15 @@
-export type BookingType = "Airbnb" | "Booking" | "Offline";
-export type BookingStatus = "Confirmed" | "Pending" | "Cancelled";
+export interface Channel {
+  id: string;
+  name: string;
+  /** LOCAL = local currency (settings.currency), USD = converted via monthly usdRate */
+  currency: "LOCAL" | "USD";
+  color: string; // hex e.g. "#e11d48"
+}
 
 export interface Cell {
   price: number;
-  type: BookingType;
-  status: BookingStatus;
+  channelId: string;
+  note?: string;
 }
 
 export interface ExpenseItem {
@@ -15,9 +20,9 @@ export interface ExpenseItem {
 }
 
 export interface MonthData {
-  key: string; // e.g. "June 2026"
+  key: string;
   year: number;
-  monthIndex: number; // 0-11
+  monthIndex: number;
   daysInMonth: number;
   cells: Record<string, Record<number, Cell | null>>;
   expenses: number; // derived = sum(expenseItems)
@@ -31,4 +36,5 @@ export interface Settings {
   currency: string;
   defaultUsdRate: number;
   defaultManagementPct: number;
+  channels: Channel[];
 }

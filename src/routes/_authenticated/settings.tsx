@@ -4,6 +4,7 @@ import { useHotel } from "@/lib/hotel/store";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MonthSelector } from "@/components/month-selector";
 import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -12,17 +13,22 @@ import { useI18n } from "@/lib/i18n";
 export const Route = createFileRoute("/_authenticated/settings")({
   head: () => ({
     meta: [
-      { title: "Settings — 7 Heaven" },
-      { name: "description", content: "Configure rooms, currency, USD conversion, and management share." },
+      { title: "Settings — Hotel Management" },
+      { name: "description", content: "Configure rooms, channels, currency, USD conversion, and management share." },
     ],
   }),
   component: SettingsPage,
 });
 
 function SettingsPage() {
-  const { settings, updateSettings, currentMonth, updateMonthMeta, hotelName } = useHotel();
+  const { settings, updateSettings, addChannel, updateChannel, removeChannel, currentMonth, updateMonthMeta, hotelName } = useHotel();
   const { t, formatMonthKey } = useI18n();
   const [newRoom, setNewRoom] = useState("");
+  const [newCh, setNewCh] = useState<{ name: string; currency: "LOCAL" | "USD"; color: string }>({
+    name: "",
+    currency: "LOCAL",
+    color: "#0ea5e9",
+  });
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
@@ -48,6 +54,77 @@ function SettingsPage() {
             <Label>{t("settings.defaultMgmt")}</Label>
             <Input type="number" step="1" min="0" max="100" value={Math.round(settings.defaultManagementPct * 100)} onChange={(e) => updateSettings({ defaultManagementPct: (parseFloat(e.target.value) || 0) / 100 })} />
           </div>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border bg-card p-6 shadow-soft">
+        <h2 className="text-base font-semibold">{t("settings.channels")}</h2>
+        <p className="text-xs text-muted-foreground">{t("settings.channelsSub")}</p>
+        <div className="mt-4 space-y-2">
+          {settings.channels.map((ch) => (
+            <div key={ch.id} className="grid grid-cols-[auto_minmax(0,1fr)_auto_auto_auto] items-center gap-2 rounded-lg border bg-background px-3 py-2">
+              <input
+                type="color"
+                value={ch.color}
+                onChange={(e) => updateChannel(ch.id, { color: e.target.value })}
+                className="h-8 w-10 cursor-pointer rounded border bg-background"
+                aria-label={t("settings.channelColor")}
+              />
+              <Input
+                value={ch.name}
+                onChange={(e) => updateChannel(ch.id, { name: e.target.value })}
+                className="h-9"
+              />
+              <Select value={ch.currency} onValueChange={(v) => updateChannel(ch.id, { currency: v as "LOCAL" | "USD" })}>
+                <SelectTrigger className="h-9 w-32"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="LOCAL">{settings.currency} ({t("settings.local")})</SelectItem>
+                  <SelectItem value="USD">USD</SelectItem>
+                </SelectContent>
+              </Select>
+              <span className="h-6 w-6 rounded-full border" style={{ background: ch.color }} />
+              <Button variant="ghost" size="icon" onClick={() => {
+                if (settings.channels.length <= 1) { toast.error(t("settings.channelKeepOne")); return; }
+                removeChannel(ch.id);
+              }}>
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </Button>
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 grid grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-2 rounded-lg border border-dashed bg-background/50 p-3">
+          <input
+            type="color"
+            value={newCh.color}
+            onChange={(e) => setNewCh((s) => ({ ...s, color: e.target.value }))}
+            className="h-9 w-10 cursor-pointer rounded border bg-background"
+            aria-label={t("settings.channelColor")}
+          />
+          <Input
+            placeholder={t("settings.newChannelName")}
+            value={newCh.name}
+            onChange={(e) => setNewCh((s) => ({ ...s, name: e.target.value }))}
+            className="h-9"
+          />
+          <Select value={newCh.currency} onValueChange={(v) => setNewCh((s) => ({ ...s, currency: v as "LOCAL" | "USD" }))}>
+            <SelectTrigger className="h-9 w-32"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="LOCAL">{settings.currency} ({t("settings.local")})</SelectItem>
+              <SelectItem value="USD">USD</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button onClick={() => {
+            const name = newCh.name.trim();
+            if (!name) return;
+            if (settings.channels.some((c) => c.name.toLowerCase() === name.toLowerCase())) {
+              toast.error(t("settings.channelDup"));
+              return;
+            }
+            addChannel({ name, currency: newCh.currency, color: newCh.color });
+            setNewCh({ name: "", currency: "LOCAL", color: "#0ea5e9" });
+          }}>
+            <Plus className="me-1 h-4 w-4" /> {t("common.add")}
+          </Button>
         </div>
       </section>
 

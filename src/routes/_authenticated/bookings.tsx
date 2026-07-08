@@ -2,12 +2,13 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useHotel } from "@/lib/hotel/store";
 import { MonthSelector } from "@/components/month-selector";
-import { BOOKING_TYPES, cellRevenueLocal, computeMonthTotals, formatCurrency } from "@/lib/hotel/utils";
-import type { BookingStatus, BookingType, Cell } from "@/lib/hotel/types";
+import { cellRevenueLocal, computeMonthTotals, findChannel, formatCurrency, pickTextColor } from "@/lib/hotel/utils";
+import type { Cell, Channel } from "@/lib/hotel/types";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Plus, Trash2 } from "lucide-react";
@@ -16,34 +17,21 @@ import { useI18n } from "@/lib/i18n";
 export const Route = createFileRoute("/_authenticated/bookings")({
   head: () => ({
     meta: [
-      { title: "Bookings — 7 Heaven" },
-      { name: "description", content: "Monthly bookings grid with dropdowns for booking type, room, and status." },
+      { title: "Bookings — Hotel Management" },
+      { name: "description", content: "Monthly bookings grid with per-channel colors, prices and notes." },
     ],
   }),
   component: BookingsPage,
 });
 
-// Solid, high-contrast backgrounds with matching foregrounds.
-const typeStyles: Record<BookingType, string> = {
-  Airbnb: "bg-airbnb text-airbnb-foreground border-airbnb hover:bg-airbnb/90 shadow-sm",
-  Booking: "bg-booking text-booking-foreground border-booking hover:bg-booking/90 shadow-sm",
-  Offline: "bg-offline text-offline-foreground border-offline hover:bg-offline/90 shadow-sm",
-};
-const typeDot: Record<BookingType, string> = {
-  Airbnb: "bg-airbnb",
-  Booking: "bg-booking",
-  Offline: "bg-offline",
-};
-const statusStyles: Record<BookingStatus, string> = {
-  Confirmed: "",
-  Pending: "ring-2 ring-warning/70 opacity-95",
-  Cancelled: "opacity-50 line-through",
-};
+function channelLabel(ch: Channel, currency: string): string {
+  return `${ch.name} · ${ch.currency === "LOCAL" ? currency : "USD"}`;
+}
 
 function BookingsPage() {
   const { currentMonth, settings, updateCell } = useHotel();
   const { t, formatMonthKey } = useI18n();
-  const totals = computeMonthTotals(currentMonth, settings.rooms);
+  const totals = computeMonthTotals(currentMonth, settings.rooms, settings);
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-4 px-4 py-6 sm:px-6 lg:px-8">
@@ -59,10 +47,10 @@ function BookingsPage() {
       </header>
 
       <div className="flex flex-wrap items-center gap-3 rounded-xl border bg-card p-3 text-xs">
-        {BOOKING_TYPES.map((tp) => (
-          <div key={tp} className="flex items-center gap-1.5">
-            <span className={cn("h-2.5 w-2.5 rounded-full", typeDot[tp])} />
-            <span className="text-muted-foreground">{t(`type.${tp}`)}</span>
+        {settings.channels.map((ch) => (
+          <div key={ch.id} className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full" style={{ background: ch.color }} />
+            <span className="text-muted-foreground">{ch.name}</span>
           </div>
         ))}
         <span className="ms-auto text-muted-foreground">{t("common.tapCell")}</span>
@@ -91,6 +79,7 @@ function BookingsPage() {
                         onSave={(c) => updateCell(room, day, c)}
                         onDelete={() => updateCell(room, day, null)}
                         usdRate={currentMonth.usdRate}
+                        channels={settings.channels}
                         currency={settings.currency}
                       />
                     </td>
@@ -110,52 +99,67 @@ function CellEditor({
   onSave,
   onDelete,
   usdRate,
+  channels,
   currency,
 }: {
   cell: Cell | null;
   onSave: (c: Cell) => void;
   onDelete: () => void;
   usdRate: number;
+  channels: Channel[];
   currency: string;
 }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
+  const defaultChannel = channels[0]?.id ?? "offline";
   const [price, setPrice] = useState(cell?.price.toString() ?? "");
-  const [type, setType] = useState<BookingType>(cell?.type ?? "Offline");
-  const [status, setStatus] = useState<BookingStatus>(cell?.status ?? "Confirmed");
+  const [channelId, setChannelId] = useState<string>(cell?.channelId ?? defaultChannel);
+  const [note, setNote] = useState<string>(cell?.note ?? "");
 
   const reset = () => {
     setPrice(cell?.price.toString() ?? "");
-    setType(cell?.type ?? "Offline");
-    setStatus(cell?.status ?? "Confirmed");
+    setChannelId(cell?.channelId ?? defaultChannel);
+    setNote(cell?.note ?? "");
   };
 
   const save = () => {
     const p = parseFloat(price);
     if (!isFinite(p) || p <= 0) return;
-    onSave({ price: p, type, status });
+    const trimmedNote = note.trim();
+    onSave({ price: p, channelId, ...(trimmedNote ? { note: trimmedNote } : {}) });
     setOpen(false);
   };
+
+  const cellChannel = cell ? findChannel({ channels } as never, cell.channelId) : null;
+  const editorChannel = findChannel({ channels } as never, channelId);
+  const fg = cellChannel ? pickTextColor(cellChannel.color) : "#fff";
 
   return (
     <Popover open={open} onOpenChange={(o) => { setOpen(o); if (o) reset(); }}>
       <PopoverTrigger asChild>
-        {cell ? (
+        {cell && cellChannel ? (
           <button
-            className={cn(
-              "w-full rounded-lg border px-2 py-1.5 text-start text-xs font-medium transition",
-              typeStyles[cell.type],
-              statusStyles[cell.status],
-            )}
+            className="relative w-full rounded-lg border px-2 py-1.5 text-start text-xs font-medium shadow-sm transition hover:opacity-90"
+            style={{ background: cellChannel.color, color: fg, borderColor: cellChannel.color }}
           >
+            {cell.note && (
+              <span
+                aria-label="has note"
+                className="absolute end-1 top-1 h-2 w-2 rounded-full ring-2"
+                style={{ background: fg, boxShadow: `0 0 0 2px ${cellChannel.color}` }}
+              />
+            )}
             <div className="flex items-center justify-between gap-1">
               <span className="font-bold tabular-nums">{cell.price}</span>
-              <span className="rounded-full bg-white/25 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide">
-                {cell.type === "Offline" ? currency : "USD"}
+              <span
+                className="rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide"
+                style={{ background: `${fg}25` }}
+              >
+                {cellChannel.currency === "LOCAL" ? currency : "USD"}
               </span>
             </div>
             <div className="mt-0.5 truncate text-[10px] opacity-90">
-              {t(`type.${cell.type}`)} · {t(`status.${cell.status}`)}
+              {cellChannel.name}
             </div>
           </button>
         ) : (
@@ -164,7 +168,7 @@ function CellEditor({
           </button>
         )}
       </PopoverTrigger>
-      <PopoverContent className="w-72" align="start">
+      <PopoverContent className="w-80" align="start">
         <div className="space-y-3">
           <div className="space-y-1.5">
             <Label htmlFor="price" className="text-xs">{t("bookings.price")}</Label>
@@ -179,43 +183,45 @@ function CellEditor({
               placeholder="0.00"
             />
             <p className="text-[10px] text-muted-foreground">
-              {type === "Offline"
+              {editorChannel.currency === "LOCAL"
                 ? `${t("bookings.inCurrency")} ${currency}`
                 : `${t("bookings.inUsd")} (× ${usdRate} = ${(parseFloat(price) * usdRate || 0).toFixed(0)} ${currency})`}
             </p>
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-1.5">
-              <Label className="text-xs">{t("bookings.type")}</Label>
-              <Select value={type} onValueChange={(v) => setType(v as BookingType)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {BOOKING_TYPES.map((tp) => (
-                    <SelectItem key={tp} value={tp}>
-                      <span className="flex items-center gap-2">
-                        <span className={cn("h-2 w-2 rounded-full", typeDot[tp])} />
-                        {t(`type.${tp}`)}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">{t("bookings.status")}</Label>
-              <Select value={status} onValueChange={(v) => setStatus(v as BookingStatus)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Confirmed">{t("status.Confirmed")}</SelectItem>
-                  <SelectItem value="Pending">{t("status.Pending")}</SelectItem>
-                  <SelectItem value="Cancelled">{t("status.Cancelled")}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">{t("bookings.channel")}</Label>
+            <Select value={channelId} onValueChange={setChannelId}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {channels.map((ch) => (
+                  <SelectItem key={ch.id} value={ch.id}>
+                    <span className="flex items-center gap-2">
+                      <span className="h-2 w-2 rounded-full" style={{ background: ch.color }} />
+                      {channelLabel(ch, currency)}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-          {cell && parseFloat(price) > 0 && (
+          <div className="space-y-1.5">
+            <Label htmlFor="note" className="text-xs">{t("bookings.note")}</Label>
+            <Textarea
+              id="note"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder={t("bookings.notePlaceholder")}
+              rows={3}
+            />
+          </div>
+          {parseFloat(price) > 0 && (
             <div className="rounded-md bg-muted p-2 text-xs">
-              {t("bookings.revenue")}: <span className="font-semibold">{formatCurrency(cellRevenueLocal({ price: parseFloat(price) || 0, type, status }, usdRate), currency)}</span>
+              {t("bookings.revenue")}: <span className="font-semibold">
+                {formatCurrency(
+                  cellRevenueLocal({ price: parseFloat(price) || 0, channelId }, usdRate, { channels } as never),
+                  currency,
+                )}
+              </span>
             </div>
           )}
           <div className="flex items-center justify-between gap-2 pt-1">

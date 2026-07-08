@@ -5,7 +5,7 @@ export type Lang = "en" | "ar";
 type Dict = Record<string, string>;
 
 const en: Dict = {
-  "brand.name": "7 Heaven",
+  "brand.name": "Hotel Management",
   "brand.tagline": "Revenue & Occupancy",
   "nav.workspace": "Workspace",
   "nav.dashboard": "Dashboard",

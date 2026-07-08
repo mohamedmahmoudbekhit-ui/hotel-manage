@@ -21,7 +21,7 @@ function SummaryPage() {
   const sorted = Object.values(months).sort((a, b) =>
     a.year !== b.year ? a.year - b.year : a.monthIndex - b.monthIndex,
   );
-  const rows = sorted.map((m) => ({ m, t: computeMonthTotals(m, settings.rooms) }));
+  const rows = sorted.map((m) => ({ m, t: computeMonthTotals(m, settings.rooms, settings) }));
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">

@@ -5,7 +5,7 @@ import { useI18n } from "@/lib/i18n";
 export const Route = createFileRoute("/_authenticated/expenses")({
   head: () => ({
     meta: [
-      { title: "Expenses — 7 Heaven" },
+      { title: "Expenses — Hotel Management" },
       { name: "description", content: "Itemized monthly expense breakdown for your hotel." },
     ],
   }),

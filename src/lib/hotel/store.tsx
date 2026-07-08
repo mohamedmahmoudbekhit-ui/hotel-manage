@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import type { Cell, ExpenseItem, MonthData, Settings } from "./types";
-import { emptyMonth, sumExpenses } from "./utils";
+import type { Cell, Channel, ExpenseItem, MonthData, Settings } from "./types";
+import { DEFAULT_CHANNELS, emptyMonth, newChannelId, sumExpenses } from "./utils";
 import { loadHotelState, saveHotelState } from "./state.functions";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -20,6 +20,9 @@ interface Ctx extends StateShape {
   updateCell: (room: string, day: number, cell: Cell | null) => void;
   updateMonthMeta: (patch: Partial<Pick<MonthData, "expenses" | "usdRate" | "managementPct">>) => void;
   updateSettings: (patch: Partial<Settings>) => void;
+  addChannel: (channel: Omit<Channel, "id">) => void;
+  updateChannel: (id: string, patch: Partial<Omit<Channel, "id">>) => void;
+  removeChannel: (id: string) => void;
   addMonth: (year: number, monthIndex: number) => void;
   addExpense: (item: Omit<ExpenseItem, "id">) => void;
   updateExpense: (id: string, patch: Partial<Omit<ExpenseItem, "id">>) => void;
@@ -37,21 +40,58 @@ function bootstrapFromDefaults(settings: Settings, now = new Date()): StateShape
   return { settings, months: { [m.key]: m }, currentMonthKey: m.key };
 }
 
-function migrate(m: MonthData): MonthData {
-  if (!Array.isArray(m.expenseItems)) {
-    const items: ExpenseItem[] = m.expenses > 0 ? [{ id: "legacy", label: "Legacy total", amount: m.expenses }] : [];
-    return { ...m, expenseItems: items, expenses: sumExpenses(items) };
+function migrateCell(raw: unknown): Cell | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  const price = Number(r.price);
+  if (!isFinite(price)) return null;
+  // Legacy: { price, type: "Airbnb"|"Booking"|"Offline", status }
+  let channelId = typeof r.channelId === "string" ? r.channelId : undefined;
+  if (!channelId && typeof r.type === "string") {
+    channelId = String(r.type).toLowerCase();
   }
-  return { ...m, expenses: sumExpenses(m.expenseItems) };
+  if (!channelId) return null;
+  // Drop cancelled legacy cells
+  if (r.status === "Cancelled") return null;
+  const note = typeof r.note === "string" ? r.note : undefined;
+  return { price, channelId, note };
+}
+
+function migrateSettings(s: Partial<Settings> | undefined): Settings {
+  const base: Settings = {
+    rooms: s?.rooms ?? ["Room 1"],
+    currency: s?.currency ?? DEFAULT_CURRENCY,
+    defaultUsdRate: s?.defaultUsdRate ?? 49,
+    defaultManagementPct: s?.defaultManagementPct ?? 0.2,
+    channels: Array.isArray(s?.channels) && s!.channels!.length > 0 ? s!.channels! : DEFAULT_CHANNELS,
+  };
+  return base;
+}
+
+function migrateMonth(m: MonthData): MonthData {
+  const cells: MonthData["cells"] = {};
+  for (const [room, days] of Object.entries(m.cells ?? {})) {
+    cells[room] = {};
+    for (const [d, c] of Object.entries(days ?? {})) {
+      cells[room][Number(d)] = migrateCell(c);
+    }
+  }
+  const items: ExpenseItem[] = Array.isArray(m.expenseItems)
+    ? m.expenseItems
+    : m.expenses > 0
+      ? [{ id: "legacy", label: "Legacy total", amount: m.expenses }]
+      : [];
+  return { ...m, cells, expenseItems: items, expenses: sumExpenses(items) };
 }
 
 function normalizeState(raw: unknown): StateShape | null {
   if (!raw || typeof raw !== "object") return null;
   const s = raw as Partial<StateShape>;
   if (!s.settings || !s.months || !s.currentMonthKey) return null;
+  const settings = migrateSettings(s.settings);
   const months: Record<string, MonthData> = {};
-  for (const [k, v] of Object.entries(s.months)) months[k] = migrate(v as MonthData);
-  return { settings: s.settings, months, currentMonthKey: s.currentMonthKey };
+  for (const [k, v] of Object.entries(s.months)) months[k] = migrateMonth(v as MonthData);
+  return { settings, months, currentMonthKey: s.currentMonthKey };
 }
 
 const PLACEHOLDER_SETTINGS: Settings = {
@@ -59,6 +99,7 @@ const PLACEHOLDER_SETTINGS: Settings = {
   currency: DEFAULT_CURRENCY,
   defaultUsdRate: 49,
   defaultManagementPct: 0.2,
+  channels: DEFAULT_CHANNELS,
 };
 
 export function HotelProvider({ children }: { children: ReactNode }) {
@@ -72,7 +113,6 @@ export function HotelProvider({ children }: { children: ReactNode }) {
   const hydratedRef = useRef(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Hydrate from server on mount
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -100,7 +140,6 @@ export function HotelProvider({ children }: { children: ReactNode }) {
     return () => { cancelled = true; };
   }, [load]);
 
-  // Debounced save whenever state changes (only if onboarded)
   useEffect(() => {
     if (!hydratedRef.current || !onboarded || !hotelName) return;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
@@ -150,6 +189,30 @@ export function HotelProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const addChannel = useCallback((channel: Omit<Channel, "id">) => {
+    setState((s) => ({
+      ...s,
+      settings: { ...s.settings, channels: [...s.settings.channels, { id: newChannelId(), ...channel }] },
+    }));
+  }, []);
+
+  const updateChannel = useCallback((id: string, patch: Partial<Omit<Channel, "id">>) => {
+    setState((s) => ({
+      ...s,
+      settings: {
+        ...s.settings,
+        channels: s.settings.channels.map((c) => (c.id === id ? { ...c, ...patch } : c)),
+      },
+    }));
+  }, []);
+
+  const removeChannel = useCallback((id: string) => {
+    setState((s) => ({
+      ...s,
+      settings: { ...s.settings, channels: s.settings.channels.filter((c) => c.id !== id) },
+    }));
+  }, []);
+
   const addMonth = useCallback((year: number, monthIndex: number) => {
     setState((s) => {
       const m = emptyMonth(year, monthIndex, s.settings);
@@ -186,9 +249,9 @@ export function HotelProvider({ children }: { children: ReactNode }) {
       currency: payload.currency || DEFAULT_CURRENCY,
       defaultUsdRate: payload.usdRate,
       defaultManagementPct: payload.managementPct,
+      channels: DEFAULT_CHANNELS,
     };
     const next = bootstrapFromDefaults(settings);
-    // Apply per-month meta from settings
     for (const key of Object.keys(next.months)) {
       next.months[key].usdRate = payload.usdRate;
       next.months[key].managementPct = payload.managementPct;
@@ -218,6 +281,9 @@ export function HotelProvider({ children }: { children: ReactNode }) {
     updateCell,
     updateMonthMeta,
     updateSettings,
+    addChannel,
+    updateChannel,
+    removeChannel,
     addMonth,
     addExpense,
     updateExpense,

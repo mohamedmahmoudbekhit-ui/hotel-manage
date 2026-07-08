@@ -1,6 +1,10 @@
-import type { BookingType, Cell, MonthData, Settings } from "./types";
+import type { Cell, Channel, MonthData, Settings } from "./types";
 
-export const BOOKING_TYPES: BookingType[] = ["Airbnb", "Booking", "Offline"];
+export const DEFAULT_CHANNELS: Channel[] = [
+  { id: "airbnb", name: "Airbnb", currency: "USD", color: "#e11d48" },
+  { id: "booking", name: "Booking", currency: "USD", color: "#1d4ed8" },
+  { id: "offline", name: "Offline", currency: "LOCAL", color: "#d97706" },
+];
 
 export const MONTH_NAMES = [
   "January", "February", "March", "April", "May", "June",
@@ -15,18 +19,25 @@ export function daysInMonth(year: number, monthIndex: number) {
   return new Date(year, monthIndex + 1, 0).getDate();
 }
 
-/** Airbnb & Booking prices are USD; Offline is local currency. */
-export function cellRevenueLocal(cell: Cell, usdRate: number): number {
-  if (cell.status === "Cancelled") return 0;
-  if (cell.type === "Offline") return cell.price;
-  return cell.price * usdRate;
+export function findChannel(settings: Settings, id: string): Channel {
+  return (
+    settings.channels.find((c) => c.id === id) ??
+    DEFAULT_CHANNELS.find((c) => c.id === id) ??
+    { id, name: id, currency: "LOCAL", color: "#64748b" }
+  );
+}
+
+/** Local-currency revenue for a cell. USD channels are converted using monthly usdRate. */
+export function cellRevenueLocal(cell: Cell, usdRate: number, settings: Settings): number {
+  const ch = findChannel(settings, cell.channelId);
+  return ch.currency === "USD" ? cell.price * usdRate : cell.price;
 }
 
 export interface MonthTotals {
   totalRevenue: number;
-  revenueByType: Record<BookingType, number>;
+  revenueByChannel: Record<string, number>;
   bookingsCount: number;
-  bookingsByType: Record<BookingType, number>;
+  bookingsByChannel: Record<string, number>;
   occupiedNights: number;
   totalNights: number;
   occupancyRate: number;
@@ -38,36 +49,41 @@ export interface MonthTotals {
   management: number;
   owner: number;
   usdTotal: number;
-  egpTotal: number;
+  localTotal: number;
 }
 
-export function computeMonthTotals(m: MonthData, rooms: string[]): MonthTotals {
-  const revenueByType: Record<BookingType, number> = { Airbnb: 0, Booking: 0, Offline: 0 };
-  const bookingsByType: Record<BookingType, number> = { Airbnb: 0, Booking: 0, Offline: 0 };
+export function computeMonthTotals(m: MonthData, rooms: string[], settings: Settings): MonthTotals {
+  const revenueByChannel: Record<string, number> = {};
+  const bookingsByChannel: Record<string, number> = {};
+  for (const ch of settings.channels) {
+    revenueByChannel[ch.id] = 0;
+    bookingsByChannel[ch.id] = 0;
+  }
   const revenueByRoom: Record<string, number> = {};
   const emptyDaysByRoom: Record<string, number> = {};
   let totalRevenue = 0;
   let bookingsCount = 0;
   let occupiedNights = 0;
   let usdTotal = 0;
-  let egpTotal = 0;
+  let localTotal = 0;
 
   for (const room of rooms) {
     revenueByRoom[room] = 0;
     let occ = 0;
     for (let d = 1; d <= m.daysInMonth; d++) {
       const c = m.cells[room]?.[d] ?? null;
-      if (c && c.status !== "Cancelled") {
-        const rev = cellRevenueLocal(c, m.usdRate);
+      if (c) {
+        const ch = findChannel(settings, c.channelId);
+        const rev = cellRevenueLocal(c, m.usdRate, settings);
         totalRevenue += rev;
-        revenueByType[c.type] += rev;
-        bookingsByType[c.type] += 1;
+        revenueByChannel[c.channelId] = (revenueByChannel[c.channelId] ?? 0) + rev;
+        bookingsByChannel[c.channelId] = (bookingsByChannel[c.channelId] ?? 0) + 1;
         revenueByRoom[room] += rev;
         bookingsCount += 1;
         occupiedNights += 1;
         occ += 1;
-        if (c.type === "Offline") egpTotal += c.price;
-        else usdTotal += c.price;
+        if (ch.currency === "USD") usdTotal += c.price;
+        else localTotal += c.price;
       }
     }
     emptyDaysByRoom[room] = m.daysInMonth - occ;
@@ -88,9 +104,9 @@ export function computeMonthTotals(m: MonthData, rooms: string[]): MonthTotals {
 
   return {
     totalRevenue,
-    revenueByType,
+    revenueByChannel,
     bookingsCount,
-    bookingsByType,
+    bookingsByChannel,
     occupiedNights,
     totalNights,
     occupancyRate,
@@ -102,7 +118,7 @@ export function computeMonthTotals(m: MonthData, rooms: string[]): MonthTotals {
     management,
     owner,
     usdTotal,
-    egpTotal,
+    localTotal,
   };
 }
 
@@ -141,3 +157,19 @@ export function sumExpenses(items: { amount: number }[] | undefined): number {
   return items.reduce((s, i) => s + (Number.isFinite(i.amount) ? i.amount : 0), 0);
 }
 
+/** Pick black/white text for a given hex background for accessible contrast. */
+export function pickTextColor(hex: string): "#ffffff" | "#0b1220" {
+  const h = hex.replace("#", "");
+  const full = h.length === 3 ? h.split("").map((c) => c + c).join("") : h;
+  const r = parseInt(full.slice(0, 2), 16);
+  const g = parseInt(full.slice(2, 4), 16);
+  const b = parseInt(full.slice(4, 6), 16);
+  // relative luminance
+  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return lum > 0.6 ? "#0b1220" : "#ffffff";
+}
+
+export function newChannelId(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return `ch-${crypto.randomUUID().slice(0, 8)}`;
+  return `ch-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+}

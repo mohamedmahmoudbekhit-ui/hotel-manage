@@ -57,40 +57,38 @@ function BookingsPage() {
       </div>
 
       <div className="rounded-2xl border bg-card shadow-soft">
-        <div className="overflow-x-auto">
-          <table className="w-full border-separate border-spacing-0 text-sm">
-            <thead className="sticky top-14 z-20 bg-muted/95 backdrop-blur supports-[backdrop-filter]:bg-muted/75">
-              <tr>
-                <th className="sticky start-0 z-20 bg-muted/80 px-3 py-3 text-start text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("bookings.day")}</th>
-                {settings.rooms.map((r) => (
-                  <th key={r} className="px-3 py-3 text-start text-xs font-semibold uppercase tracking-wider text-muted-foreground">{r}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {Array.from({ length: currentMonth.daysInMonth }, (_, i) => i + 1).map((day) => (
-                <tr key={day} className="group">
-                  <td className="sticky start-0 z-10 border-t bg-card px-3 py-2 text-xs font-semibold text-muted-foreground group-hover:bg-muted/40">{day}</td>
-                  {settings.rooms.map((room) => {
-                    const cell = currentMonth.cells[room]?.[day] ?? null;
-                    return (
-                      <td key={room} className="border-t p-1.5 align-top">
-                        <CellEditor
-                          cell={cell}
-                          onSave={(c) => updateCell(room, day, c)}
-                          onDelete={() => updateCell(room, day, null)}
-                          usdRate={currentMonth.usdRate}
-                          channels={settings.channels}
-                          currency={settings.currency}
-                        />
-                      </td>
-                    );
-                  })}
-                </tr>
+        <table className="w-full border-separate border-spacing-0 text-sm">
+          <thead className="sticky top-14 z-20 bg-muted/95 backdrop-blur supports-[backdrop-filter]:bg-muted/75">
+            <tr>
+              <th className="sticky start-0 z-20 bg-muted/80 px-3 py-3 text-start text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("bookings.day")}</th>
+              {settings.rooms.map((r) => (
+                <th key={r} className="px-3 py-3 text-start text-xs font-semibold uppercase tracking-wider text-muted-foreground">{r}</th>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </tr>
+          </thead>
+          <tbody>
+            {Array.from({ length: currentMonth.daysInMonth }, (_, i) => i + 1).map((day) => (
+              <tr key={day} className="group">
+                <td className="sticky start-0 z-10 border-t bg-card px-3 py-2 text-xs font-semibold text-muted-foreground group-hover:bg-muted/40">{day}</td>
+                {settings.rooms.map((room) => {
+                  const cell = currentMonth.cells[room]?.[day] ?? null;
+                  return (
+                    <td key={room} className="border-t p-1.5 align-top">
+                      <CellEditor
+                        cell={cell}
+                        onSave={(c) => updateCell(room, day, c)}
+                        onDelete={() => updateCell(room, day, null)}
+                        usdRate={currentMonth.usdRate}
+                        channels={settings.channels}
+                        currency={settings.currency}
+                      />
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );

@@ -56,9 +56,11 @@ function BookingsPage() {
         <span className="ms-auto text-muted-foreground">{t("common.tapCell")}</span>
       </div>
 
-      <div className="overflow-x-auto rounded-2xl border bg-card shadow-soft">
+      <div className="rounded-2xl border bg-card shadow-soft">
+        <div className="overflow-x-auto rounded-2xl">
         <table className="w-full min-w-[720px] border-separate border-spacing-0 text-sm">
-          <thead className="sticky top-0 z-10 bg-muted/60 backdrop-blur">
+          <thead className="sticky top-0 z-20 bg-muted/95 backdrop-blur supports-[backdrop-filter]:bg-muted/75">
+
             <tr>
               <th className="sticky start-0 z-20 bg-muted/80 px-3 py-3 text-start text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("bookings.day")}</th>
               {settings.rooms.map((r) => (

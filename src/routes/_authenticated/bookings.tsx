@@ -57,7 +57,7 @@ function BookingsPage() {
       </div>
 
       <div className="rounded-2xl border bg-card shadow-soft">
-        <table className="w-full min-w-[720px] border-separate border-spacing-0 text-sm">
+        <table className="w-full border-separate border-spacing-0 text-sm">
           <thead className="sticky top-0 z-20 bg-muted/95 backdrop-blur supports-[backdrop-filter]:bg-muted/75">
 
 

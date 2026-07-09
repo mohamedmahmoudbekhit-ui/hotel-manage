@@ -301,6 +301,8 @@ export function HotelProvider({ children }: { children: ReactNode }) {
     updateExpense,
     removeExpense,
     completeOnboarding,
+    setHotelName: setHotelNameCb,
+    setLogoUrl,
     signOut,
   };
 

@@ -1,14 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useHotel } from "@/lib/hotel/store";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MonthSelector } from "@/components/month-selector";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Upload, Hotel as HotelIcon, X } from "lucide-react";
 import { toast } from "sonner";
 import { useI18n } from "@/lib/i18n";
+
 
 export const Route = createFileRoute("/_authenticated/settings")({
   head: () => ({

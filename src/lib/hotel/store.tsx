@@ -29,6 +29,8 @@ interface Ctx extends StateShape {
   updateExpense: (id: string, patch: Partial<Omit<ExpenseItem, "id">>) => void;
   removeExpense: (id: string) => void;
   completeOnboarding: (payload: { hotelName: string; rooms: string[]; usdRate: number; managementPct: number; currency: string }) => Promise<void>;
+  setHotelName: (name: string) => void;
+  setLogoUrl: (url: string | undefined) => void;
   signOut: () => Promise<void>;
 }
 

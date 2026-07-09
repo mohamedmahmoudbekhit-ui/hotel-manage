@@ -17,7 +17,7 @@ import { useHotel } from "@/lib/hotel/store";
 export function AppSidebar({ side = "left" }: { side?: "left" | "right" }) {
   const pathname = useRouterState({ select: (r) => r.location.pathname });
   const { t } = useI18n();
-  const { hotelName } = useHotel();
+  const { hotelName, logoUrl } = useHotel();
   const isActive = (p: string) => (p === "/" ? pathname === "/" : pathname.startsWith(p));
 
   const items = [
@@ -33,8 +33,12 @@ export function AppSidebar({ side = "left" }: { side?: "left" | "right" }) {
     <Sidebar collapsible="icon" side={side}>
       <SidebarHeader className="border-b border-sidebar-border">
         <div className="flex items-center gap-2 px-2 py-3">
-          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-            <Hotel className="h-5 w-5" />
+          <div className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+            {logoUrl ? (
+              <img src={logoUrl} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <Hotel className="h-5 w-5" />
+            )}
           </div>
           <div className="min-w-0">
             <div className="truncate text-sm font-semibold text-sidebar-foreground">{hotelName || t("brand.name")}</div>

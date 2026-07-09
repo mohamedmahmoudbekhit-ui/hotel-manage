@@ -9,6 +9,7 @@ interface StateShape {
   settings: Settings;
   months: Record<string, MonthData>;
   currentMonthKey: string;
+  logoUrl?: string;
 }
 
 interface Ctx extends StateShape {
@@ -28,6 +29,8 @@ interface Ctx extends StateShape {
   updateExpense: (id: string, patch: Partial<Omit<ExpenseItem, "id">>) => void;
   removeExpense: (id: string) => void;
   completeOnboarding: (payload: { hotelName: string; rooms: string[]; usdRate: number; managementPct: number; currency: string }) => Promise<void>;
+  setHotelName: (name: string) => void;
+  setLogoUrl: (url: string | undefined) => void;
   signOut: () => Promise<void>;
 }
 
@@ -266,6 +269,15 @@ export function HotelProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   }, []);
 
+  const setHotelNameCb = useCallback((name: string) => {
+    setHotelName(name);
+  }, []);
+
+  const setLogoUrl = useCallback((url: string | undefined) => {
+    setState((s) => ({ ...s, logoUrl: url }));
+  }, []);
+
+
   const currentMonth = useMemo(
     () => state.months[state.currentMonthKey] ?? Object.values(state.months)[0],
     [state.months, state.currentMonthKey],
@@ -289,6 +301,8 @@ export function HotelProvider({ children }: { children: ReactNode }) {
     updateExpense,
     removeExpense,
     completeOnboarding,
+    setHotelName: setHotelNameCb,
+    setLogoUrl,
     signOut,
   };
 

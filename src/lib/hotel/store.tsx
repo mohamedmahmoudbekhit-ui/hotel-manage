@@ -9,6 +9,7 @@ interface StateShape {
   settings: Settings;
   months: Record<string, MonthData>;
   currentMonthKey: string;
+  logoUrl?: string;
 }
 
 interface Ctx extends StateShape {

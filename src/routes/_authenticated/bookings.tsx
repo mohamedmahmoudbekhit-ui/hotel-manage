@@ -58,9 +58,7 @@ function BookingsPage() {
 
       <div className="rounded-2xl border bg-card shadow-soft">
         <table className="w-full border-separate border-spacing-0 text-sm">
-          <thead className="sticky top-0 z-20 bg-muted/95 backdrop-blur supports-[backdrop-filter]:bg-muted/75">
-
-
+          <thead className="sticky top-14 z-20 bg-muted/95 backdrop-blur supports-[backdrop-filter]:bg-muted/75">
             <tr>
               <th className="sticky start-0 z-20 bg-muted/80 px-3 py-3 text-start text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("bookings.day")}</th>
               {settings.rooms.map((r) => (

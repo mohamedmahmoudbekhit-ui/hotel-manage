@@ -269,6 +269,15 @@ export function HotelProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   }, []);
 
+  const setHotelNameCb = useCallback((name: string) => {
+    setHotelName(name);
+  }, []);
+
+  const setLogoUrl = useCallback((url: string | undefined) => {
+    setState((s) => ({ ...s, logoUrl: url }));
+  }, []);
+
+
   const currentMonth = useMemo(
     () => state.months[state.currentMonthKey] ?? Object.values(state.months)[0],
     [state.months, state.currentMonthKey],

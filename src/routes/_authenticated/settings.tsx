@@ -22,14 +22,48 @@ export const Route = createFileRoute("/_authenticated/settings")({
 });
 
 function SettingsPage() {
-  const { settings, updateSettings, addChannel, updateChannel, removeChannel, currentMonth, updateMonthMeta, hotelName } = useHotel();
+  const { settings, updateSettings, addChannel, updateChannel, removeChannel, currentMonth, updateMonthMeta, hotelName, setHotelName, logoUrl, setLogoUrl } = useHotel();
   const { t, formatMonthKey } = useI18n();
   const [newRoom, setNewRoom] = useState("");
+  const [nameDraft, setNameDraft] = useState(hotelName);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [newCh, setNewCh] = useState<{ name: string; currency: "LOCAL" | "USD"; color: string }>({
     name: "",
     currency: "LOCAL",
     color: "#0ea5e9",
   });
+
+  const handleLogoFile = (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast.error(t("settings.logoInvalid"));
+      return;
+    }
+    if (file.size > 1024 * 1024) {
+      toast.error(t("settings.logoTooBig"));
+      return;
+    }
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = () => {
+      img.onload = () => {
+        const max = 256;
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+        ctx.drawImage(img, 0, 0, w, h);
+        const dataUrl = canvas.toDataURL("image/png");
+        setLogoUrl(dataUrl);
+        toast.success(t("settings.logoSaved"));
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
@@ -40,9 +74,66 @@ function SettingsPage() {
       </header>
 
       <section className="rounded-2xl border bg-card p-6 shadow-soft">
+        <h2 className="text-base font-semibold">{t("settings.hotelIdentity")}</h2>
+        <p className="text-xs text-muted-foreground">{t("settings.hotelIdentitySub")}</p>
+        <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-start">
+          <div className="flex flex-col items-center gap-2">
+            <div className="grid h-24 w-24 place-items-center overflow-hidden rounded-2xl border bg-muted">
+              {logoUrl ? (
+                <img src={logoUrl} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <HotelIcon className="h-10 w-10 text-muted-foreground" />
+              )}
+            </div>
+            <div className="flex gap-1">
+              <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+                <Upload className="me-1 h-3.5 w-3.5" /> {t("settings.uploadLogo")}
+              </Button>
+              {logoUrl && (
+                <Button type="button" variant="ghost" size="sm" onClick={() => setLogoUrl(undefined)}>
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) handleLogoFile(f);
+                e.target.value = "";
+              }}
+            />
+          </div>
+          <div className="flex-1 space-y-1.5">
+            <Label>{t("settings.hotelName")}</Label>
+            <div className="flex gap-2">
+              <Input value={nameDraft} onChange={(e) => setNameDraft(e.target.value)} placeholder={t("onboarding.hotelPlaceholder")} />
+              <Button
+                type="button"
+                onClick={() => {
+                  const trimmed = nameDraft.trim();
+                  if (!trimmed) { toast.error(t("onboarding.hotelRequired")); return; }
+                  setHotelName(trimmed);
+                  toast.success(t("settings.nameSaved"));
+                }}
+                disabled={nameDraft.trim() === hotelName}
+              >
+                {t("common.save")}
+              </Button>
+            </div>
+            <p className="text-[10px] text-muted-foreground">{t("settings.logoHint")}</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border bg-card p-6 shadow-soft">
         <h2 className="text-base font-semibold">{t("settings.general")}</h2>
         <p className="text-xs text-muted-foreground">{t("settings.generalSub")}</p>
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+
           <div className="space-y-1.5">
             <Label>{t("settings.currency")}</Label>
             <Input value={settings.currency} onChange={(e) => updateSettings({ currency: e.target.value.toUpperCase() })} />

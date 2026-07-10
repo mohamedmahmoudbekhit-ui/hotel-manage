@@ -174,8 +174,9 @@ function ImportedBlock({ res }: { res: ImportedReservationRow }) {
   );
 }
 
-
+function CellEditor({
   cell,
+
   onSave,
   onDelete,
   usdRate,

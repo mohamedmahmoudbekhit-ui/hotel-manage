@@ -190,18 +190,31 @@ export const listImportedForMonth = createServerFn({ method: "POST" })
       .lt("start_date", endExclusive)
       .gt("end_date", data.from);
     if (error) throw new Error(error.message);
-    return (rows ?? []).map((r) => ({
-      id: r.id,
-      room_id: r.room_id,
-      // @ts-expect-error nested select shape
-      room_name: r.rooms.room_name,
-      source_id: r.source_id,
-      // @ts-expect-error nested select shape
-      source_name: r.calendar_sources.source_name,
-      platform_type: r.platform_type,
-      external_uid: r.external_uid,
-      summary: r.summary,
-      start_date: r.start_date,
-      end_date: r.end_date,
-    }));
+    return (rows ?? []).map((r) => {
+      const rec = r as unknown as {
+        id: string;
+        room_id: string;
+        source_id: string;
+        platform_type: string;
+        external_uid: string;
+        summary: string | null;
+        start_date: string;
+        end_date: string;
+        rooms: { room_name: string };
+        calendar_sources: { source_name: string };
+      };
+      return {
+        id: rec.id,
+        room_id: rec.room_id,
+        room_name: rec.rooms.room_name,
+        source_id: rec.source_id,
+        source_name: rec.calendar_sources.source_name,
+        platform_type: rec.platform_type,
+        external_uid: rec.external_uid,
+        summary: rec.summary,
+        start_date: rec.start_date,
+        end_date: rec.end_date,
+      };
+    });
   });
+

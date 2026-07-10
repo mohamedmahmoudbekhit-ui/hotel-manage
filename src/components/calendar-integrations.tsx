@@ -244,8 +244,8 @@ export function CalendarIntegrations() {
           );
         })}
       </div>
-      {/* silence unused var lint when only shown in nested block */}
-      <span className="hidden">{roomsById.size}</span>
+
+
     </section>
   );
 }

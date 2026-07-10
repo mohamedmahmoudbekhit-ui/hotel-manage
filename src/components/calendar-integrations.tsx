@@ -82,7 +82,7 @@ export function CalendarIntegrations() {
     refresh().catch((e) => console.error(e));
   }, [refresh]);
 
-  const roomsById = useMemo(() => new Map(rooms.map((r) => [r.id, r])), [rooms]);
+  useMemo(() => new Map(rooms.map((r) => [r.id, r])), [rooms]);
 
   const doSave = async (payload: EditorState) => {
     if (!payload.source_name.trim()) { toast.error(t("cal.errName")); return false; }

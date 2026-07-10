@@ -34,6 +34,38 @@ function BookingsPage() {
   const { currentMonth, settings, updateCell } = useHotel();
   const { t, formatMonthKey } = useI18n();
   const totals = computeMonthTotals(currentMonth, settings.rooms, settings);
+  const fetchImported = useServerFn(listImportedForMonth);
+  const [imported, setImported] = useState<ImportedReservationRow[]>([]);
+
+  useEffect(() => {
+    const y = currentMonth.year;
+    const m = String(currentMonth.monthIndex + 1).padStart(2, "0");
+    const from = `${y}-${m}-01`;
+    const to = `${y}-${m}-${String(currentMonth.daysInMonth).padStart(2, "0")}`;
+    fetchImported({ data: { from, to } })
+      .then(setImported)
+      .catch((e) => console.error("Failed to load imported reservations", e));
+  }, [currentMonth.year, currentMonth.monthIndex, currentMonth.daysInMonth, fetchImported]);
+
+  /** Map roomName -> Map<day, ImportedReservationRow> for O(1) lookup. */
+  const importedByRoomDay = useMemo(() => {
+    const map = new Map<string, Map<number, ImportedReservationRow>>();
+    for (const r of imported) {
+      if (!map.has(r.room_name)) map.set(r.room_name, new Map());
+      const roomMap = map.get(r.room_name)!;
+      const start = new Date(`${r.start_date}T00:00:00Z`);
+      const end = new Date(`${r.end_date}T00:00:00Z`);
+      const d = new Date(start);
+      while (d < end) {
+        if (d.getUTCFullYear() === currentMonth.year && d.getUTCMonth() === currentMonth.monthIndex) {
+          const day = d.getUTCDate();
+          if (!roomMap.has(day)) roomMap.set(day, r);
+        }
+        d.setUTCDate(d.getUTCDate() + 1);
+      }
+    }
+    return map;
+  }, [imported, currentMonth.year, currentMonth.monthIndex]);
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-4 px-4 py-6 sm:px-6 lg:px-8">
@@ -55,6 +87,12 @@ function BookingsPage() {
             <span className="text-muted-foreground">{ch.name}</span>
           </div>
         ))}
+        {imported.length > 0 && (
+          <div className="flex items-center gap-1.5">
+            <span className="inline-flex h-2.5 w-2.5 items-center justify-center rounded-full border border-dashed border-foreground/40" />
+            <span className="text-muted-foreground">{t("cal.importedBadge")}</span>
+          </div>
+        )}
         <span className="ms-auto text-muted-foreground">{t("common.tapCell")}</span>
       </div>
 
@@ -74,20 +112,26 @@ function BookingsPage() {
                 <td className="sticky start-0 z-10 border-t bg-card px-3 py-2 text-xs font-semibold text-muted-foreground group-hover:bg-muted/40">{day}</td>
                 {settings.rooms.map((room) => {
                   const cell = currentMonth.cells[room]?.[day] ?? null;
+                  const importedHere = !cell ? importedByRoomDay.get(room)?.get(day) ?? null : null;
                   return (
                     <td key={room} className="border-t p-1.5 align-top">
-                      <CellEditor
-                        cell={cell}
-                        onSave={(c) => updateCell(room, day, c)}
-                        onDelete={() => updateCell(room, day, null)}
-                        usdRate={currentMonth.usdRate}
-                        channels={settings.channels}
-                        currency={settings.currency}
-                      />
+                      {importedHere ? (
+                        <ImportedBlock res={importedHere} />
+                      ) : (
+                        <CellEditor
+                          cell={cell}
+                          onSave={(c) => updateCell(room, day, c)}
+                          onDelete={() => updateCell(room, day, null)}
+                          usdRate={currentMonth.usdRate}
+                          channels={settings.channels}
+                          currency={settings.currency}
+                        />
+                      )}
                     </td>
                   );
                 })}
               </tr>
+
             ))}
           </tbody>
         </table>

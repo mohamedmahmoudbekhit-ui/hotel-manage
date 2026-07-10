@@ -9,6 +9,8 @@ import { MonthSelector } from "@/components/month-selector";
 import { Plus, Trash2, Upload, Hotel as HotelIcon, X } from "lucide-react";
 import { toast } from "sonner";
 import { useI18n } from "@/lib/i18n";
+import { CalendarIntegrations } from "@/components/calendar-integrations";
+
 
 
 export const Route = createFileRoute("/_authenticated/settings")({

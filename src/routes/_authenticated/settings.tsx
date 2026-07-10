@@ -9,6 +9,8 @@ import { MonthSelector } from "@/components/month-selector";
 import { Plus, Trash2, Upload, Hotel as HotelIcon, X } from "lucide-react";
 import { toast } from "sonner";
 import { useI18n } from "@/lib/i18n";
+import { CalendarIntegrations } from "@/components/calendar-integrations";
+
 
 
 export const Route = createFileRoute("/_authenticated/settings")({
@@ -249,6 +251,10 @@ function SettingsPage() {
           </Button>
         </div>
       </section>
+
+      <CalendarIntegrations />
+
+
 
       <section className="rounded-2xl border bg-card p-6 shadow-soft">
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 sm:flex sm:justify-between">

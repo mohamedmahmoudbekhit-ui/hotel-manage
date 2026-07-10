@@ -370,7 +370,35 @@ const ar: Dict = {
   "month.October": "أكتوبر",
   "month.November": "نوفمبر",
   "month.December": "ديسمبر",
+
+  "cal.title": "التقويمات المدمجة",
+  "cal.subtitle": "اربط روابط iCal (Airbnb، Booking.com، Vrbo…) لاستيراد الحجوزات إلى شبكة الحجوزات.",
+  "cal.add": "إضافة رابط",
+  "cal.empty": "لا توجد روابط تقويم بعد.",
+  "cal.noRooms": "أضف غرفاً أولاً لربط روابط التقويم.",
+  "cal.sourceName": "اسم المصدر",
+  "cal.platform": "المنصة",
+  "cal.icalUrl": "رابط iCal",
+  "cal.room": "الغرفة",
+  "cal.active": "مفعل",
+  "cal.inactive": "معطل",
+  "cal.syncNow": "مزامنة الآن",
+  "cal.syncAll": "مزامنة الكل",
+  "cal.lastSync": "آخر مزامنة",
+  "cal.created": "تاريخ الإضافة",
+  "cal.saved": "تم الحفظ.",
+  "cal.deleted": "تم الحذف.",
+  "cal.confirmDelete": "حذف هذا الرابط وحجوزاته المستوردة؟",
+  "cal.errName": "اسم المصدر مطلوب.",
+  "cal.errUrl": "أدخل رابط iCal صالحاً (https://…).",
+  "cal.syncOk": "تم استيراد {n} حجزاً.",
+  "cal.syncFail": "فشلت المزامنة.",
+  "cal.syncAllOk": "تمت مزامنة {total} رابطاً.",
+  "cal.syncAllPartial": "تمت مزامنة {total} رابطاً؛ فشل {failed}.",
+  "cal.importedBadge": "iCal",
+  "cal.importedFrom": "مستورد من",
 };
+
 
 const dicts: Record<Lang, Dict> = { en, ar };
 const KEY = "app-lang";

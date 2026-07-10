@@ -14,6 +14,56 @@ export type Database = {
   }
   public: {
     Tables: {
+      calendar_sources: {
+        Row: {
+          created_at: string
+          ical_url: string
+          id: string
+          is_active: boolean
+          last_sync_at: string | null
+          last_sync_error: string | null
+          platform_type: string
+          room_id: string
+          source_name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          ical_url: string
+          id?: string
+          is_active?: boolean
+          last_sync_at?: string | null
+          last_sync_error?: string | null
+          platform_type?: string
+          room_id: string
+          source_name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          ical_url?: string
+          id?: string
+          is_active?: boolean
+          last_sync_at?: string | null
+          last_sync_error?: string | null
+          platform_type?: string
+          room_id?: string
+          source_name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_sources_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hotel_state: {
         Row: {
           created_at: string
@@ -36,6 +86,87 @@ export type Database = {
           data?: Json
           hotel_name?: string
           onboarded?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      ical_reservations: {
+        Row: {
+          end_date: string
+          external_uid: string
+          id: string
+          imported_at: string
+          platform_type: string
+          room_id: string
+          source_id: string
+          start_date: string
+          summary: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          end_date: string
+          external_uid: string
+          id?: string
+          imported_at?: string
+          platform_type?: string
+          room_id: string
+          source_id: string
+          start_date: string
+          summary?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          end_date?: string
+          external_uid?: string
+          id?: string
+          imported_at?: string
+          platform_type?: string
+          room_id?: string
+          source_id?: string
+          start_date?: string
+          summary?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ical_reservations_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ical_reservations_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "calendar_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rooms: {
+        Row: {
+          created_at: string
+          id: string
+          room_name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          room_name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          room_name?: string
           updated_at?: string
           user_id?: string
         }

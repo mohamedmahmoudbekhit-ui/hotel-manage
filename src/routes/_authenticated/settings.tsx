@@ -252,6 +252,10 @@ function SettingsPage() {
         </div>
       </section>
 
+      <CalendarIntegrations />
+
+
+
       <section className="rounded-2xl border bg-card p-6 shadow-soft">
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 sm:flex sm:justify-between">
           <div className="min-w-0">

@@ -140,7 +140,41 @@ function BookingsPage() {
   );
 }
 
-function CellEditor({
+const PLATFORM_LABEL: Record<string, string> = {
+  airbnb: "Airbnb",
+  booking: "Booking.com",
+  vrbo: "Vrbo",
+  direct: "Direct",
+  other: "iCal",
+};
+
+function ImportedBlock({ res }: { res: ImportedReservationRow }) {
+  const { t } = useI18n();
+  const label = PLATFORM_LABEL[res.platform_type] ?? res.source_name;
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          className="flex h-11 w-full items-center gap-1 rounded-lg border border-dashed border-foreground/30 bg-muted/50 px-2 text-start text-[10px] font-semibold uppercase tracking-wide text-foreground/80 hover:bg-muted"
+          style={{ backgroundImage: "repeating-linear-gradient(45deg, transparent 0 4px, hsl(var(--muted-foreground)/0.08) 4px 8px)" }}
+        >
+          <CalendarClock className="h-3 w-3 shrink-0 opacity-60" />
+          <span className="truncate">{label}</span>
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-64" align="start">
+        <div className="space-y-1 text-xs">
+          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{t("cal.importedFrom")}</div>
+          <div className="font-semibold">{res.source_name} · {label}</div>
+          {res.summary && <div className="text-muted-foreground">{res.summary}</div>}
+          <div className="pt-1 text-muted-foreground">{res.start_date} → {res.end_date}</div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+
   cell,
   onSave,
   onDelete,

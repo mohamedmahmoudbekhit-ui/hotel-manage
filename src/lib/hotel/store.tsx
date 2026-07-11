@@ -184,7 +184,7 @@ export function HotelProvider({ children }: { children: ReactNode }) {
         const y = dt.getUTCFullYear();
         const mi = dt.getUTCMonth();
         const day = dt.getUTCDate();
-        const key = `${MONTH_NAMES_LOCAL[mi]} ${y}`;
+        const key = `${MONTH_NAMES[mi]} ${y}`;
         let month = nextMonths[key];
         if (!month) {
           month = emptyMonth(y, mi, s.settings);

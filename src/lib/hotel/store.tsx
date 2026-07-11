@@ -166,6 +166,47 @@ export function HotelProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const addBookingRange = useCallback((params: { room: string; from: string; to: string; channelId: string; price: number; note?: string }) => {
+    const start = new Date(`${params.from}T00:00:00Z`);
+    const end = new Date(`${params.to}T00:00:00Z`);
+    if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) {
+      return { written: 0, skipped: 0, nights: 0 };
+    }
+    const dates: Date[] = [];
+    for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) dates.push(new Date(d));
+    const nights = dates.length;
+    const perNight = Math.round((params.price / nights) * 100) / 100;
+    let written = 0;
+    let skipped = 0;
+    setState((s) => {
+      const nextMonths = { ...s.months };
+      for (const dt of dates) {
+        const y = dt.getUTCFullYear();
+        const mi = dt.getUTCMonth();
+        const day = dt.getUTCDate();
+        const key = `${MONTH_NAMES_LOCAL[mi]} ${y}`;
+        let month = nextMonths[key];
+        if (!month) {
+          month = emptyMonth(y, mi, s.settings);
+        }
+        // ensure room exists
+        const rooms = { ...month.cells };
+        if (!rooms[params.room]) {
+          rooms[params.room] = {};
+          for (let dd = 1; dd <= month.daysInMonth; dd++) rooms[params.room][dd] = null;
+        }
+        const existing = rooms[params.room][day];
+        if (existing) { skipped += 1; nextMonths[key] = { ...month, cells: rooms }; continue; }
+        const roomCells = { ...rooms[params.room], [day]: { price: perNight, channelId: params.channelId, ...(params.note ? { note: params.note } : {}) } as Cell };
+        rooms[params.room] = roomCells;
+        nextMonths[key] = { ...month, cells: rooms };
+        written += 1;
+      }
+      return { ...s, months: nextMonths };
+    });
+    return { written, skipped, nights };
+  }, []);
+
   const updateMonthMeta = useCallback((patch: Partial<Pick<MonthData, "expenses" | "usdRate" | "managementPct">>) => {
     setState((s) => {
       const m = s.months[s.currentMonthKey];

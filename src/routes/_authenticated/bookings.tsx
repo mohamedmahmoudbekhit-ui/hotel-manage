@@ -79,7 +79,24 @@ function BookingsPage() {
             <span className="text-foreground">{formatCurrency(totals.totalRevenue, settings.currency)}</span>
           </p>
         </div>
-        <MonthSelector />
+        <div className="flex items-center gap-2">
+          <AddBookingDialog
+            rooms={settings.rooms}
+            channels={settings.channels}
+            currency={settings.currency}
+            onAdd={(p) => {
+              const res = addBookingRange(p);
+              if (res.written === 0) {
+                toast.error("Could not add booking. Dates may conflict with existing bookings.");
+              } else if (res.skipped > 0) {
+                toast.success(`Booking added for ${res.written} night(s). ${res.skipped} conflicting night(s) skipped.`);
+              } else {
+                toast.success(`Booking added across ${res.written} night(s).`);
+              }
+            }}
+          />
+          <MonthSelector />
+        </div>
       </header>
 
       <div className="flex flex-wrap items-center gap-3 rounded-xl border bg-card p-3 text-xs">

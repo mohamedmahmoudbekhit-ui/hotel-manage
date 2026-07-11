@@ -19,6 +19,7 @@ interface Ctx extends StateShape {
   currentMonth: MonthData;
   setCurrentMonthKey: (k: string) => void;
   updateCell: (room: string, day: number, cell: Cell | null) => void;
+  addBookingRange: (params: { room: string; from: string; to: string; channelId: string; price: number; note?: string }) => { written: number; skipped: number; nights: number };
   updateMonthMeta: (patch: Partial<Pick<MonthData, "expenses" | "usdRate" | "managementPct">>) => void;
   updateSettings: (patch: Partial<Settings>) => void;
   addChannel: (channel: Omit<Channel, "id">) => void;

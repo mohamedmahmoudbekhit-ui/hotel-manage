@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import type { Cell, Channel, ExpenseItem, MonthData, Settings } from "./types";
-import { DEFAULT_CHANNELS, emptyMonth, newChannelId, sumExpenses } from "./utils";
+import { DEFAULT_CHANNELS, emptyMonth, MONTH_NAMES, newChannelId, sumExpenses } from "./utils";
 import { loadHotelState, saveHotelState } from "./state.functions";
 import { supabase } from "@/integrations/supabase/client";
 

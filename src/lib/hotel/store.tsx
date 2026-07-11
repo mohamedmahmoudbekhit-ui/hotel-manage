@@ -333,6 +333,7 @@ export function HotelProvider({ children }: { children: ReactNode }) {
     currentMonth,
     setCurrentMonthKey,
     updateCell,
+    addBookingRange,
     updateMonthMeta,
     updateSettings,
     addChannel,

@@ -340,3 +340,147 @@ function CellEditor({
     </Popover>
   );
 }
+
+interface AddBookingParams {
+  room: string;
+  from: string;
+  to: string;
+  channelId: string;
+  price: number;
+  note?: string;
+}
+
+function AddBookingDialog({
+  rooms,
+  channels,
+  currency,
+  onAdd,
+}: {
+  rooms: string[];
+  channels: Channel[];
+  currency: string;
+  onAdd: (p: AddBookingParams) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const today = new Date().toISOString().slice(0, 10);
+  const [room, setRoom] = useState<string>(rooms[0] ?? "");
+  const [channelId, setChannelId] = useState<string>(channels[0]?.id ?? "");
+  const [from, setFrom] = useState<string>(today);
+  const [to, setTo] = useState<string>(today);
+  const [price, setPrice] = useState<string>("");
+  const [note, setNote] = useState<string>("");
+
+  const nights = useMemo(() => {
+    const s = new Date(`${from}T00:00:00Z`);
+    const e = new Date(`${to}T00:00:00Z`);
+    if (isNaN(s.getTime()) || isNaN(e.getTime()) || e < s) return 0;
+    return Math.round((e.getTime() - s.getTime()) / 86400000) + 1;
+  }, [from, to]);
+
+  const priceNum = parseFloat(price) || 0;
+  const perNight = nights > 0 ? priceNum / nights : 0;
+  const selectedChannel = channels.find((c) => c.id === channelId) ?? channels[0];
+  const channelCurrency = selectedChannel?.currency === "LOCAL" ? currency : "USD";
+
+  const reset = () => {
+    setRoom(rooms[0] ?? "");
+    setChannelId(channels[0]?.id ?? "");
+    setFrom(today);
+    setTo(today);
+    setPrice("");
+    setNote("");
+  };
+
+  const submit = () => {
+    if (!room || !channelId) return;
+    if (nights <= 0) return;
+    if (!(priceNum > 0)) return;
+    onAdd({
+      room,
+      from,
+      to,
+      channelId,
+      price: priceNum,
+      ...(note.trim() ? { note: note.trim() } : {}),
+    });
+    setOpen(false);
+    reset();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (o) reset(); }}>
+      <DialogTrigger asChild>
+        <Button size="sm" className="gap-1.5">
+          <CalendarPlus className="h-4 w-4" /> Add booking
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Add booking</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs">Room</Label>
+            <Select value={room} onValueChange={setRoom}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {rooms.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">From</Label>
+              <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">To</Label>
+              <Input type="date" value={to} min={from} onChange={(e) => setTo(e.target.value)} />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Channel</Label>
+            <Select value={channelId} onValueChange={setChannelId}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {channels.map((ch) => (
+                  <SelectItem key={ch.id} value={ch.id}>
+                    <span className="flex items-center gap-2">
+                      <span className="h-2 w-2 rounded-full" style={{ background: ch.color }} />
+                      {ch.name} · {ch.currency === "LOCAL" ? currency : "USD"}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Total price ({channelCurrency})</Label>
+            <Input
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              min="0"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              placeholder="0.00"
+            />
+            {nights > 0 && priceNum > 0 && (
+              <p className="text-[10px] text-muted-foreground">
+                {nights} night{nights === 1 ? "" : "s"} · {perNight.toFixed(2)} {channelCurrency} / night
+              </p>
+            )}
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Note</Label>
+            <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="Optional" />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" size="sm" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button size="sm" onClick={submit} disabled={!room || !channelId || nights <= 0 || !(priceNum > 0)}>Save booking</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

@@ -47,7 +47,7 @@ export async function syncCalendarSource(sourceId: string): Promise<SyncOutcome>
 
   const events = parseIcal(raw);
   const rows = events.map((e) => ({
-    user_id: source.user_id,
+    organization_id: source.organization_id,
     room_id: source.room_id,
     source_id: source.id,
     platform_type: source.platform_type,

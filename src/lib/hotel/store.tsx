@@ -16,6 +16,9 @@ interface Ctx extends StateShape {
   hotelName: string;
   onboarded: boolean;
   loading: boolean;
+  organizationId: string | null;
+  accountStatus: string | null;
+  subscriptionStatus: string | null;
   currentMonth: MonthData;
   setCurrentMonthKey: (k: string) => void;
   updateCell: (room: string, day: number, cell: Cell | null) => void;

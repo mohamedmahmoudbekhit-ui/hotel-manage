@@ -22,11 +22,11 @@ export type Database = {
           is_active: boolean
           last_sync_at: string | null
           last_sync_error: string | null
+          organization_id: string
           platform_type: string
           room_id: string
           source_name: string
           updated_at: string
-          user_id: string
         }
         Insert: {
           created_at?: string
@@ -35,11 +35,11 @@ export type Database = {
           is_active?: boolean
           last_sync_at?: string | null
           last_sync_error?: string | null
+          organization_id: string
           platform_type?: string
           room_id: string
           source_name: string
           updated_at?: string
-          user_id: string
         }
         Update: {
           created_at?: string
@@ -48,13 +48,20 @@ export type Database = {
           is_active?: boolean
           last_sync_at?: string | null
           last_sync_error?: string | null
+          organization_id?: string
           platform_type?: string
           room_id?: string
           source_name?: string
           updated_at?: string
-          user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "calendar_sources_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "calendar_sources_room_id_fkey"
             columns: ["room_id"]
@@ -70,26 +77,34 @@ export type Database = {
           data: Json
           hotel_name: string
           onboarded: boolean
+          organization_id: string
           updated_at: string
-          user_id: string
         }
         Insert: {
           created_at?: string
           data?: Json
           hotel_name?: string
           onboarded?: boolean
+          organization_id: string
           updated_at?: string
-          user_id: string
         }
         Update: {
           created_at?: string
           data?: Json
           hotel_name?: string
           onboarded?: boolean
+          organization_id?: string
           updated_at?: string
-          user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "hotel_state_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ical_reservations: {
         Row: {
@@ -97,41 +112,48 @@ export type Database = {
           external_uid: string
           id: string
           imported_at: string
+          organization_id: string
           platform_type: string
           room_id: string
           source_id: string
           start_date: string
           summary: string | null
           updated_at: string
-          user_id: string
         }
         Insert: {
           end_date: string
           external_uid: string
           id?: string
           imported_at?: string
+          organization_id: string
           platform_type?: string
           room_id: string
           source_id: string
           start_date: string
           summary?: string | null
           updated_at?: string
-          user_id: string
         }
         Update: {
           end_date?: string
           external_uid?: string
           id?: string
           imported_at?: string
+          organization_id?: string
           platform_type?: string
           room_id?: string
           source_id?: string
           start_date?: string
           summary?: string | null
           updated_at?: string
-          user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "ical_reservations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "ical_reservations_room_id_fkey"
             columns: ["room_id"]
@@ -148,26 +170,291 @@ export type Database = {
           },
         ]
       }
-      rooms: {
+      organization_invitations: {
+        Row: {
+          accepted_at: string | null
+          created_at: string
+          created_by: string | null
+          email: string
+          expires_at: string
+          id: string
+          organization_id: string
+          role: Database["public"]["Enums"]["app_role"]
+          token: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          email: string
+          expires_at: string
+          id?: string
+          organization_id: string
+          role?: Database["public"]["Enums"]["app_role"]
+          token: string
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string
+          expires_at?: string
+          id?: string
+          organization_id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_invitations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_members: {
         Row: {
           created_at: string
           id: string
-          room_name: string
-          updated_at: string
+          organization_id: string
+          role: Database["public"]["Enums"]["app_role"]
+          status: string
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
-          room_name: string
-          updated_at?: string
+          organization_id: string
+          role?: Database["public"]["Enums"]["app_role"]
+          status?: string
           user_id: string
         }
         Update: {
           created_at?: string
           id?: string
+          organization_id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_members_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          account_status: string
+          contact_email: string
+          contact_mobile: string
+          contact_person: string | null
+          created_at: string
+          created_by: string | null
+          expiry_date: string | null
+          hotel_name: string
+          id: string
+          logo_url: string | null
+          notes: string | null
+          renewal_date: string | null
+          start_date: string
+          subscription_plan: string
+          subscription_status: string
+          updated_at: string
+        }
+        Insert: {
+          account_status?: string
+          contact_email: string
+          contact_mobile: string
+          contact_person?: string | null
+          created_at?: string
+          created_by?: string | null
+          expiry_date?: string | null
+          hotel_name: string
+          id?: string
+          logo_url?: string | null
+          notes?: string | null
+          renewal_date?: string | null
+          start_date?: string
+          subscription_plan?: string
+          subscription_status?: string
+          updated_at?: string
+        }
+        Update: {
+          account_status?: string
+          contact_email?: string
+          contact_mobile?: string
+          contact_person?: string | null
+          created_at?: string
+          created_by?: string | null
+          expiry_date?: string | null
+          hotel_name?: string
+          id?: string
+          logo_url?: string | null
+          notes?: string | null
+          renewal_date?: string | null
+          start_date?: string
+          subscription_plan?: string
+          subscription_status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organizations_subscription_plan_fkey"
+            columns: ["subscription_plan"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      rooms: {
+        Row: {
+          created_at: string
+          id: string
+          organization_id: string
+          room_name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          organization_id: string
+          room_name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          organization_id?: string
           room_name?: string
           updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rooms_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subscription_history: {
+        Row: {
+          action: string
+          changed_by: string | null
+          created_at: string
+          id: string
+          metadata: Json
+          new_status: string | null
+          old_status: string | null
+          organization_id: string
+        }
+        Insert: {
+          action: string
+          changed_by?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          new_status?: string | null
+          old_status?: string | null
+          organization_id: string
+        }
+        Update: {
+          action?: string
+          changed_by?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          new_status?: string | null
+          old_status?: string | null
+          organization_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_history_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subscription_plans: {
+        Row: {
+          code: string
+          created_at: string
+          features: Json
+          is_active: boolean
+          monthly_price_cents: number
+          name: string
+          sort_order: number
+          trial_days: number
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          features?: Json
+          is_active?: boolean
+          monthly_price_cents?: number
+          name: string
+          sort_order?: number
+          trial_days?: number
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          features?: Json
+          is_active?: boolean
+          monthly_price_cents?: number
+          name?: string
+          sort_order?: number
+          trial_days?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      super_admin_emails: {
+        Row: {
+          created_at: string
+          email: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
         }
         Relationships: []
@@ -177,10 +464,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      current_org_id: { Args: { _user_id: string }; Returns: string }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_org_member: {
+        Args: { _org_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "super_admin" | "hotel_admin" | "hotel_staff"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -307,6 +605,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["super_admin", "hotel_admin", "hotel_staff"],
+    },
   },
 } as const

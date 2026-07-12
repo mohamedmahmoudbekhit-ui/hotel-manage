@@ -16,7 +16,7 @@ export async function syncCalendarSource(sourceId: string): Promise<SyncOutcome>
 
   const { data: source, error: srcErr } = await supabaseAdmin
     .from("calendar_sources")
-    .select("id, user_id, room_id, ical_url, platform_type, is_active")
+    .select("id, organization_id, room_id, ical_url, platform_type, is_active")
     .eq("id", sourceId)
     .maybeSingle();
 

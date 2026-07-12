@@ -16,6 +16,9 @@ interface Ctx extends StateShape {
   hotelName: string;
   onboarded: boolean;
   loading: boolean;
+  organizationId: string | null;
+  accountStatus: string | null;
+  subscriptionStatus: string | null;
   currentMonth: MonthData;
   setCurrentMonthKey: (k: string) => void;
   updateCell: (room: string, day: number, cell: Cell | null) => void;
@@ -114,6 +117,9 @@ export function HotelProvider({ children }: { children: ReactNode }) {
   const [hotelName, setHotelName] = useState("");
   const [onboarded, setOnboarded] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [organizationId, setOrganizationId] = useState<string | null>(null);
+  const [accountStatus, setAccountStatus] = useState<string | null>(null);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null);
   const hydratedRef = useRef(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -123,6 +129,9 @@ export function HotelProvider({ children }: { children: ReactNode }) {
       try {
         const res = await load();
         if (cancelled) return;
+        setOrganizationId(res.organizationId ?? null);
+        setAccountStatus(res.accountStatus ?? null);
+        setSubscriptionStatus(res.subscriptionStatus ?? null);
         if (res.exists) {
           setHotelName(res.hotelName);
           setOnboarded(res.onboarded);
@@ -130,7 +139,7 @@ export function HotelProvider({ children }: { children: ReactNode }) {
           if (normalized) setState(normalized);
         } else {
           setOnboarded(false);
-          setHotelName("");
+          setHotelName(res.hotelName || "");
         }
       } catch (err) {
         console.error("Failed to load hotel state", err);
@@ -330,6 +339,9 @@ export function HotelProvider({ children }: { children: ReactNode }) {
     hotelName,
     onboarded,
     loading,
+    organizationId,
+    accountStatus,
+    subscriptionStatus,
     currentMonth,
     setCurrentMonthKey,
     updateCell,

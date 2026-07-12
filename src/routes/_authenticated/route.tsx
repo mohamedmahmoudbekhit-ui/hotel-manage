@@ -5,27 +5,73 @@ import { HotelProvider, useHotel } from "@/lib/hotel/store";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Button } from "@/components/ui/button";
-import { Languages, LogOut, Loader2 } from "lucide-react";
+import { Languages, LogOut, Loader2, ShieldOff } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
-  beforeLoad: async () => {
+  beforeLoad: async ({ location }) => {
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) throw redirect({ to: "/auth" });
+    // Route super_admin (with no org) to /admin
+    const { data: roleRow } = await supabase.from("user_roles").select("role").eq("user_id", data.user.id).eq("role", "super_admin").maybeSingle();
+    if (roleRow && !location.pathname.startsWith("/admin")) {
+      throw redirect({ to: "/admin" });
+    }
     return { user: data.user };
   },
   component: AuthedLayout,
 });
 
 function AuthedLayout() {
+  const pathname = useRouterState({ select: (r) => r.location.pathname });
+  // Admin section owns its own layout (no HotelProvider needed)
+  if (pathname.startsWith("/admin")) return <Outlet />;
   return (
     <HotelProvider>
-      <OnboardingGate>
-        <AppShell />
-      </OnboardingGate>
+      <OrgAccessGate>
+        <OnboardingGate>
+          <AppShell />
+        </OnboardingGate>
+      </OrgAccessGate>
     </HotelProvider>
   );
+}
+
+function OrgAccessGate({ children }: { children: ReactNode }) {
+  const { loading, organizationId, accountStatus, subscriptionStatus } = useHotel();
+  const navigate = useNavigate();
+
+  const signOut = async () => { await supabase.auth.signOut(); navigate({ to: "/auth", replace: true }); };
+
+  if (loading) {
+    return <div className="flex min-h-screen items-center justify-center bg-background"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
+  }
+  if (!organizationId) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-background p-6 text-center">
+        <ShieldOff className="mb-3 h-10 w-10 text-muted-foreground" />
+        <h1 className="text-xl font-bold">No hotel access yet</h1>
+        <p className="mt-2 max-w-sm text-sm text-muted-foreground">Your account isn't linked to a hotel. Ask your Super Admin for an invitation link.</p>
+        <Button variant="outline" className="mt-4" onClick={signOut}>Sign out</Button>
+      </div>
+    );
+  }
+  if (accountStatus === "suspended" || subscriptionStatus === "suspended" || subscriptionStatus === "expired" || subscriptionStatus === "cancelled") {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-background p-6 text-center">
+        <ShieldOff className="mb-3 h-10 w-10 text-red-600" />
+        <h1 className="text-xl font-bold">Access is currently disabled</h1>
+        <p className="mt-2 max-w-md text-sm text-muted-foreground">
+          {subscriptionStatus === "expired" ? "Your subscription has expired. Please contact support to renew."
+            : subscriptionStatus === "cancelled" ? "Your subscription has been cancelled."
+            : "Your account has been suspended. Please contact support."}
+        </p>
+        <Button variant="outline" className="mt-4" onClick={signOut}>Sign out</Button>
+      </div>
+    );
+  }
+  return <>{children}</>;
 }
 
 function OnboardingGate({ children }: { children: ReactNode }) {
@@ -40,11 +86,7 @@ function OnboardingGate({ children }: { children: ReactNode }) {
   }, [loading, onboarded, pathname, navigate]);
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <div className="flex min-h-screen items-center justify-center bg-background"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
   }
   return <>{children}</>;
 }
@@ -60,7 +102,6 @@ function AppShell() {
     navigate({ to: "/auth", replace: true });
   };
 
-  // Onboarding: render bare (no sidebar) so user focuses on the form
   if (!onboarded || pathname === "/onboarding") {
     return (
       <div className="min-h-screen bg-background" dir={dir}>

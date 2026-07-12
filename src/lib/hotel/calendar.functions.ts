@@ -44,25 +44,43 @@ const upsertSchema = z.object({
   is_active: z.boolean(),
 });
 
-/** Ensures a `rooms` row exists per name in `names` for the caller, returns full list. */
+async function resolveOrg(supabase: any, userId: string): Promise<string> {
+  const { data } = await supabase
+    .from("organization_members")
+    .select("organization_id")
+    .eq("user_id", userId)
+    .eq("status", "active")
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (!data?.organization_id) throw new Error("No organization for user");
+  return data.organization_id as string;
+}
+
 export const ensureAndListRooms = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
     z.object({ names: z.array(z.string().trim().min(1)).max(200) }).parse(input),
   )
   .handler(async ({ context, data }): Promise<RoomRow[]> => {
+    const orgId = await resolveOrg(context.supabase, context.userId);
     const uniq = Array.from(new Set(data.names.map((n) => n.trim()).filter(Boolean)));
     if (uniq.length > 0) {
-      const rows = uniq.map((n) => ({ user_id: context.userId, room_name: n }));
-      const { error } = await context.supabase
+      const { data: existing } = await context.supabase
         .from("rooms")
-        .upsert(rows, { onConflict: "user_id,room_name", ignoreDuplicates: true });
-      if (error) throw new Error(error.message);
+        .select("room_name")
+        .eq("organization_id", orgId);
+      const have = new Set((existing ?? []).map((r: any) => r.room_name));
+      const toInsert = uniq.filter((n) => !have.has(n)).map((n) => ({ organization_id: orgId, room_name: n }));
+      if (toInsert.length > 0) {
+        const { error } = await context.supabase.from("rooms").insert(toInsert);
+        if (error) throw new Error(error.message);
+      }
     }
     const { data: list, error: listErr } = await context.supabase
       .from("rooms")
       .select("id, room_name")
-      .eq("user_id", context.userId)
+      .eq("organization_id", orgId)
       .order("room_name", { ascending: true });
     if (listErr) throw new Error(listErr.message);
     return list ?? [];
@@ -71,10 +89,11 @@ export const ensureAndListRooms = createServerFn({ method: "POST" })
 export const listCalendarSources = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<CalendarSourceRow[]> => {
+    const orgId = await resolveOrg(context.supabase, context.userId);
     const { data, error } = await context.supabase
       .from("calendar_sources")
       .select("id, room_id, source_name, platform_type, ical_url, is_active, last_sync_at, last_sync_error, created_at")
-      .eq("user_id", context.userId)
+      .eq("organization_id", orgId)
       .order("created_at", { ascending: true });
     if (error) throw new Error(error.message);
     return (data ?? []) as CalendarSourceRow[];
@@ -84,9 +103,8 @@ export const saveCalendarSource = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => upsertSchema.parse(input))
   .handler(async ({ context, data }) => {
-    if (!isLikelyIcalUrl(data.ical_url)) {
-      throw new Error("Invalid iCal URL");
-    }
+    const orgId = await resolveOrg(context.supabase, context.userId);
+    if (!isLikelyIcalUrl(data.ical_url)) throw new Error("Invalid iCal URL");
     if (data.id) {
       const { error } = await context.supabase
         .from("calendar_sources")
@@ -98,14 +116,14 @@ export const saveCalendarSource = createServerFn({ method: "POST" })
           room_id: data.room_id,
         })
         .eq("id", data.id)
-        .eq("user_id", context.userId);
+        .eq("organization_id", orgId);
       if (error) throw new Error(error.message);
       return { id: data.id };
     }
     const { data: inserted, error } = await context.supabase
       .from("calendar_sources")
       .insert({
-        user_id: context.userId,
+        organization_id: orgId,
         room_id: data.room_id,
         source_name: data.source_name,
         platform_type: data.platform_type,
@@ -122,11 +140,12 @@ export const deleteCalendarSource = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ context, data }) => {
+    const orgId = await resolveOrg(context.supabase, context.userId);
     const { error } = await context.supabase
       .from("calendar_sources")
       .delete()
       .eq("id", data.id)
-      .eq("user_id", context.userId);
+      .eq("organization_id", orgId);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -135,12 +154,12 @@ export const syncOneSource = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ context, data }) => {
-    // Verify ownership before touching admin client
+    const orgId = await resolveOrg(context.supabase, context.userId);
     const { data: owned, error: ownErr } = await context.supabase
       .from("calendar_sources")
       .select("id")
       .eq("id", data.id)
-      .eq("user_id", context.userId)
+      .eq("organization_id", orgId)
       .maybeSingle();
     if (ownErr) throw new Error(ownErr.message);
     if (!owned) throw new Error("Not found");
@@ -151,16 +170,17 @@ export const syncOneSource = createServerFn({ method: "POST" })
 export const syncAllForUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    const orgId = await resolveOrg(context.supabase, context.userId);
     const { data, error } = await context.supabase
       .from("calendar_sources")
       .select("id")
-      .eq("user_id", context.userId)
+      .eq("organization_id", orgId)
       .eq("is_active", true);
     if (error) throw new Error(error.message);
     const { syncCalendarSource } = await import("@/lib/hotel/calendar-sync.server");
     let failed = 0;
     await Promise.all(
-      (data ?? []).map(async (s) => {
+      (data ?? []).map(async (s: any) => {
         const out = await syncCalendarSource(s.id);
         if (!out.ok) failed++;
       }),
@@ -172,49 +192,32 @@ export const listImportedForMonth = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
     z.object({
-      /** yyyy-mm-dd inclusive */
       from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-      /** yyyy-mm-dd inclusive */
       to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     }).parse(input),
   )
   .handler(async ({ context, data }): Promise<ImportedReservationRow[]> => {
-    // Overlap: reservation.start < to+1 AND reservation.end > from
+    const orgId = await resolveOrg(context.supabase, context.userId);
     const nextDay = new Date(`${data.to}T00:00:00Z`);
     nextDay.setUTCDate(nextDay.getUTCDate() + 1);
     const endExclusive = nextDay.toISOString().slice(0, 10);
     const { data: rows, error } = await context.supabase
       .from("ical_reservations")
       .select("id, room_id, source_id, platform_type, external_uid, summary, start_date, end_date, rooms!inner(room_name), calendar_sources!inner(source_name)")
-      .eq("user_id", context.userId)
+      .eq("organization_id", orgId)
       .lt("start_date", endExclusive)
       .gt("end_date", data.from);
     if (error) throw new Error(error.message);
-    return (rows ?? []).map((r) => {
-      const rec = r as unknown as {
-        id: string;
-        room_id: string;
-        source_id: string;
-        platform_type: string;
-        external_uid: string;
-        summary: string | null;
-        start_date: string;
-        end_date: string;
-        rooms: { room_name: string };
-        calendar_sources: { source_name: string };
-      };
-      return {
-        id: rec.id,
-        room_id: rec.room_id,
-        room_name: rec.rooms.room_name,
-        source_id: rec.source_id,
-        source_name: rec.calendar_sources.source_name,
-        platform_type: rec.platform_type,
-        external_uid: rec.external_uid,
-        summary: rec.summary,
-        start_date: rec.start_date,
-        end_date: rec.end_date,
-      };
-    });
+    return (rows ?? []).map((r: any) => ({
+      id: r.id,
+      room_id: r.room_id,
+      room_name: r.rooms.room_name,
+      source_id: r.source_id,
+      source_name: r.calendar_sources.source_name,
+      platform_type: r.platform_type,
+      external_uid: r.external_uid,
+      summary: r.summary,
+      start_date: r.start_date,
+      end_date: r.end_date,
+    }));
   });
-

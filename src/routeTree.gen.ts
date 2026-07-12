@@ -20,6 +20,7 @@ import { Route as AuthenticatedChartsRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedBookingsRouteImport } from './routes/_authenticated/bookings'
 import { Route as AuthenticatedAdminRouteRouteImport } from './routes/_authenticated/admin/route'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
+import { Route as AuthenticatedAdminHotelsRouteImport } from './routes/_authenticated/admin/hotels'
 import { Route as ApiPublicHooksSyncIcalRouteImport } from './routes/api/public/hooks/sync-ical'
 
 const AuthRoute = AuthRouteImport.update({
@@ -76,6 +77,12 @@ const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedAdminRouteRoute,
 } as any)
+const AuthenticatedAdminHotelsRoute =
+  AuthenticatedAdminHotelsRouteImport.update({
+    id: '/hotels',
+    path: '/hotels',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
+  } as any)
 const ApiPublicHooksSyncIcalRoute = ApiPublicHooksSyncIcalRouteImport.update({
   id: '/api/public/hooks/sync-ical',
   path: '/api/public/hooks/sync-ical',
@@ -92,6 +99,7 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/summary': typeof AuthenticatedSummaryRoute
+  '/admin/hotels': typeof AuthenticatedAdminHotelsRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/api/public/hooks/sync-ical': typeof ApiPublicHooksSyncIcalRoute
 }
@@ -104,6 +112,7 @@ export interface FileRoutesByTo {
   '/settings': typeof AuthenticatedSettingsRoute
   '/summary': typeof AuthenticatedSummaryRoute
   '/': typeof AuthenticatedIndexRoute
+  '/admin/hotels': typeof AuthenticatedAdminHotelsRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/api/public/hooks/sync-ical': typeof ApiPublicHooksSyncIcalRoute
 }
@@ -119,6 +128,7 @@ export interface FileRoutesById {
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/summary': typeof AuthenticatedSummaryRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/admin/hotels': typeof AuthenticatedAdminHotelsRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/api/public/hooks/sync-ical': typeof ApiPublicHooksSyncIcalRoute
 }
@@ -134,6 +144,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/settings'
     | '/summary'
+    | '/admin/hotels'
     | '/admin/'
     | '/api/public/hooks/sync-ical'
   fileRoutesByTo: FileRoutesByTo
@@ -146,6 +157,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/summary'
     | '/'
+    | '/admin/hotels'
     | '/admin'
     | '/api/public/hooks/sync-ical'
   id:
@@ -160,6 +172,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings'
     | '/_authenticated/summary'
     | '/_authenticated/'
+    | '/_authenticated/admin/hotels'
     | '/_authenticated/admin/'
     | '/api/public/hooks/sync-ical'
   fileRoutesById: FileRoutesById
@@ -249,6 +262,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
       parentRoute: typeof AuthenticatedAdminRouteRoute
     }
+    '/_authenticated/admin/hotels': {
+      id: '/_authenticated/admin/hotels'
+      path: '/hotels'
+      fullPath: '/admin/hotels'
+      preLoaderRoute: typeof AuthenticatedAdminHotelsRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
     '/api/public/hooks/sync-ical': {
       id: '/api/public/hooks/sync-ical'
       path: '/api/public/hooks/sync-ical'
@@ -260,11 +280,13 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedAdminRouteRouteChildren {
+  AuthenticatedAdminHotelsRoute: typeof AuthenticatedAdminHotelsRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
 }
 
 const AuthenticatedAdminRouteRouteChildren: AuthenticatedAdminRouteRouteChildren =
   {
+    AuthenticatedAdminHotelsRoute: AuthenticatedAdminHotelsRoute,
     AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
   }
 

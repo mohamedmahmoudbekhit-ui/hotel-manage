@@ -19,6 +19,7 @@ import { Route as AuthenticatedExpensesRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedChartsRouteImport } from './routes/_authenticated/charts'
 import { Route as AuthenticatedBookingsRouteImport } from './routes/_authenticated/bookings'
 import { Route as AuthenticatedAdminRouteRouteImport } from './routes/_authenticated/admin/route'
+import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
 import { Route as ApiPublicHooksSyncIcalRouteImport } from './routes/api/public/hooks/sync-ical'
 
 const AuthRoute = AuthRouteImport.update({
@@ -70,6 +71,11 @@ const AuthenticatedAdminRouteRoute = AuthenticatedAdminRouteRouteImport.update({
   path: '/admin',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedAdminRouteRoute,
+} as any)
 const ApiPublicHooksSyncIcalRoute = ApiPublicHooksSyncIcalRouteImport.update({
   id: '/api/public/hooks/sync-ical',
   path: '/api/public/hooks/sync-ical',
@@ -79,18 +85,18 @@ const ApiPublicHooksSyncIcalRoute = ApiPublicHooksSyncIcalRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/auth': typeof AuthRoute
-  '/admin': typeof AuthenticatedAdminRouteRoute
+  '/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/bookings': typeof AuthenticatedBookingsRoute
   '/charts': typeof AuthenticatedChartsRoute
   '/expenses': typeof AuthenticatedExpensesRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/summary': typeof AuthenticatedSummaryRoute
+  '/admin/': typeof AuthenticatedAdminIndexRoute
   '/api/public/hooks/sync-ical': typeof ApiPublicHooksSyncIcalRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
-  '/admin': typeof AuthenticatedAdminRouteRoute
   '/bookings': typeof AuthenticatedBookingsRoute
   '/charts': typeof AuthenticatedChartsRoute
   '/expenses': typeof AuthenticatedExpensesRoute
@@ -98,13 +104,14 @@ export interface FileRoutesByTo {
   '/settings': typeof AuthenticatedSettingsRoute
   '/summary': typeof AuthenticatedSummaryRoute
   '/': typeof AuthenticatedIndexRoute
+  '/admin': typeof AuthenticatedAdminIndexRoute
   '/api/public/hooks/sync-ical': typeof ApiPublicHooksSyncIcalRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
-  '/_authenticated/admin': typeof AuthenticatedAdminRouteRoute
+  '/_authenticated/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/_authenticated/bookings': typeof AuthenticatedBookingsRoute
   '/_authenticated/charts': typeof AuthenticatedChartsRoute
   '/_authenticated/expenses': typeof AuthenticatedExpensesRoute
@@ -112,6 +119,7 @@ export interface FileRoutesById {
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/summary': typeof AuthenticatedSummaryRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/api/public/hooks/sync-ical': typeof ApiPublicHooksSyncIcalRoute
 }
 export interface FileRouteTypes {
@@ -126,11 +134,11 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/settings'
     | '/summary'
+    | '/admin/'
     | '/api/public/hooks/sync-ical'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
-    | '/admin'
     | '/bookings'
     | '/charts'
     | '/expenses'
@@ -138,6 +146,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/summary'
     | '/'
+    | '/admin'
     | '/api/public/hooks/sync-ical'
   id:
     | '__root__'
@@ -151,6 +160,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings'
     | '/_authenticated/summary'
     | '/_authenticated/'
+    | '/_authenticated/admin/'
     | '/api/public/hooks/sync-ical'
   fileRoutesById: FileRoutesById
 }
@@ -232,6 +242,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminRouteRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/admin/': {
+      id: '/_authenticated/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
     '/api/public/hooks/sync-ical': {
       id: '/api/public/hooks/sync-ical'
       path: '/api/public/hooks/sync-ical'
@@ -242,8 +259,22 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AuthenticatedAdminRouteRouteChildren {
+  AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
+}
+
+const AuthenticatedAdminRouteRouteChildren: AuthenticatedAdminRouteRouteChildren =
+  {
+    AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
+  }
+
+const AuthenticatedAdminRouteRouteWithChildren =
+  AuthenticatedAdminRouteRoute._addFileChildren(
+    AuthenticatedAdminRouteRouteChildren,
+  )
+
 interface AuthenticatedRouteRouteChildren {
-  AuthenticatedAdminRouteRoute: typeof AuthenticatedAdminRouteRoute
+  AuthenticatedAdminRouteRoute: typeof AuthenticatedAdminRouteRouteWithChildren
   AuthenticatedBookingsRoute: typeof AuthenticatedBookingsRoute
   AuthenticatedChartsRoute: typeof AuthenticatedChartsRoute
   AuthenticatedExpensesRoute: typeof AuthenticatedExpensesRoute
@@ -254,7 +285,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
-  AuthenticatedAdminRouteRoute: AuthenticatedAdminRouteRoute,
+  AuthenticatedAdminRouteRoute: AuthenticatedAdminRouteRouteWithChildren,
   AuthenticatedBookingsRoute: AuthenticatedBookingsRoute,
   AuthenticatedChartsRoute: AuthenticatedChartsRoute,
   AuthenticatedExpensesRoute: AuthenticatedExpensesRoute,

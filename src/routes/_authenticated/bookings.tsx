@@ -147,7 +147,7 @@ function BookingsPage() {
                   return (
                     <td key={room} className="border-t p-1.5 align-top">
                       {importedHere ? (
-                        <ImportedBlock res={importedHere} />
+                        <ImportedBlock res={importedHere.res} position={importedHere.position} />
                       ) : (
                         <CellEditor
                           cell={cell}

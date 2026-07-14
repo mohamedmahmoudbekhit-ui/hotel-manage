@@ -49,19 +49,31 @@ function BookingsPage() {
       .catch((e) => console.error("Failed to load imported reservations", e));
   }, [currentMonth.year, currentMonth.monthIndex, currentMonth.daysInMonth, fetchImported]);
 
-  /** Map roomName -> Map<day, ImportedReservationRow> for O(1) lookup. */
+  /** Map roomName -> Map<day, { res, position }> for O(1) lookup. */
   const importedByRoomDay = useMemo(() => {
-    const map = new Map<string, Map<number, ImportedReservationRow>>();
+    const map = new Map<string, Map<number, { res: ImportedReservationRow; position: "start" | "middle" | "end" | "single" }>>();
+    const toIso = (v: string) => (v ?? "").slice(0, 10);
     for (const r of imported) {
       if (!map.has(r.room_name)) map.set(r.room_name, new Map());
       const roomMap = map.get(r.room_name)!;
-      const start = new Date(`${r.start_date}T00:00:00Z`);
-      const end = new Date(`${r.end_date}T00:00:00Z`);
+      const startIso = toIso(r.start_date);
+      const endIso = toIso(r.end_date);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(startIso) || !/^\d{4}-\d{2}-\d{2}$/.test(endIso)) continue;
+      const start = new Date(`${startIso}T00:00:00Z`);
+      const end = new Date(`${endIso}T00:00:00Z`);
+      // iCal DTEND is checkout day (exclusive). Compute inclusive last night.
+      const lastNight = new Date(end);
+      lastNight.setUTCDate(lastNight.getUTCDate() - 1);
+      if (lastNight < start) continue;
       const d = new Date(start);
-      while (d < end) {
+      while (d <= lastNight) {
         if (d.getUTCFullYear() === currentMonth.year && d.getUTCMonth() === currentMonth.monthIndex) {
           const day = d.getUTCDate();
-          if (!roomMap.has(day)) roomMap.set(day, r);
+          const isFirst = d.getTime() === start.getTime();
+          const isLast = d.getTime() === lastNight.getTime();
+          const position: "start" | "middle" | "end" | "single" =
+            isFirst && isLast ? "single" : isFirst ? "start" : isLast ? "end" : "middle";
+          if (!roomMap.has(day)) roomMap.set(day, { res: r, position });
         }
         d.setUTCDate(d.getUTCDate() + 1);
       }
@@ -135,7 +147,7 @@ function BookingsPage() {
                   return (
                     <td key={room} className="border-t p-1.5 align-top">
                       {importedHere ? (
-                        <ImportedBlock res={importedHere} />
+                        <ImportedBlock res={importedHere.res} position={importedHere.position} />
                       ) : (
                         <CellEditor
                           cell={cell}
@@ -167,18 +179,34 @@ const PLATFORM_LABEL: Record<string, string> = {
   other: "iCal",
 };
 
-function ImportedBlock({ res }: { res: ImportedReservationRow }) {
+function ImportedBlock({ res, position }: { res: ImportedReservationRow; position: "start" | "middle" | "end" | "single" }) {
   const { t } = useI18n();
   const label = PLATFORM_LABEL[res.platform_type] ?? res.source_name;
+  const showLabel = position === "start" || position === "single";
+  const positionBadge =
+    position === "start" ? t("cal.checkIn") ?? "Check-in" :
+    position === "end" ? t("cal.checkOut") ?? "Check-out" :
+    position === "middle" ? "•" : null;
+  const roundedClass =
+    position === "single" ? "rounded-lg" :
+    position === "start" ? "rounded-s-lg rounded-e-none border-e-0" :
+    position === "end" ? "rounded-e-lg rounded-s-none border-s-0" :
+    "rounded-none border-s-0 border-e-0";
   return (
     <Popover>
       <PopoverTrigger asChild>
         <button
-          className="flex h-11 w-full items-center gap-1 rounded-lg border border-dashed border-foreground/30 bg-muted/50 px-2 text-start text-[10px] font-semibold uppercase tracking-wide text-foreground/80 hover:bg-muted"
+          className={`flex h-11 w-full items-center gap-1 border border-dashed border-foreground/30 bg-muted/50 px-2 text-start text-[10px] font-semibold uppercase tracking-wide text-foreground/80 hover:bg-muted ${roundedClass}`}
           style={{ backgroundImage: "repeating-linear-gradient(45deg, transparent 0 4px, hsl(var(--muted-foreground)/0.08) 4px 8px)" }}
         >
-          <CalendarClock className="h-3 w-3 shrink-0 opacity-60" />
-          <span className="truncate">{label}</span>
+          {showLabel ? (
+            <>
+              <CalendarClock className="h-3 w-3 shrink-0 opacity-60" />
+              <span className="truncate">{label}</span>
+            </>
+          ) : (
+            <span className="mx-auto text-[9px] opacity-60">{positionBadge}</span>
+          )}
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-64" align="start">

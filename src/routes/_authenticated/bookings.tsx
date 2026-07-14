@@ -179,18 +179,34 @@ const PLATFORM_LABEL: Record<string, string> = {
   other: "iCal",
 };
 
-function ImportedBlock({ res }: { res: ImportedReservationRow }) {
+function ImportedBlock({ res, position }: { res: ImportedReservationRow; position: "start" | "middle" | "end" | "single" }) {
   const { t } = useI18n();
   const label = PLATFORM_LABEL[res.platform_type] ?? res.source_name;
+  const showLabel = position === "start" || position === "single";
+  const positionBadge =
+    position === "start" ? t("cal.checkIn") ?? "Check-in" :
+    position === "end" ? t("cal.checkOut") ?? "Check-out" :
+    position === "middle" ? "•" : null;
+  const roundedClass =
+    position === "single" ? "rounded-lg" :
+    position === "start" ? "rounded-s-lg rounded-e-none border-e-0" :
+    position === "end" ? "rounded-e-lg rounded-s-none border-s-0" :
+    "rounded-none border-s-0 border-e-0";
   return (
     <Popover>
       <PopoverTrigger asChild>
         <button
-          className="flex h-11 w-full items-center gap-1 rounded-lg border border-dashed border-foreground/30 bg-muted/50 px-2 text-start text-[10px] font-semibold uppercase tracking-wide text-foreground/80 hover:bg-muted"
+          className={`flex h-11 w-full items-center gap-1 border border-dashed border-foreground/30 bg-muted/50 px-2 text-start text-[10px] font-semibold uppercase tracking-wide text-foreground/80 hover:bg-muted ${roundedClass}`}
           style={{ backgroundImage: "repeating-linear-gradient(45deg, transparent 0 4px, hsl(var(--muted-foreground)/0.08) 4px 8px)" }}
         >
-          <CalendarClock className="h-3 w-3 shrink-0 opacity-60" />
-          <span className="truncate">{label}</span>
+          {showLabel ? (
+            <>
+              <CalendarClock className="h-3 w-3 shrink-0 opacity-60" />
+              <span className="truncate">{label}</span>
+            </>
+          ) : (
+            <span className="mx-auto text-[9px] opacity-60">{positionBadge}</span>
+          )}
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-64" align="start">

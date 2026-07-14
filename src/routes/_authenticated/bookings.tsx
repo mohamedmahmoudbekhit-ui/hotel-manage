@@ -49,19 +49,31 @@ function BookingsPage() {
       .catch((e) => console.error("Failed to load imported reservations", e));
   }, [currentMonth.year, currentMonth.monthIndex, currentMonth.daysInMonth, fetchImported]);
 
-  /** Map roomName -> Map<day, ImportedReservationRow> for O(1) lookup. */
+  /** Map roomName -> Map<day, { res, position }> for O(1) lookup. */
   const importedByRoomDay = useMemo(() => {
-    const map = new Map<string, Map<number, ImportedReservationRow>>();
+    const map = new Map<string, Map<number, { res: ImportedReservationRow; position: "start" | "middle" | "end" | "single" }>>();
+    const toIso = (v: string) => (v ?? "").slice(0, 10);
     for (const r of imported) {
       if (!map.has(r.room_name)) map.set(r.room_name, new Map());
       const roomMap = map.get(r.room_name)!;
-      const start = new Date(`${r.start_date}T00:00:00Z`);
-      const end = new Date(`${r.end_date}T00:00:00Z`);
+      const startIso = toIso(r.start_date);
+      const endIso = toIso(r.end_date);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(startIso) || !/^\d{4}-\d{2}-\d{2}$/.test(endIso)) continue;
+      const start = new Date(`${startIso}T00:00:00Z`);
+      const end = new Date(`${endIso}T00:00:00Z`);
+      // iCal DTEND is checkout day (exclusive). Compute inclusive last night.
+      const lastNight = new Date(end);
+      lastNight.setUTCDate(lastNight.getUTCDate() - 1);
+      if (lastNight < start) continue;
       const d = new Date(start);
-      while (d < end) {
+      while (d <= lastNight) {
         if (d.getUTCFullYear() === currentMonth.year && d.getUTCMonth() === currentMonth.monthIndex) {
           const day = d.getUTCDate();
-          if (!roomMap.has(day)) roomMap.set(day, r);
+          const isFirst = d.getTime() === start.getTime();
+          const isLast = d.getTime() === lastNight.getTime();
+          const position: "start" | "middle" | "end" | "single" =
+            isFirst && isLast ? "single" : isFirst ? "start" : isLast ? "end" : "middle";
+          if (!roomMap.has(day)) roomMap.set(day, { res: r, position });
         }
         d.setUTCDate(d.getUTCDate() + 1);
       }

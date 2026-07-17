@@ -1,15 +1,25 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { timingSafeEqual } from "node:crypto";
 
-// Called by pg_cron every 15 minutes. Also callable manually.
-// Auth: the request must present the Supabase anon key as `apikey` (matches
-// the pattern used by pg_cron via net.http_post).
+// Called by pg_cron every 15 minutes. Also callable manually with the shared secret.
+// Auth: the request must present the CRON_SYNC_SECRET (a private, server-only secret)
+// in the `x-cron-secret` header. The Supabase publishable/anon key is NOT accepted
+// because it ships in every client bundle.
 export const Route = createFileRoute("/api/public/hooks/sync-ical")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const anon = process.env.SUPABASE_PUBLISHABLE_KEY;
-        const provided = request.headers.get("apikey") ?? request.headers.get("x-api-key");
-        if (!anon || !provided || provided !== anon) {
+        const expected = process.env.CRON_SYNC_SECRET;
+        const provided = request.headers.get("x-cron-secret") ?? "";
+        if (!expected) {
+          return new Response(JSON.stringify({ error: "server_misconfigured" }), {
+            status: 500,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+        const a = Buffer.from(provided);
+        const b = Buffer.from(expected);
+        if (a.length !== b.length || !timingSafeEqual(a, b)) {
           return new Response(JSON.stringify({ error: "unauthorized" }), {
             status: 401,
             headers: { "Content-Type": "application/json" },

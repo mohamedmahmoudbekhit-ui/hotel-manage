@@ -29,13 +29,7 @@ export async function syncCalendarSource(sourceId: string): Promise<SyncOutcome>
 
   let raw: string;
   try {
-    const url = source.ical_url.replace(/^webcal:/i, "https:");
-    const res = await fetch(url, {
-      headers: { Accept: "text/calendar, text/plain, */*", "User-Agent": "hotel-management/1.0" },
-      redirect: "follow",
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    raw = await res.text();
+    raw = await safeFetchIcal(source.ical_url);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Fetch failed";
     await supabaseAdmin

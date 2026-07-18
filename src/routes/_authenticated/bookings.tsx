@@ -39,7 +39,7 @@ function BookingsPage() {
   const fetchImported = useServerFn(listImportedForMonth);
   const [imported, setImported] = useState<ImportedReservationRow[]>([]);
 
-  useEffect(() => {
+  const reloadImported = () => {
     const y = currentMonth.year;
     const m = String(currentMonth.monthIndex + 1).padStart(2, "0");
     const from = `${y}-${m}-01`;
@@ -47,7 +47,11 @@ function BookingsPage() {
     fetchImported({ data: { from, to } })
       .then(setImported)
       .catch((e) => console.error("Failed to load imported reservations", e));
-  }, [currentMonth.year, currentMonth.monthIndex, currentMonth.daysInMonth, fetchImported]);
+  };
+  useEffect(() => {
+    reloadImported();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentMonth.year, currentMonth.monthIndex, currentMonth.daysInMonth]);
 
   /** Map roomName -> Map<day, { res, position }> for O(1) lookup. */
   const importedByRoomDay = useMemo(() => {

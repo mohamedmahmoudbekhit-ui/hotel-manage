@@ -186,6 +186,11 @@ export function CalendarIntegrations() {
                   {roomSources.map((s) => (
                     <li key={s.id} className="rounded-lg border bg-card p-2.5">
                       <div className="flex flex-wrap items-center gap-2">
+                        <span
+                          className="h-4 w-4 shrink-0 rounded-full border"
+                          style={{ backgroundColor: s.color ?? "#64748b" }}
+                          title={s.color ?? "#64748b"}
+                        />
                         <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
                           {PLATFORMS.find((p) => p.value === s.platform_type)?.label ?? s.platform_type}
                         </span>
@@ -209,6 +214,7 @@ export function CalendarIntegrations() {
                               platform_type: s.platform_type,
                               ical_url: s.ical_url,
                               is_active: s.is_active,
+                              color: s.color ?? "#64748b",
                             }}
                             onSubmit={doSave}
                             rooms={rooms}

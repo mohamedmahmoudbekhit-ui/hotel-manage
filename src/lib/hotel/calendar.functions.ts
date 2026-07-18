@@ -98,7 +98,7 @@ export const listCalendarSources = createServerFn({ method: "GET" })
     const orgId = await resolveOrg(context.supabase, context.userId);
     const { data, error } = await context.supabase
       .from("calendar_sources")
-      .select("id, room_id, source_name, platform_type, ical_url, is_active, last_sync_at, last_sync_error, created_at")
+      .select("id, room_id, source_name, platform_type, ical_url, is_active, color, last_sync_at, last_sync_error, created_at")
       .eq("organization_id", orgId)
       .order("created_at", { ascending: true });
     if (error) throw new Error(error.message);

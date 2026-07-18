@@ -47,6 +47,7 @@ const upsertSchema = z.object({
   platform_type: z.enum(platforms),
   ical_url: z.string().url().max(2000),
   is_active: z.boolean(),
+  color: z.string().regex(HEX_COLOR).optional(),
 });
 
 async function resolveOrg(supabase: any, userId: string): Promise<string> {

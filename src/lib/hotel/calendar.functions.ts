@@ -214,21 +214,87 @@ export const listImportedForMonth = createServerFn({ method: "POST" })
     const endExclusive = nextDay.toISOString().slice(0, 10);
     const { data: rows, error } = await context.supabase
       .from("ical_reservations")
-      .select("id, room_id, source_id, platform_type, external_uid, summary, start_date, end_date, rooms!inner(room_name), calendar_sources!inner(source_name)")
+      .select("id, room_id, source_id, platform_type, external_uid, summary, start_date, end_date, rooms!inner(room_name), calendar_sources!inner(source_name, color), ical_reservation_overrides(price, notes, hidden)")
       .eq("organization_id", orgId)
       .lt("start_date", endExclusive)
       .gt("end_date", data.from);
     if (error) throw new Error(error.message);
-    return (rows ?? []).map((r: any) => ({
-      id: r.id,
-      room_id: r.room_id,
-      room_name: r.rooms.room_name,
-      source_id: r.source_id,
-      source_name: r.calendar_sources.source_name,
-      platform_type: r.platform_type,
-      external_uid: r.external_uid,
-      summary: r.summary,
-      start_date: r.start_date,
-      end_date: r.end_date,
-    }));
+    const list: ImportedReservationRow[] = [];
+    for (const r of (rows ?? []) as any[]) {
+      const ov = Array.isArray(r.ical_reservation_overrides) ? r.ical_reservation_overrides[0] : r.ical_reservation_overrides;
+      if (ov?.hidden) continue;
+      list.push({
+        id: r.id,
+        room_id: r.room_id,
+        room_name: r.rooms.room_name,
+        source_id: r.source_id,
+        source_name: r.calendar_sources.source_name,
+        source_color: r.calendar_sources.color ?? "#64748b",
+        platform_type: r.platform_type,
+        external_uid: r.external_uid,
+        summary: r.summary,
+        start_date: r.start_date,
+        end_date: r.end_date,
+        override_price: ov?.price != null ? Number(ov.price) : null,
+        override_notes: ov?.notes ?? null,
+      });
+    }
+    return list;
+  });
+
+const overrideSchema = z.object({
+  reservation_id: z.string().uuid(),
+  price: z.number().nonnegative().nullable(),
+  notes: z.string().max(2000).nullable(),
+});
+
+export const saveImportedOverride = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => overrideSchema.parse(input))
+  .handler(async ({ context, data }) => {
+    const orgId = await resolveOrg(context.supabase, context.userId);
+    // verify reservation belongs to org
+    const { data: res, error: resErr } = await context.supabase
+      .from("ical_reservations")
+      .select("id")
+      .eq("id", data.reservation_id)
+      .eq("organization_id", orgId)
+      .maybeSingle();
+    if (resErr) throw new Error(resErr.message);
+    if (!res) throw new Error("Reservation not found");
+    const { error } = await context.supabase
+      .from("ical_reservation_overrides")
+      .upsert(
+        {
+          reservation_id: data.reservation_id,
+          organization_id: orgId,
+          price: data.price,
+          notes: data.notes,
+        },
+        { onConflict: "reservation_id" },
+      );
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const removeImportedReservation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ reservation_id: z.string().uuid() }).parse(input))
+  .handler(async ({ context, data }) => {
+    const orgId = await resolveOrg(context.supabase, context.userId);
+    const { data: res } = await context.supabase
+      .from("ical_reservations")
+      .select("id")
+      .eq("id", data.reservation_id)
+      .eq("organization_id", orgId)
+      .maybeSingle();
+    if (!res) throw new Error("Reservation not found");
+    const { error } = await context.supabase
+      .from("ical_reservation_overrides")
+      .upsert(
+        { reservation_id: data.reservation_id, organization_id: orgId, hidden: true },
+        { onConflict: "reservation_id" },
+      );
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });

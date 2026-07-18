@@ -71,8 +71,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "Hotel Management" },
       { name: "twitter:description", content: "Sign in to manage bookings, revenue, expenses and occupancy for your hotel with Hotel Management." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/77474270-4b7c-4689-b965-c5f90d9a9d48/id-preview-22a36adf--f4dd8833-5876-4d69-8be5-c752e209f94e.lovable.app-1783411947617.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/77474270-4b7c-4689-b965-c5f90d9a9d48/id-preview-22a36adf--f4dd8833-5876-4d69-8be5-c752e209f94e.lovable.app-1783411947617.png" },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/48ce1f1f-92c6-4768-a6e5-9bdac0b3d7d6/id-preview-ab6f4c83--bd56997d-dfd7-4a40-a088-50ead4275601.lovable.app-1784369110874.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/48ce1f1f-92c6-4768-a6e5-9bdac0b3d7d6/id-preview-ab6f4c83--bd56997d-dfd7-4a40-a088-50ead4275601.lovable.app-1784369110874.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },

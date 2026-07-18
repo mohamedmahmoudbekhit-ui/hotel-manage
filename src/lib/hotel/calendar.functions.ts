@@ -15,6 +15,7 @@ export interface CalendarSourceRow {
   platform_type: string;
   ical_url: string;
   is_active: boolean;
+  color: string;
   last_sync_at: string | null;
   last_sync_error: string | null;
   created_at: string;
@@ -26,14 +27,18 @@ export interface ImportedReservationRow {
   room_name: string;
   source_id: string;
   source_name: string;
+  source_color: string;
   platform_type: string;
   external_uid: string;
   summary: string | null;
   start_date: string;
   end_date: string;
+  override_price: number | null;
+  override_notes: string | null;
 }
 
 const platforms = ["airbnb", "booking", "vrbo", "direct", "other"] as const;
+const HEX_COLOR = /^#([0-9a-fA-F]{6})$/;
 
 const upsertSchema = z.object({
   id: z.string().uuid().optional(),

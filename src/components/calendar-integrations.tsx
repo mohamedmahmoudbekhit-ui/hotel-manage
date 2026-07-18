@@ -310,6 +310,15 @@ function SourceEditor({
             <Input value={state.ical_url} onChange={(e) => setState((s) => ({ ...s, ical_url: e.target.value }))} placeholder="https://…/calendar.ics" />
           </div>
           <div className="flex items-center justify-between rounded-md border p-2">
+            <Label className="text-xs">Color</Label>
+            <input
+              type="color"
+              value={state.color}
+              onChange={(e) => setState((s) => ({ ...s, color: e.target.value }))}
+              className="h-7 w-14 cursor-pointer rounded border bg-transparent"
+            />
+          </div>
+          <div className="flex items-center justify-between rounded-md border p-2">
             <Label className="text-xs">{t("cal.active")}</Label>
             <Switch checked={state.is_active} onCheckedChange={(v) => setState((s) => ({ ...s, is_active: v }))} />
           </div>

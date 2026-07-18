@@ -37,10 +37,11 @@ interface EditorState {
   platform_type: string;
   ical_url: string;
   is_active: boolean;
+  color: string;
 }
 
 function emptyEditor(roomId: string): EditorState {
-  return { room_id: roomId, source_name: "", platform_type: "airbnb", ical_url: "", is_active: true };
+  return { room_id: roomId, source_name: "", platform_type: "airbnb", ical_url: "", is_active: true, color: "#64748b" };
 }
 
 function relativeTime(iso: string | null): string {

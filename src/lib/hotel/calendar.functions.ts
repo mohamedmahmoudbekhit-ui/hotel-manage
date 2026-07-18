@@ -112,15 +112,17 @@ export const saveCalendarSource = createServerFn({ method: "POST" })
     const orgId = await resolveOrg(context.supabase, context.userId);
     if (!isLikelyIcalUrl(data.ical_url)) throw new Error("Invalid iCal URL");
     if (data.id) {
+      const patch: Record<string, unknown> = {
+        source_name: data.source_name,
+        platform_type: data.platform_type,
+        ical_url: data.ical_url,
+        is_active: data.is_active,
+        room_id: data.room_id,
+      };
+      if (data.color) patch.color = data.color;
       const { error } = await context.supabase
         .from("calendar_sources")
-        .update({
-          source_name: data.source_name,
-          platform_type: data.platform_type,
-          ical_url: data.ical_url,
-          is_active: data.is_active,
-          room_id: data.room_id,
-        })
+        .update(patch)
         .eq("id", data.id)
         .eq("organization_id", orgId);
       if (error) throw new Error(error.message);
@@ -135,6 +137,7 @@ export const saveCalendarSource = createServerFn({ method: "POST" })
         platform_type: data.platform_type,
         ical_url: data.ical_url,
         is_active: data.is_active,
+        ...(data.color ? { color: data.color } : {}),
       })
       .select("id")
       .single();

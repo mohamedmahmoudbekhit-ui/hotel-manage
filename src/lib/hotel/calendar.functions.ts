@@ -15,6 +15,7 @@ export interface CalendarSourceRow {
   platform_type: string;
   ical_url: string;
   is_active: boolean;
+  color: string;
   last_sync_at: string | null;
   last_sync_error: string | null;
   created_at: string;
@@ -26,14 +27,18 @@ export interface ImportedReservationRow {
   room_name: string;
   source_id: string;
   source_name: string;
+  source_color: string;
   platform_type: string;
   external_uid: string;
   summary: string | null;
   start_date: string;
   end_date: string;
+  override_price: number | null;
+  override_notes: string | null;
 }
 
 const platforms = ["airbnb", "booking", "vrbo", "direct", "other"] as const;
+const HEX_COLOR = /^#([0-9a-fA-F]{6})$/;
 
 const upsertSchema = z.object({
   id: z.string().uuid().optional(),
@@ -42,6 +47,7 @@ const upsertSchema = z.object({
   platform_type: z.enum(platforms),
   ical_url: z.string().url().max(2000),
   is_active: z.boolean(),
+  color: z.string().regex(HEX_COLOR).optional(),
 });
 
 async function resolveOrg(supabase: any, userId: string): Promise<string> {
@@ -92,7 +98,7 @@ export const listCalendarSources = createServerFn({ method: "GET" })
     const orgId = await resolveOrg(context.supabase, context.userId);
     const { data, error } = await context.supabase
       .from("calendar_sources")
-      .select("id, room_id, source_name, platform_type, ical_url, is_active, last_sync_at, last_sync_error, created_at")
+      .select("id, room_id, source_name, platform_type, ical_url, is_active, color, last_sync_at, last_sync_error, created_at")
       .eq("organization_id", orgId)
       .order("created_at", { ascending: true });
     if (error) throw new Error(error.message);
@@ -106,15 +112,19 @@ export const saveCalendarSource = createServerFn({ method: "POST" })
     const orgId = await resolveOrg(context.supabase, context.userId);
     if (!isLikelyIcalUrl(data.ical_url)) throw new Error("Invalid iCal URL");
     if (data.id) {
+      const patch: {
+        source_name: string; platform_type: string; ical_url: string; is_active: boolean; room_id: string; color?: string;
+      } = {
+        source_name: data.source_name,
+        platform_type: data.platform_type,
+        ical_url: data.ical_url,
+        is_active: data.is_active,
+        room_id: data.room_id,
+      };
+      if (data.color) patch.color = data.color;
       const { error } = await context.supabase
         .from("calendar_sources")
-        .update({
-          source_name: data.source_name,
-          platform_type: data.platform_type,
-          ical_url: data.ical_url,
-          is_active: data.is_active,
-          room_id: data.room_id,
-        })
+        .update(patch)
         .eq("id", data.id)
         .eq("organization_id", orgId);
       if (error) throw new Error(error.message);
@@ -129,6 +139,7 @@ export const saveCalendarSource = createServerFn({ method: "POST" })
         platform_type: data.platform_type,
         ical_url: data.ical_url,
         is_active: data.is_active,
+        ...(data.color ? { color: data.color } : {}),
       })
       .select("id")
       .single();
@@ -203,21 +214,87 @@ export const listImportedForMonth = createServerFn({ method: "POST" })
     const endExclusive = nextDay.toISOString().slice(0, 10);
     const { data: rows, error } = await context.supabase
       .from("ical_reservations")
-      .select("id, room_id, source_id, platform_type, external_uid, summary, start_date, end_date, rooms!inner(room_name), calendar_sources!inner(source_name)")
+      .select("id, room_id, source_id, platform_type, external_uid, summary, start_date, end_date, rooms!inner(room_name), calendar_sources!inner(source_name, color), ical_reservation_overrides(price, notes, hidden)")
       .eq("organization_id", orgId)
       .lt("start_date", endExclusive)
       .gt("end_date", data.from);
     if (error) throw new Error(error.message);
-    return (rows ?? []).map((r: any) => ({
-      id: r.id,
-      room_id: r.room_id,
-      room_name: r.rooms.room_name,
-      source_id: r.source_id,
-      source_name: r.calendar_sources.source_name,
-      platform_type: r.platform_type,
-      external_uid: r.external_uid,
-      summary: r.summary,
-      start_date: r.start_date,
-      end_date: r.end_date,
-    }));
+    const list: ImportedReservationRow[] = [];
+    for (const r of (rows ?? []) as any[]) {
+      const ov = Array.isArray(r.ical_reservation_overrides) ? r.ical_reservation_overrides[0] : r.ical_reservation_overrides;
+      if (ov?.hidden) continue;
+      list.push({
+        id: r.id,
+        room_id: r.room_id,
+        room_name: r.rooms.room_name,
+        source_id: r.source_id,
+        source_name: r.calendar_sources.source_name,
+        source_color: r.calendar_sources.color ?? "#64748b",
+        platform_type: r.platform_type,
+        external_uid: r.external_uid,
+        summary: r.summary,
+        start_date: r.start_date,
+        end_date: r.end_date,
+        override_price: ov?.price != null ? Number(ov.price) : null,
+        override_notes: ov?.notes ?? null,
+      });
+    }
+    return list;
+  });
+
+const overrideSchema = z.object({
+  reservation_id: z.string().uuid(),
+  price: z.number().nonnegative().nullable(),
+  notes: z.string().max(2000).nullable(),
+});
+
+export const saveImportedOverride = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => overrideSchema.parse(input))
+  .handler(async ({ context, data }) => {
+    const orgId = await resolveOrg(context.supabase, context.userId);
+    // verify reservation belongs to org
+    const { data: res, error: resErr } = await context.supabase
+      .from("ical_reservations")
+      .select("id")
+      .eq("id", data.reservation_id)
+      .eq("organization_id", orgId)
+      .maybeSingle();
+    if (resErr) throw new Error(resErr.message);
+    if (!res) throw new Error("Reservation not found");
+    const { error } = await context.supabase
+      .from("ical_reservation_overrides")
+      .upsert(
+        {
+          reservation_id: data.reservation_id,
+          organization_id: orgId,
+          price: data.price,
+          notes: data.notes,
+        },
+        { onConflict: "reservation_id" },
+      );
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const removeImportedReservation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ reservation_id: z.string().uuid() }).parse(input))
+  .handler(async ({ context, data }) => {
+    const orgId = await resolveOrg(context.supabase, context.userId);
+    const { data: res } = await context.supabase
+      .from("ical_reservations")
+      .select("id")
+      .eq("id", data.reservation_id)
+      .eq("organization_id", orgId)
+      .maybeSingle();
+    if (!res) throw new Error("Reservation not found");
+    const { error } = await context.supabase
+      .from("ical_reservation_overrides")
+      .upsert(
+        { reservation_id: data.reservation_id, organization_id: orgId, hidden: true },
+        { onConflict: "reservation_id" },
+      );
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });

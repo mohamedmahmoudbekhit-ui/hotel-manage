@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       calendar_sources: {
         Row: {
+          color: string
           created_at: string
           ical_url: string
           id: string
@@ -29,6 +30,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          color?: string
           created_at?: string
           ical_url: string
           id?: string
@@ -42,6 +44,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          color?: string
           created_at?: string
           ical_url?: string
           id?: string
@@ -102,6 +105,54 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: true
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ical_reservation_overrides: {
+        Row: {
+          created_at: string
+          hidden: boolean
+          id: string
+          notes: string | null
+          organization_id: string
+          price: number | null
+          reservation_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          hidden?: boolean
+          id?: string
+          notes?: string | null
+          organization_id: string
+          price?: number | null
+          reservation_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          hidden?: boolean
+          id?: string
+          notes?: string | null
+          organization_id?: string
+          price?: number | null
+          reservation_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ical_reservation_overrides_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ical_reservation_overrides_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: true
+            referencedRelation: "ical_reservations"
             referencedColumns: ["id"]
           },
         ]

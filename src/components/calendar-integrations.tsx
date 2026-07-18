@@ -37,10 +37,11 @@ interface EditorState {
   platform_type: string;
   ical_url: string;
   is_active: boolean;
+  color: string;
 }
 
 function emptyEditor(roomId: string): EditorState {
-  return { room_id: roomId, source_name: "", platform_type: "airbnb", ical_url: "", is_active: true };
+  return { room_id: roomId, source_name: "", platform_type: "airbnb", ical_url: "", is_active: true, color: "#64748b" };
 }
 
 function relativeTime(iso: string | null): string {
@@ -185,6 +186,11 @@ export function CalendarIntegrations() {
                   {roomSources.map((s) => (
                     <li key={s.id} className="rounded-lg border bg-card p-2.5">
                       <div className="flex flex-wrap items-center gap-2">
+                        <span
+                          className="h-4 w-4 shrink-0 rounded-full border"
+                          style={{ backgroundColor: s.color ?? "#64748b" }}
+                          title={s.color ?? "#64748b"}
+                        />
                         <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
                           {PLATFORMS.find((p) => p.value === s.platform_type)?.label ?? s.platform_type}
                         </span>
@@ -208,6 +214,7 @@ export function CalendarIntegrations() {
                               platform_type: s.platform_type,
                               ical_url: s.ical_url,
                               is_active: s.is_active,
+                              color: s.color ?? "#64748b",
                             }}
                             onSubmit={doSave}
                             rooms={rooms}
@@ -301,6 +308,15 @@ function SourceEditor({
           <div className="space-y-1.5">
             <Label className="text-xs">{t("cal.icalUrl")}</Label>
             <Input value={state.ical_url} onChange={(e) => setState((s) => ({ ...s, ical_url: e.target.value }))} placeholder="https://…/calendar.ics" />
+          </div>
+          <div className="flex items-center justify-between rounded-md border p-2">
+            <Label className="text-xs">Color</Label>
+            <input
+              type="color"
+              value={state.color}
+              onChange={(e) => setState((s) => ({ ...s, color: e.target.value }))}
+              className="h-7 w-14 cursor-pointer rounded border bg-transparent"
+            />
           </div>
           <div className="flex items-center justify-between rounded-md border p-2">
             <Label className="text-xs">{t("cal.active")}</Label>

@@ -15,7 +15,7 @@ import { Plus, Trash2, CalendarClock, CalendarPlus } from "lucide-react";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { useI18n } from "@/lib/i18n";
-import { listImportedForMonth, type ImportedReservationRow } from "@/lib/hotel/calendar.functions";
+import { listImportedForMonth, saveImportedOverride, removeImportedReservation, type ImportedReservationRow } from "@/lib/hotel/calendar.functions";
 
 export const Route = createFileRoute("/_authenticated/bookings")({
 
@@ -39,7 +39,7 @@ function BookingsPage() {
   const fetchImported = useServerFn(listImportedForMonth);
   const [imported, setImported] = useState<ImportedReservationRow[]>([]);
 
-  useEffect(() => {
+  const reloadImported = () => {
     const y = currentMonth.year;
     const m = String(currentMonth.monthIndex + 1).padStart(2, "0");
     const from = `${y}-${m}-01`;
@@ -47,7 +47,11 @@ function BookingsPage() {
     fetchImported({ data: { from, to } })
       .then(setImported)
       .catch((e) => console.error("Failed to load imported reservations", e));
-  }, [currentMonth.year, currentMonth.monthIndex, currentMonth.daysInMonth, fetchImported]);
+  };
+  useEffect(() => {
+    reloadImported();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentMonth.year, currentMonth.monthIndex, currentMonth.daysInMonth]);
 
   /** Map roomName -> Map<day, { res, position }> for O(1) lookup. */
   const importedByRoomDay = useMemo(() => {
@@ -147,7 +151,7 @@ function BookingsPage() {
                   return (
                     <td key={room} className="border-t p-1.5 align-top">
                       {importedHere ? (
-                        <ImportedBlock res={importedHere.res} position={importedHere.position} />
+                        <ImportedBlock res={importedHere.res} position={importedHere.position} onChanged={reloadImported} currency={settings.currency} />
                       ) : (
                         <CellEditor
                           cell={cell}
@@ -179,7 +183,7 @@ const PLATFORM_LABEL: Record<string, string> = {
   other: "iCal",
 };
 
-function ImportedBlock({ res, position }: { res: ImportedReservationRow; position: "start" | "middle" | "end" | "single" }) {
+function ImportedBlock({ res, position, onChanged, currency }: { res: ImportedReservationRow; position: "start" | "middle" | "end" | "single"; onChanged: () => void; currency: string }) {
   const { t } = useI18n();
   const label = PLATFORM_LABEL[res.platform_type] ?? res.source_name;
   const showLabel = position === "start" || position === "single";
@@ -192,32 +196,100 @@ function ImportedBlock({ res, position }: { res: ImportedReservationRow; positio
     position === "start" ? "rounded-s-lg rounded-e-none border-e-0" :
     position === "end" ? "rounded-e-lg rounded-s-none border-s-0" :
     "rounded-none border-s-0 border-e-0";
+
+  const color = res.source_color || "#64748b";
+  const textColor = pickTextColor(color);
+
+  const [open, setOpen] = useState(false);
+  const [price, setPrice] = useState<string>(res.override_price != null ? String(res.override_price) : "");
+  const [notes, setNotes] = useState<string>(res.override_notes ?? "");
+  const [saving, setSaving] = useState(false);
+  const saveFn = useServerFn(saveImportedOverride);
+  const removeFn = useServerFn(removeImportedReservation);
+
+  useEffect(() => {
+    if (open) {
+      setPrice(res.override_price != null ? String(res.override_price) : "");
+      setNotes(res.override_notes ?? "");
+    }
+  }, [open, res.override_price, res.override_notes]);
+
+  const doSave = async () => {
+    setSaving(true);
+    try {
+      const p = price.trim() === "" ? null : Number(price);
+      if (p != null && (!isFinite(p) || p < 0)) { toast.error("Invalid price"); return; }
+      await saveFn({ data: { reservation_id: res.id, price: p, notes: notes.trim() ? notes : null } });
+      toast.success(t("common.saved") ?? "Saved");
+      setOpen(false);
+      onChanged();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to save");
+    } finally { setSaving(false); }
+  };
+
+  const doRemove = async () => {
+    setSaving(true);
+    try {
+      await removeFn({ data: { reservation_id: res.id } });
+      toast.success("Removed");
+      setOpen(false);
+      onChanged();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    } finally { setSaving(false); }
+  };
+
+  const hasNote = !!res.override_notes;
+
   return (
-    <Popover>
-      <PopoverTrigger asChild>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
         <button
-          className={`flex h-11 w-full items-center gap-1 border border-dashed border-foreground/30 bg-muted/50 px-2 text-start text-[10px] font-semibold uppercase tracking-wide text-foreground/80 hover:bg-muted ${roundedClass}`}
-          style={{ backgroundImage: "repeating-linear-gradient(45deg, transparent 0 4px, hsl(var(--muted-foreground)/0.08) 4px 8px)" }}
+          className={`relative flex h-11 w-full items-center gap-1 border px-2 text-start text-[10px] font-semibold uppercase tracking-wide ${roundedClass}`}
+          style={{ backgroundColor: color, color: textColor, borderColor: color }}
         >
           {showLabel ? (
             <>
-              <CalendarClock className="h-3 w-3 shrink-0 opacity-60" />
+              <CalendarClock className="h-3 w-3 shrink-0 opacity-80" />
               <span className="truncate">{label}</span>
             </>
           ) : (
-            <span className="mx-auto text-[9px] opacity-60">{positionBadge}</span>
+            <span className="mx-auto text-[9px] opacity-80">{positionBadge}</span>
+          )}
+          {hasNote && (
+            <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-current opacity-90" />
           )}
         </button>
-      </PopoverTrigger>
-      <PopoverContent className="w-64" align="start">
-        <div className="space-y-1 text-xs">
-          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{t("cal.importedFrom")}</div>
-          <div className="font-semibold">{res.source_name} · {label}</div>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{res.source_name} · {label}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 text-sm">
           {res.summary && <div className="text-muted-foreground">{res.summary}</div>}
-          <div className="pt-1 text-muted-foreground">{res.start_date} → {res.end_date}</div>
+          <div className="text-xs text-muted-foreground">{res.start_date} → {res.end_date}</div>
+          <div className="space-y-1">
+            <Label className="text-xs">Price ({currency})</Label>
+            <Input type="number" min={0} step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Internal notes</Label>
+            <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />
+          </div>
+          <p className="text-[11px] text-muted-foreground">Color is controlled by the channel in Settings and applies to all its reservations.</p>
         </div>
-      </PopoverContent>
-    </Popover>
+        <DialogFooter className="gap-2 sm:justify-between">
+          <Button variant="destructive" onClick={doRemove} disabled={saving}>
+            <Trash2 className="me-1 h-4 w-4" /> Remove
+          </Button>
+          <div className="flex gap-2">
+            <Button variant="ghost" onClick={() => setOpen(false)} disabled={saving}>Discard</Button>
+            <Button onClick={doSave} disabled={saving}>Save</Button>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

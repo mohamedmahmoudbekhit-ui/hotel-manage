@@ -112,7 +112,9 @@ export const saveCalendarSource = createServerFn({ method: "POST" })
     const orgId = await resolveOrg(context.supabase, context.userId);
     if (!isLikelyIcalUrl(data.ical_url)) throw new Error("Invalid iCal URL");
     if (data.id) {
-      const patch: Record<string, unknown> = {
+      const patch: {
+        source_name: string; platform_type: string; ical_url: string; is_active: boolean; room_id: string; color?: string;
+      } = {
         source_name: data.source_name,
         platform_type: data.platform_type,
         ical_url: data.ical_url,

@@ -15,7 +15,7 @@ import { Plus, Trash2, CalendarClock, CalendarPlus } from "lucide-react";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { useI18n } from "@/lib/i18n";
-import { listImportedForMonth, type ImportedReservationRow } from "@/lib/hotel/calendar.functions";
+import { listImportedForMonth, saveImportedOverride, removeImportedReservation, type ImportedReservationRow } from "@/lib/hotel/calendar.functions";
 
 export const Route = createFileRoute("/_authenticated/bookings")({
 

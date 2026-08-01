@@ -13,12 +13,31 @@ export const Route = createFileRoute("/_authenticated")({
   beforeLoad: async ({ location }) => {
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) throw redirect({ to: "/auth" });
-    // Route super_admin (with no org) to /admin
-    const { data: roleRow } = await supabase.from("user_roles").select("role").eq("user_id", data.user.id).eq("role", "super_admin").maybeSingle();
-    if (roleRow && !location.pathname.startsWith("/admin")) {
+
+    console.log("[auth] authenticated email:", data.user.email);
+
+    // Resolve super_admin. If the email is on the seeded super-admin list this
+    // grants the role on first sign-in and bypasses hotel membership entirely.
+    let isSuperAdmin = false;
+    const { data: ensured, error: ensureError } = await supabase.rpc("ensure_super_admin_self");
+    if (ensureError) {
+      console.warn("[auth] super-admin check failed:", ensureError.message);
+      const { data: roleRow, error: roleError } = await supabase
+        .from("user_roles").select("role").eq("user_id", data.user.id).eq("role", "super_admin").maybeSingle();
+      if (roleError) console.warn("[auth] role lookup failed:", roleError.message);
+      isSuperAdmin = !!roleRow;
+    } else {
+      isSuperAdmin = ensured === true;
+    }
+
+    console.log("[auth] resolved role:", isSuperAdmin ? "super_admin" : "hotel user");
+
+    if (isSuperAdmin && !location.pathname.startsWith("/admin")) {
+      console.log("[auth] redirect destination: /admin");
       throw redirect({ to: "/admin" });
     }
-    return { user: data.user };
+    console.log("[auth] redirect destination:", location.pathname);
+    return { user: data.user, isSuperAdmin };
   },
   component: AuthedLayout,
 });

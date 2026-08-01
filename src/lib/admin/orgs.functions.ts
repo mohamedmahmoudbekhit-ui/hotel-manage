@@ -242,11 +242,12 @@ export const resendInvitation = createServerFn({ method: "POST" })
   });
 
 export const listSubscriptionPlans = createServerFn({ method: "GET" })
-  .handler(async () => {
-    const { createClient } = await import("@supabase/supabase-js");
-    const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_PUBLISHABLE_KEY!, {
-      auth: { storage: undefined, persistSession: false, autoRefreshToken: false },
-    });
-    const { data } = await supabase.from("subscription_plans").select("code, name, monthly_price_cents, trial_days").eq("is_active", true).order("sort_order", { ascending: true });
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data } = await context.supabase
+      .from("subscription_plans")
+      .select("code, name, monthly_price_cents, trial_days")
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true });
     return (data ?? []) as { code: string; name: string; monthly_price_cents: number; trial_days: number }[];
   });

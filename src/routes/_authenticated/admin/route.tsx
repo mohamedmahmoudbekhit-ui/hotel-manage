@@ -8,8 +8,15 @@ export const Route = createFileRoute("/_authenticated/admin")({
   beforeLoad: async () => {
     const { data } = await supabase.auth.getUser();
     if (!data.user) throw redirect({ to: "/auth" });
-    const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", data.user.id).eq("role", "super_admin").maybeSingle();
-    if (!roles) throw redirect({ to: "/" });
+    const { data: ensured, error } = await supabase.rpc("ensure_super_admin_self");
+    let isSuperAdmin = ensured === true;
+    if (error) {
+      console.warn("[admin] super-admin check failed:", error.message);
+      const { data: roleRow } = await supabase.from("user_roles").select("role").eq("user_id", data.user.id).eq("role", "super_admin").maybeSingle();
+      isSuperAdmin = !!roleRow;
+    }
+    console.log("[admin] email:", data.user.email, "| super_admin:", isSuperAdmin);
+    if (!isSuperAdmin) throw redirect({ to: "/" });
   },
   component: AdminShell,
 });

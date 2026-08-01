@@ -208,7 +208,7 @@ function HotelsPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Invitation link</DialogTitle>
-            <DialogDescription>Share this link with {inviteInfo?.email}. It expires in 30 days.</DialogDescription>
+            <DialogDescription>Share this link with {inviteInfo?.email}. It expires in 24 hours. Use the regenerate action to issue a new link.</DialogDescription>
           </DialogHeader>
           <div className="flex gap-2 py-2">
             <Input readOnly value={inviteInfo?.url ?? ""} onFocus={(e) => e.currentTarget.select()} />

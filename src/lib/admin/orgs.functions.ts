@@ -121,7 +121,7 @@ export const createOrganization = createServerFn({ method: "POST" })
     // Invitation
     const token = randomToken();
     const expires = new Date();
-    expires.setDate(expires.getDate() + 30);
+    expires.setHours(expires.getHours() + 24);
     const { error: invErr } = await context.supabase.from("organization_invitations").insert({
       organization_id: inserted.id,
       email: data.contact_email,
@@ -228,7 +228,7 @@ export const resendInvitation = createServerFn({ method: "POST" })
     if (!org) throw new Error("Org not found");
     const token = randomToken();
     const expires = new Date();
-    expires.setDate(expires.getDate() + 30);
+    expires.setHours(expires.getHours() + 24);
     const { error } = await context.supabase.from("organization_invitations").insert({
       organization_id: data.organization_id,
       email: (org as any).contact_email,

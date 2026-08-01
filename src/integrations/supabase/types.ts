@@ -516,6 +516,7 @@ export type Database = {
     }
     Functions: {
       current_org_id: { Args: { _user_id: string }; Returns: string }
+      ensure_super_admin_self: { Args: never; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

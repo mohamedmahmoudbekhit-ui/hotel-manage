@@ -67,9 +67,13 @@ function AcceptInvite() {
     setBusy(true);
     try {
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: `${window.location.origin}/accept-invite?token=${token}` } });
+        const { data, error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
-        toast.success("Check your email to confirm your account.");
+        if (!data.session) {
+          // Auto-confirm is enabled, so sign in right away to get a session.
+          const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+          if (signInError) throw signInError;
+        }
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;

@@ -25,62 +25,42 @@ function AcceptInvite() {
   const accept = useServerFn(acceptInvitation);
 
   const [info, setInfo] = useState<InvitationInfo | null>(null);
-  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
-  const [mode, setMode] = useState<"signup" | "signin">("signup");
-  const [session, setSession] = useState<boolean>(false);
 
   useEffect(() => {
     if (!token) return;
-    lookup({ data: { token } }).then((r) => {
-      setInfo(r);
-      if (r.email) setEmail(r.email);
-    }).catch(() => setInfo({ valid: false, reason: "error" }));
+    lookup({ data: { token } })
+      .then((r) => setInfo(r))
+      .catch(() => setInfo({ valid: false, reason: "error" }));
   }, [token, lookup]);
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(!!data.session));
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(!!s));
-    return () => sub.subscription.unsubscribe();
-  }, []);
-
-  const finalize = async () => {
-    if (!token) return;
-    try {
-      await accept({ data: { token } });
-      toast.success("You're in!");
-      navigate({ to: "/", replace: true });
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed");
-    }
-  };
-
-  useEffect(() => {
-    // If session becomes present and we have a valid invitation, accept it automatically
-    if (session && info?.valid && token) finalize();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session, info?.valid]);
-
-  const handleAuth = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!token || !info?.email) return;
+    if (password !== confirm) {
+      toast.error("Passwords do not match");
+      return;
+    }
     setBusy(true);
     try {
-      if (mode === "signup") {
-        const { data, error } = await supabase.auth.signUp({ email, password });
-        if (error) throw error;
-        if (!data.session) {
-          // Auto-confirm is enabled, so sign in right away to get a session.
-          const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-          if (signInError) throw signInError;
-        }
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
+      const email = info.email;
+      const { data, error } = await supabase.auth.signUp({ email, password });
+      if (error && !/already registered|already exists/i.test(error.message)) throw error;
+      if (!data?.session) {
+        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+        if (signInError) throw signInError;
       }
+      await accept({ data: { token } });
+      await supabase.auth.signOut();
+      toast.success("Account created. Please sign in.");
+      navigate({ to: "/auth", search: { joined: "1" }, replace: true });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed");
-    } finally { setBusy(false); }
+    } finally {
+      setBusy(false);
+    }
   };
 
   if (!token) {
@@ -88,11 +68,13 @@ function AcceptInvite() {
   }
   if (!info) return <Centered><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></Centered>;
   if (!info.valid) {
-    return <Centered><p className="text-sm text-muted-foreground">This invitation is not valid ({info.reason}).</p></Centered>;
-  }
-
-  if (session) {
-    return <Centered><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /><p className="mt-3 text-sm">Accepting invitation…</p></Centered>;
+    return (
+      <Centered>
+        <p className="text-sm text-muted-foreground">
+          This invitation is no longer valid ({info.reason}). Ask your administrator to generate a new link.
+        </p>
+      </Centered>
+    );
   }
 
   return (
@@ -107,29 +89,26 @@ function AcceptInvite() {
         </div>
         <div className="rounded-2xl border bg-card p-6 shadow-lg">
           <div className="mb-3 flex items-center gap-2 text-sm text-green-700">
-            <CheckCircle2 className="h-4 w-4" /> Invitation valid — {info.email}
+            <CheckCircle2 className="h-4 w-4" /> Invitation valid
           </div>
-          <form onSubmit={handleAuth} className="space-y-3">
+          <form onSubmit={handleSubmit} className="space-y-3">
             <div>
               <Label>Email</Label>
-              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+              <Input type="email" value={info.email ?? ""} readOnly disabled />
             </div>
             <div>
-              <Label>{mode === "signup" ? "Create password" : "Password"}</Label>
-              <Input type="password" minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} required />
+              <Label>Create password</Label>
+              <Input type="password" minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="new-password" />
+            </div>
+            <div>
+              <Label>Confirm password</Label>
+              <Input type="password" minLength={6} value={confirm} onChange={(e) => setConfirm(e.target.value)} required autoComplete="new-password" />
             </div>
             <Button type="submit" className="w-full" disabled={busy}>
               {busy && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
-              {mode === "signup" ? "Create account & join" : "Sign in & join"}
+              Create account
             </Button>
           </form>
-          <div className="mt-3 text-center text-sm text-muted-foreground">
-            {mode === "signup" ? (
-              <>Already have an account? <button className="font-semibold text-primary hover:underline" onClick={() => setMode("signin")}>Sign in</button></>
-            ) : (
-              <>New here? <button className="font-semibold text-primary hover:underline" onClick={() => setMode("signup")}>Create account</button></>
-            )}
-          </div>
         </div>
       </div>
     </div>

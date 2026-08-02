@@ -28,7 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Copy, Loader2, RefreshCw, UserPlus } from "lucide-react";
+import { Copy, Loader2, RefreshCw, Trash2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { useHotel } from "@/lib/hotel/store";
 import {
@@ -36,6 +36,7 @@ import {
   listTeamMembers,
   regenerateTeamInvite,
   setTeamMemberStatus,
+  deleteTeamMember,
   type TeamMember,
 } from "@/lib/team/users.functions";
 
@@ -65,6 +66,7 @@ function UsersPage() {
   const invite = useServerFn(inviteTeamMember);
   const regenerate = useServerFn(regenerateTeamInvite);
   const setStatus = useServerFn(setTeamMemberStatus);
+  const removeUser = useServerFn(deleteTeamMember);
 
   const [rows, setRows] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -73,6 +75,7 @@ function UsersPage() {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"hotel_staff" | "hotel_admin">("hotel_staff");
   const [linkFor, setLinkFor] = useState<{ email: string; url: string } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<TeamMember | null>(null);
 
   useEffect(() => {
     if (!hotelLoading && memberRole && memberRole !== "hotel_admin") {
@@ -151,6 +154,27 @@ function UsersPage() {
     }
   };
 
+  const activeOwners = rows.filter((r) => r.role === "hotel_admin" && r.status === "active").length;
+  const canDelete = (m: TeamMember) => !m.isSelf && !(m.role === "hotel_admin" && activeOwners <= 1);
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setBusy(deleteTarget.userId);
+    try {
+      await removeUser({ data: { userId: deleteTarget.userId } });
+      toast.success("User permanently deleted");
+      setDeleteTarget(null);
+      await refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete user");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const fmtDate = (v: string) =>
+    v ? new Date(v).toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" }) : "—";
+
   return (
     <div className="mx-auto w-full max-w-5xl space-y-6 p-4 md:p-6">
       <div className="flex flex-wrap items-center gap-3">
@@ -178,9 +202,11 @@ function UsersPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Name</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Created</TableHead>
                   <TableHead className="text-end">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -188,9 +214,10 @@ function UsersPage() {
                 {rows.map((m) => (
                   <TableRow key={m.userId}>
                     <TableCell className="font-medium">
-                      {m.email || "—"}
+                      {m.name || "—"}
                       {m.isSelf ? <span className="ms-2 text-xs text-muted-foreground">(you)</span> : null}
                     </TableCell>
+                    <TableCell>{m.email || "—"}</TableCell>
                     <TableCell>{ROLE_LABEL[m.role] ?? m.role}</TableCell>
                     <TableCell>
                       <Badge
@@ -199,6 +226,7 @@ function UsersPage() {
                         {m.status}
                       </Badge>
                     </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{fmtDate(m.createdAt)}</TableCell>
                     <TableCell className="text-end">
                       <div className="flex flex-wrap justify-end gap-2">
                         {m.pendingInviteToken ? (
@@ -234,13 +262,25 @@ function UsersPage() {
                             {m.status === "disabled" ? "Reactivate" : "Disable"}
                           </Button>
                         ) : null}
+                        {canDelete(m) ? (
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            className="gap-1.5"
+                            disabled={busy === m.userId}
+                            onClick={() => setDeleteTarget(m)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Delete
+                          </Button>
+                        ) : null}
                       </div>
                     </TableCell>
                   </TableRow>
                 ))}
                 {rows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="py-8 text-center text-sm text-muted-foreground">
+                    <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
                       No users yet.
                     </TableCell>
                   </TableRow>
@@ -289,6 +329,31 @@ function UsersPage() {
             <Button onClick={submitInvite} disabled={busy === "invite"}>
               {busy === "invite" ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : null}
               Create invitation
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!deleteTarget} onOpenChange={(v) => !v && setDeleteTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete user permanently?</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to permanently delete {deleteTarget?.email}? This removes their account, access and
+              invitations. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={busy === deleteTarget?.userId}
+              onClick={confirmDelete}
+            >
+              {busy === deleteTarget?.userId ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : null}
+              Delete permanently
             </Button>
           </DialogFooter>
         </DialogContent>

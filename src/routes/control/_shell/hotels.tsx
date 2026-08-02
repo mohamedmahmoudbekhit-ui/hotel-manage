@@ -295,7 +295,56 @@ function HotelsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Edit hotel dialog */}
+      <Dialog open={!!editRow} onOpenChange={(o) => !o && setEditRow(null)}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+          {editRow ? (
+            <form onSubmit={handleEdit} key={editRow.id}>
+              <DialogHeader>
+                <DialogTitle>Edit hotel details</DialogTitle>
+                <DialogDescription>Update {editRow.hotel_name}'s profile and subscription. Changing the contact email does not change the owner's login email.</DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-3 py-4">
+                <Field label="Hotel name *" name="hotel_name" required defaultValue={editRow.hotel_name} />
+                <Field label="Hotel owner name" name="contact_person" defaultValue={editRow.contact_person ?? ""} />
+                <Field label="Contact email *" name="contact_email" type="email" required defaultValue={editRow.contact_email} />
+                <Field label="Contact mobile *" name="contact_mobile" required defaultValue={editRow.contact_mobile} />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <Label htmlFor="edit_plan">Subscription plan</Label>
+                    <select id="edit_plan" name="subscription_plan" defaultValue={editRow.subscription_plan} className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm">
+                      {plans.map((p) => (<option key={p.code} value={p.code}>{p.name}</option>))}
+                      {plans.some((p) => p.code === editRow.subscription_plan) ? null : <option value={editRow.subscription_plan}>{editRow.subscription_plan}</option>}
+                    </select>
+                  </div>
+                  <div>
+                    <Label htmlFor="edit_sub_status">Subscription status</Label>
+                    <select id="edit_sub_status" name="subscription_status" defaultValue={editRow.subscription_status} className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm capitalize">
+                      {["trial", "active", "expired", "suspended", "cancelled"].map((s) => (<option key={s} value={s}>{s}</option>))}
+                    </select>
+                  </div>
+                  <div>
+                    <Label htmlFor="edit_acct_status">Account status</Label>
+                    <select id="edit_acct_status" name="account_status" defaultValue={editRow.account_status} className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm capitalize">
+                      {["active", "suspended"].map((s) => (<option key={s} value={s}>{s}</option>))}
+                    </select>
+                  </div>
+                  <Field label="Renewal date" name="renewal_date" type="date" defaultValue={editRow.renewal_date ?? ""} />
+                  <Field label="Expiry date" name="expiry_date" type="date" defaultValue={editRow.expiry_date ?? ""} />
+                </div>
+                <Field label="Notes" name="notes" defaultValue={editRow.notes ?? ""} />
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="ghost" onClick={() => setEditRow(null)}>Cancel</Button>
+                <Button type="submit" disabled={editBusy}>{editBusy ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : null}Save changes</Button>
+              </DialogFooter>
+            </form>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
+
   );
 }
 

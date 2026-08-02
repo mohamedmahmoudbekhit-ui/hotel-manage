@@ -176,7 +176,7 @@ function BookingsPage() {
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-4 px-4 py-6 sm:px-6 lg:px-8">
-      <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 sm:flex sm:flex-wrap sm:items-end sm:justify-between">
+      <header className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
         <div className="min-w-0">
           <h1 className="truncate text-2xl font-bold tracking-tight sm:text-3xl">{t("bookings.title")}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -185,7 +185,7 @@ function BookingsPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="inline-flex rounded-lg border bg-muted/40 p-0.5">
+          <div className="inline-flex shrink-0 rounded-lg border bg-muted/40 p-0.5">
             <button
               type="button"
               onClick={() => setView("month")}
@@ -235,11 +235,11 @@ function BookingsPage() {
           {view === "month" ? (
             <MonthSelector />
           ) : (
-            <div className="flex items-center gap-1">
-              <Button variant="outline" size="icon" onClick={() => shiftDay(-1)} title="Previous day">
+            <div className="flex min-w-0 flex-1 items-center gap-1 sm:flex-none">
+              <Button variant="outline" size="icon" className="shrink-0" onClick={() => shiftDay(-1)} title="Previous day">
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <Input type="date" value={dayIso} onChange={(e) => e.target.value && setDayIso(e.target.value)} className="w-[160px]" />
+              <Input type="date" value={dayIso} onChange={(e) => e.target.value && setDayIso(e.target.value)} className="min-w-0 flex-1 sm:w-[160px] sm:flex-none" />
               <Button variant="outline" size="icon" onClick={() => shiftDay(1)} title="Next day">
                 <ChevronRight className="h-4 w-4" />
               </Button>
@@ -248,19 +248,19 @@ function BookingsPage() {
         </div>
       </header>
 
-      <div className="flex flex-wrap items-end gap-3 rounded-xl border bg-card p-3">
-        <div className="space-y-1">
+      <div className="grid grid-cols-2 items-end gap-3 rounded-xl border bg-card p-3 sm:flex sm:flex-wrap">
+        <div className="min-w-0 space-y-1">
           <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">From</Label>
-          <Input type="date" value={filters.from} className="h-9 w-[150px]" onChange={(e) => setFilters((f) => ({ ...f, from: e.target.value }))} />
+          <Input type="date" value={filters.from} className="h-9 w-full sm:w-[150px]" onChange={(e) => setFilters((f) => ({ ...f, from: e.target.value }))} />
         </div>
-        <div className="space-y-1">
+        <div className="min-w-0 space-y-1">
           <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">To</Label>
-          <Input type="date" value={filters.to} min={filters.from} className="h-9 w-[150px]" onChange={(e) => setFilters((f) => ({ ...f, to: e.target.value }))} />
+          <Input type="date" value={filters.to} min={filters.from} className="h-9 w-full sm:w-[150px]" onChange={(e) => setFilters((f) => ({ ...f, to: e.target.value }))} />
         </div>
-        <div className="space-y-1">
+        <div className="min-w-0 space-y-1">
           <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Source</Label>
           <Select value={filters.sourceKey} onValueChange={(v) => setFilters((f) => ({ ...f, sourceKey: v }))}>
-            <SelectTrigger className="h-9 w-[180px]"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="h-9 w-full sm:w-[180px]"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All sources</SelectItem>
               {settings.channels.map((ch) => (
@@ -272,10 +272,10 @@ function BookingsPage() {
             </SelectContent>
           </Select>
         </div>
-        <div className="space-y-1">
+        <div className="min-w-0 space-y-1">
           <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Room</Label>
           <Select value={filters.room} onValueChange={(v) => setFilters((f) => ({ ...f, room: v }))}>
-            <SelectTrigger className="h-9 w-[160px]"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="h-9 w-full sm:w-[160px]"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All rooms</SelectItem>
               {settings.rooms.map((r) => (
@@ -284,7 +284,7 @@ function BookingsPage() {
             </SelectContent>
           </Select>
         </div>
-        <div className="ms-auto flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="col-span-2 flex items-center gap-2 text-xs text-muted-foreground sm:ms-auto">
           <span><span className="font-semibold text-foreground">{exportRows.length}</span> booking(s) match</span>
           {filtersActive && (
             <Button variant="ghost" size="sm" onClick={() => setFilters({ from: monthStart, to: monthEnd, sourceKey: "all", room: "all" })}>

@@ -107,6 +107,73 @@ function BookingsPage() {
     setDayIso(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
   };
 
+  // ---- Filters (apply to the grid and to exports) ----
+  const monthStart = `${currentMonth.year}-${String(currentMonth.monthIndex + 1).padStart(2, "0")}-01`;
+  const monthEnd = `${currentMonth.year}-${String(currentMonth.monthIndex + 1).padStart(2, "0")}-${String(currentMonth.daysInMonth).padStart(2, "0")}`;
+  const [filters, setFilters] = useState<ExportFilters>({ from: monthStart, to: monthEnd, sourceKey: "all", room: "all" });
+  useEffect(() => {
+    setFilters((f) => ({ ...f, from: monthStart, to: monthEnd }));
+  }, [monthStart, monthEnd]);
+
+  const importedSources = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const r of imported) map.set(r.source_id, r.source_name);
+    return Array.from(map, ([id, name]) => ({ id, name }));
+  }, [imported]);
+
+  const filtersActive =
+    filters.from !== monthStart || filters.to !== monthEnd || filters.sourceKey !== "all" || filters.room !== "all";
+
+  const visibleRooms = filters.room === "all" ? settings.rooms : settings.rooms.filter((r) => r === filters.room);
+  const visibleDays = useMemo(() => {
+    const all = Array.from({ length: currentMonth.daysInMonth }, (_, i) => i + 1);
+    return all.filter((d) => {
+      const iso = `${currentMonth.year}-${String(currentMonth.monthIndex + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      if (filters.from && iso < filters.from) return false;
+      if (filters.to && iso > filters.to) return false;
+      return true;
+    });
+  }, [currentMonth.daysInMonth, currentMonth.year, currentMonth.monthIndex, filters.from, filters.to]);
+
+  const exportRows = useMemo(
+    () => applyFilters(buildBookingRows(currentMonth, settings, imported), filters),
+    [currentMonth, settings, imported, filters],
+  );
+
+  const periodLabel = `${formatMonthKey(currentMonth.key)}${filtersActive && (filters.from !== monthStart || filters.to !== monthEnd) ? ` (${filters.from} → ${filters.to})` : ""}`;
+  const filterSummary = [
+    filters.room !== "all" ? `Room: ${filters.room}` : null,
+    filters.sourceKey !== "all"
+      ? `Source: ${settings.channels.find((c) => c.id === filters.sourceKey)?.name ?? importedSources.find((s) => s.id === filters.sourceKey)?.name ?? filters.sourceKey}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  const doExportCsv = () => {
+    if (exportRows.length === 0) { toast.error("No bookings match the current filters."); return; }
+    downloadBlob(toCsv(exportRows, settings.currency), `${exportFileBase(currentMonth)}.csv`, "text/csv;charset=utf-8;");
+    toast.success(`Exported ${exportRows.length} booking(s) to CSV.`);
+  };
+
+  const doExportPdf = async () => {
+    if (exportRows.length === 0) { toast.error("No bookings match the current filters."); return; }
+    try {
+      await exportPdf({
+        rows: exportRows,
+        hotelName,
+        currency: settings.currency,
+        periodLabel,
+        filterSummary,
+        filename: `${exportFileBase(currentMonth)}.pdf`,
+      });
+      toast.success(`Exported ${exportRows.length} booking(s) to PDF.`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to generate PDF");
+    }
+  };
+
+
   return (
     <div className="mx-auto max-w-[1400px] space-y-4 px-4 py-6 sm:px-6 lg:px-8">
       <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 sm:flex sm:flex-wrap sm:items-end sm:justify-between">

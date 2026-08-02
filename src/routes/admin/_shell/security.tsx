@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ShieldCheck, KeyRound, Copy, Loader2, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/console/_shell/security")({
+export const Route = createFileRoute("/admin/_shell/security")({
   component: SecurityPage,
 });
 

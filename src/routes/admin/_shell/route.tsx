@@ -4,20 +4,20 @@ import { Button } from "@/components/ui/button";
 import { LogOut, LayoutDashboard, Building2, ShieldCheck } from "lucide-react";
 
 /** Gate for every console page: super admin + a verified second factor (AAL2). */
-export const Route = createFileRoute("/console/_shell")({
+export const Route = createFileRoute("/admin/_shell")({
   ssr: false,
   beforeLoad: async () => {
     const { data } = await supabase.auth.getUser();
-    if (!data.user) throw redirect({ to: "/console/login" });
+    if (!data.user) throw redirect({ to: "/admin/login" });
 
     const { data: isSuperAdmin } = await supabase.rpc("ensure_super_admin_self");
     if (isSuperAdmin !== true) {
       await supabase.auth.signOut();
-      throw redirect({ to: "/console/login" });
+      throw redirect({ to: "/admin/login" });
     }
 
     const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-    if (aal?.currentLevel !== "aal2") throw redirect({ to: "/console/login" });
+    if (aal?.currentLevel !== "aal2") throw redirect({ to: "/admin/login" });
 
     return { user: data.user };
   },
@@ -29,7 +29,7 @@ function ConsoleShell() {
   const navigate = useNavigate();
   const signOut = async () => {
     await supabase.auth.signOut();
-    navigate({ to: "/console/login", replace: true });
+    navigate({ to: "/admin/login", replace: true });
   };
   return (
     <div className="flex min-h-screen bg-background">
@@ -42,9 +42,9 @@ function ConsoleShell() {
           </div>
         </div>
         <nav className="space-y-1 p-3">
-          <NavItem to="/console" icon={<LayoutDashboard className="h-4 w-4" />} label="Dashboard" active={pathname === "/console"} />
-          <NavItem to="/console/hotels" icon={<Building2 className="h-4 w-4" />} label="Hotels" active={pathname.startsWith("/console/hotels")} />
-          <NavItem to="/console/security" icon={<ShieldCheck className="h-4 w-4" />} label="Security" active={pathname.startsWith("/console/security")} />
+          <NavItem to="/admin" icon={<LayoutDashboard className="h-4 w-4" />} label="Dashboard" active={pathname === "/admin"} />
+          <NavItem to="/admin/hotels" icon={<Building2 className="h-4 w-4" />} label="Hotels" active={pathname.startsWith("/admin/hotels")} />
+          <NavItem to="/admin/security" icon={<ShieldCheck className="h-4 w-4" />} label="Security" active={pathname.startsWith("/admin/security")} />
         </nav>
       </aside>
       <div className="flex flex-1 flex-col">

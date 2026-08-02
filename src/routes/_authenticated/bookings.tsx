@@ -339,8 +339,9 @@ function BookingsPage() {
                     (importedHere ? importedHere.res.source_id === filters.sourceKey : cell ? cell.channelId === filters.sourceKey : true);
                   const prev = currentMonth.cells[room]?.[day - 1] ?? null;
                   const next = currentMonth.cells[room]?.[day + 1] ?? null;
-                  const contPrev = !!cell && !!prev && prev.channelId === cell.channelId;
-                  const contNext = !!cell && !!next && next.channelId === cell.channelId;
+                  // Only nights of the SAME reservation (same bookingId) connect.
+                  const contPrev = !!cell?.bookingId && prev?.bookingId === cell.bookingId;
+                  const contNext = !!cell?.bookingId && next?.bookingId === cell.bookingId;
                   const position: "start" | "middle" | "end" | "single" =
                     !contPrev && !contNext ? "single" : !contPrev ? "start" : !contNext ? "end" : "middle";
                   return (

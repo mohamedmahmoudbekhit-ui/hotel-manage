@@ -330,8 +330,10 @@ export function HotelProvider({ children }: { children: ReactNode }) {
   const addMonth = useCallback((year: number, monthIndex: number) => {
     setState((s) => {
       const m = emptyMonth(year, monthIndex, s.settings);
+      persistMonthKey(m.key);
       if (s.months[m.key]) return { ...s, currentMonthKey: m.key };
       return { ...s, months: { ...s.months, [m.key]: m }, currentMonthKey: m.key };
+
     });
   }, []);
 

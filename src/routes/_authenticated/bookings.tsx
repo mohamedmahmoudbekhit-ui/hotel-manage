@@ -85,6 +85,23 @@ function BookingsPage() {
     return map;
   }, [imported, currentMonth.year, currentMonth.monthIndex]);
 
+  const [view, setView] = useState<"month" | "day">("month");
+  const [dayIso, setDayIso] = useState<string>(() => {
+    const now = new Date();
+    const inMonth = now.getFullYear() === currentMonth.year && now.getMonth() === currentMonth.monthIndex;
+    const d = inMonth ? now.getDate() : 1;
+    return `${currentMonth.year}-${String(currentMonth.monthIndex + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  });
+  const selectedDate = useMemo(() => {
+    const [y, m, d] = dayIso.split("-").map(Number);
+    return new Date(y, (m ?? 1) - 1, d ?? 1);
+  }, [dayIso]);
+  const shiftDay = (delta: number) => {
+    const d = new Date(selectedDate);
+    d.setDate(d.getDate() + delta);
+    setDayIso(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
+  };
+
   return (
     <div className="mx-auto max-w-[1400px] space-y-4 px-4 py-6 sm:px-6 lg:px-8">
       <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 sm:flex sm:flex-wrap sm:items-end sm:justify-between">
@@ -95,7 +112,23 @@ function BookingsPage() {
             <span className="text-foreground">{formatCurrency(totals.totalRevenue, settings.currency)}</span>
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex rounded-lg border bg-muted/40 p-0.5">
+            <button
+              type="button"
+              onClick={() => setView("month")}
+              className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${view === "month" ? "bg-card shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              Monthly
+            </button>
+            <button
+              type="button"
+              onClick={() => setView("day")}
+              className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${view === "day" ? "bg-card shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              Daily
+            </button>
+          </div>
           <AddBookingDialog
             rooms={settings.rooms}
             channels={settings.channels}
@@ -111,10 +144,31 @@ function BookingsPage() {
               }
             }}
           />
-          <MonthSelector />
+          {view === "month" ? (
+            <MonthSelector />
+          ) : (
+            <div className="flex items-center gap-1">
+              <Button variant="outline" size="icon" onClick={() => shiftDay(-1)} title="Previous day">
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Input type="date" value={dayIso} onChange={(e) => e.target.value && setDayIso(e.target.value)} className="w-[160px]" />
+              <Button variant="outline" size="icon" onClick={() => shiftDay(1)} title="Next day">
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
         </div>
       </header>
 
+      {view === "day" ? (
+        <>
+          <p className="text-sm text-muted-foreground">
+            {selectedDate.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+          </p>
+          <DailyView date={selectedDate} imported={imported} />
+        </>
+      ) : (
+      <>
       <div className="flex flex-wrap items-center gap-3 rounded-xl border bg-card p-3 text-xs">
         {settings.channels.map((ch) => (
           <div key={ch.id} className="flex items-center gap-1.5">
@@ -133,6 +187,7 @@ function BookingsPage() {
 
       <div className="rounded-2xl border bg-card shadow-soft">
         <table className="w-full border-separate border-spacing-0 text-sm">
+
           <thead className="sticky top-14 z-20 bg-muted/95 backdrop-blur supports-[backdrop-filter]:bg-muted/75">
             <tr>
               <th className="sticky start-0 z-20 bg-muted/80 px-3 py-3 text-start text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("bookings.day")}</th>

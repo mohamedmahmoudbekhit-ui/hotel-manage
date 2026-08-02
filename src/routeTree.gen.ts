@@ -21,6 +21,7 @@ import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authentic
 import { Route as AuthenticatedExpensesRouteImport } from './routes/_authenticated/expenses'
 import { Route as AuthenticatedChartsRouteImport } from './routes/_authenticated/charts'
 import { Route as AuthenticatedBookingsRouteImport } from './routes/_authenticated/bookings'
+import { Route as ConsoleShellRouteRouteImport } from './routes/console/_shell/route'
 import { Route as AuthenticatedAdminRouteRouteImport } from './routes/_authenticated/admin/route'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
 import { Route as AuthenticatedAdminHotelsRouteImport } from './routes/_authenticated/admin/hotels'
@@ -85,6 +86,10 @@ const AuthenticatedBookingsRoute = AuthenticatedBookingsRouteImport.update({
   path: '/bookings',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ConsoleShellRouteRoute = ConsoleShellRouteRouteImport.update({
+  id: '/_shell',
+  getParentRoute: () => ConsoleRouteRoute,
+} as any)
 const AuthenticatedAdminRouteRoute = AuthenticatedAdminRouteRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -147,6 +152,7 @@ export interface FileRoutesById {
   '/accept-invite': typeof AcceptInviteRoute
   '/auth': typeof AuthRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteRouteWithChildren
+  '/console/_shell': typeof ConsoleShellRouteRoute
   '/_authenticated/bookings': typeof AuthenticatedBookingsRoute
   '/_authenticated/charts': typeof AuthenticatedChartsRoute
   '/_authenticated/expenses': typeof AuthenticatedExpensesRoute
@@ -200,6 +206,7 @@ export interface FileRouteTypes {
     | '/accept-invite'
     | '/auth'
     | '/_authenticated/admin'
+    | '/console/_shell'
     | '/_authenticated/bookings'
     | '/_authenticated/charts'
     | '/_authenticated/expenses'
@@ -307,6 +314,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedBookingsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/console/_shell': {
+      id: '/console/_shell'
+      path: ''
+      fullPath: '/console'
+      preLoaderRoute: typeof ConsoleShellRouteRouteImport
+      parentRoute: typeof ConsoleRouteRoute
+    }
     '/_authenticated/admin': {
       id: '/_authenticated/admin'
       path: '/admin'
@@ -380,10 +394,12 @@ const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
 interface ConsoleRouteRouteChildren {
+  ConsoleShellRouteRoute: typeof ConsoleShellRouteRoute
   ConsoleLoginRoute: typeof ConsoleLoginRoute
 }
 
 const ConsoleRouteRouteChildren: ConsoleRouteRouteChildren = {
+  ConsoleShellRouteRoute: ConsoleShellRouteRoute,
   ConsoleLoginRoute: ConsoleLoginRoute,
 }
 

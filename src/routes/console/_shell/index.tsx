@@ -5,7 +5,7 @@ import { dashboardStats, type DashboardStats } from "@/lib/admin/orgs.functions"
 import { Card } from "@/components/ui/card";
 import { Building2, CheckCircle2, Clock, AlertTriangle, DollarSign } from "lucide-react";
 
-export const Route = createFileRoute("/_authenticated/admin/")({
+export const Route = createFileRoute("/console/_shell/")({
   component: AdminHome,
 });
 

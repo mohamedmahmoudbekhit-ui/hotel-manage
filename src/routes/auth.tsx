@@ -176,7 +176,7 @@ function AuthPage() {
                 <h1 className="text-xl font-bold">Verify it&apos;s you</h1>
               </div>
               <p className="mt-1 text-sm text-muted-foreground">
-                For extra security we sent a 6-digit code to <span className="font-medium text-foreground">{email}</span>. Enter it to finish signing in.
+                For extra security we emailed <span className="font-medium text-foreground">{email}</span>. Open the email and click the sign-in link, or paste the code from it below.
               </p>
 
               <form onSubmit={handleVerify} className="mt-5 space-y-3">

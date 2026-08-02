@@ -1,82 +1,35 @@
+## Diagnosis (verified)
 
-# Multi-Tenant SaaS Transformation
+The super-admin account `mohamedmahmoudbekhit@gmail.com` exists in the auth system but has **no password on record** — it was created through Google sign-in, which was removed when we went invitation-only. So every password attempt at `/console/login` correctly returns "Invalid credentials". A first-time password step is exactly what's missing.
 
-Scope is large. Shipping in one coordinated change so the app stays runnable throughout.
+## What to build
 
-## 1. Data model (one migration)
+### 1. "Set / reset password" entry point on the console sign-in page
+Add a small link under the credentials form: **"First time here? Set your password"**.
 
-Wipe existing tenant data (per your choice), then rebuild scoping around `organization_id`.
+It asks for the email only and sends a secure one-time link to that mailbox. To avoid revealing which addresses are platform admins, the page always shows the same neutral message ("If this address is authorized, a link is on its way").
 
-New tables:
-- `organizations` — hotel_name, logo_url, contact_person, contact_email, contact_mobile, subscription_plan, subscription_status (`trial|active|expired|suspended|cancelled`), start_date, renewal_date, expiry_date, account_status (`active|suspended`), notes, monthly_price_cents, created_at, updated_at
-- `organization_members` — (org_id, user_id, role: `hotel_admin|hotel_staff`, status)
-- `organization_invitations` — org_id, email, role, token (hashed), expires_at, accepted_at, created_by
-- `subscription_history` — org_id, action, old_status, new_status, changed_by, created_at
-- `subscription_plans` — code, name, monthly_price_cents, trial_days, features (jsonb) — seeded with **Trial (14 days), Basic ($29/mo), Pro ($79/mo), Enterprise (contact)**. Editable later from super-admin UI.
-- `app_role` enum (`super_admin`, `hotel_admin`, `hotel_staff`) + `user_roles` table + `has_role()` security-definer function
+Behind it, a server-side check confirms the address is on the platform-admin allowlist before any email is sent; anything else silently does nothing.
 
-Refactored tables (drop existing rows, add `organization_id uuid not null`):
-- `hotel_state`, `rooms`, `calendar_sources`, `ical_reservations`
+### 2. New page: `/console/set-password`
+Opened from the emailed link. It:
+- Confirms the link is valid and belongs to an allowlisted platform admin (otherwise it signs out and bounces to `/console/login`).
+- Shows Password + Confirm password with basic strength rules.
+- Saves the password, signs the user out, and returns them to `/console/login` with a success message.
 
-RLS rewritten so every tenant table is gated by `is_member_of(auth.uid(), organization_id)`. Super admin bypasses via `has_role(auth.uid(),'super_admin')`. No hotel can see another hotel's data — enforced in the database, not in code.
+### 3. Flow after that (unchanged)
+`/console/login` → email + password → because no authenticator is enrolled yet, the QR setup screen appears → scan with Google/Microsoft Authenticator → enter the 6-digit code → save the 10 backup recovery codes → console.
 
-Storage: `hotel-logos` bucket policies updated to scope by `organization_id` path prefix.
+## Security notes
 
-## 2. Auth & invitation flow
+- The password link is delivered only to the mailbox on the admin allowlist, so possession of the inbox is required — no one can set an admin password from the UI alone.
+- The link is single-use and short-lived, and the page rejects any session that isn't an allowlisted platform admin.
+- MFA is still mandatory: setting a password alone grants nothing, since the console gate requires a verified second factor.
+- The customer login at `/auth` continues to reject super-admin accounts.
 
-- Email/password stays; Google stays.
-- Super admin creates an org + fills contact fields.
-- Server function generates an invitation token, sends email via Lovable Emails ("You've been invited to {hotel_name}"). Link → `/accept-invite?token=…` where the user sets a password (or signs in with Google) and is attached to the org as `hotel_admin`.
-- Anonymous signup at `/auth` is disabled — only invited users can join. Super admin is bootstrapped separately (see §5).
-- Lovable Emails domain setup dialog opens first; invites will start delivering once DNS verifies.
+## Technical details
 
-## 3. Super Admin dashboard (`/admin/*`, gated by `super_admin` role)
-
-- **Overview**: KPI cards — Total Hotels, Active, Expired, Trial, MRR (sum of active orgs' plan price).
-- **Hotels list**: search + filter by status/plan; columns: hotel, contact, mobile, email, plan, status, renewal date, actions.
-- **Actions per hotel**: view, edit, suspend, reactivate, extend subscription (date picker → writes to `subscription_history`), delete, resend invitation, copy invite link.
-- **Create hotel** dialog: hotel name, contact email, mobile, plan → creates org + sends invite.
-- **Hotel detail page**: full profile, subscription history timeline, members list, notes.
-- **Expiry alerts**: banner listing orgs expiring in ≤7 days; nightly cron marks expired orgs and appends to history.
-
-## 4. Hotel Admin experience
-
-- Existing bookings/rooms/expenses/charts/settings routes move to be org-scoped automatically via RLS. Store reads/writes swap `user_id` → `organization_id` (resolved from current membership).
-- Header shows hotel name from the org; settings can update hotel name & logo (writes to `organizations`).
-- Suspended or expired orgs → blocking screen with "Contact support" message; super admin unaffected.
-- Renewal-approaching banner (≤7 days before `renewal_date`).
-
-## 5. Bootstrapping your super-admin account
-
-Migration inserts your email into a `super_admin_emails` seed table. First time you sign in with `mohamedmahmoudbekhit@gmail.com`, a trigger grants the `super_admin` role automatically (verified email required — no privilege escalation from unverified signups). You'll go to `/auth`, sign in (Google or email), and land on `/admin`.
-
-## 6. Notifications
-
-- In-app: expiry banners for super admin and hotel admin.
-- Email: 7-day pre-renewal reminder to hotel contact, expiry notice to super admin. Sent by pg_cron → `/api/public/hooks/subscription-notify` (daily). Skipped until email domain is verified.
-
-## 7. Rollout order (single session)
-
-1. Email domain setup dialog.
-2. Migration (wipe + new schema + RLS + super_admin bootstrap trigger + seed plans).
-3. Server functions: orgs CRUD, invitations, membership resolution, subscription actions, KPIs.
-4. Scaffold auth + transactional email templates (invitation, renewal reminder, expired notice).
-5. Rewire `HotelProvider` to load state by `organization_id`.
-6. New routes: `/admin`, `/admin/hotels`, `/admin/hotels/$id`, `/accept-invite`.
-7. Route gates: super_admin layout, suspended/expired blocker for hotel routes.
-8. Cron: daily subscription status sweep + reminders.
-
-## Technical notes
-
-- Role checks use security-definer `has_role()` / `is_member_of()` — no recursive RLS.
-- All privileged server fns verify caller role, never trust client.
-- `hotel_state.data` JSON keeps its current shape; only the row key changes from `user_id` to `organization_id`.
-- Existing calendar sync cron keeps working — it iterates all active sources regardless of org.
-- Deleting an org cascades to members, invitations, hotel_state, rooms, calendar_sources, ical_reservations, subscription_history.
-
-## What you need to do
-
-- Complete the email domain setup dialog when it appears (one-time DNS records).
-- Sign in with `mohamedmahmoudbekhit@gmail.com` after the migration to claim super-admin.
-
-Approve to proceed, or tell me what to change (plans, pricing, notification cadence, etc.).
+- Send the link with `resetPasswordForEmail(email, { redirectTo: origin + '/console/set-password' })`, invoked from a server function that first verifies the address exists in `super_admin_emails` (allowlist lookup runs server-side with privileged access; the client response is always neutral).
+- `/console/set-password` is a public route (outside `_shell`, so the AAL2 gate doesn't block it), calls `supabase.auth.updateUser({ password })`, then `signOut()` and navigates to `/console/login`.
+- Guard the page by re-checking `ensure_super_admin_self()` after the recovery session hydrates; sign out and redirect if it isn't `true`.
+- No database migration needed.

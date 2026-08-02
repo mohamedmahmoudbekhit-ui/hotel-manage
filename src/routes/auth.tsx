@@ -74,7 +74,7 @@ function AuthPage() {
         await sendCode();
         setPassword("");
         setStep("verify");
-        toast.success("We emailed you a verification code.");
+        toast.success("We emailed you a confirmation link and code.");
       } else {
         holdNav.current = false;
         navigate({ to: "/", replace: true });

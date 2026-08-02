@@ -23,7 +23,17 @@ interface Ctx extends StateShape {
   isBookingAgent: boolean;
   subscriptionStatus: string | null;
   currentMonth: MonthData;
+  /** iCal reservations covering every month held in state. */
+  imported: ImportedReservationRow[];
+  reloadImported: () => void;
+  /** Current month with imported reservations merged in as nightly cells. */
+  analyticsMonth: MonthData;
+  /** Settings incl. synthetic channels for unmapped iCal sources. */
+  analyticsSettings: Settings;
+  /** Merge imported reservations into any month held in state. */
+  analyticsFor: (m: MonthData) => { month: MonthData; settings: Settings };
   setCurrentMonthKey: (k: string) => void;
+
   updateCell: (room: string, day: number, cell: Cell | null) => void;
   addBookingRange: (params: { room: string; from: string; to: string; channelId: string; price: number; note?: string }) => { written: number; skipped: number; nights: number };
   updateMonthMeta: (patch: Partial<Pick<MonthData, "expenses" | "usdRate" | "managementPct">>) => void;

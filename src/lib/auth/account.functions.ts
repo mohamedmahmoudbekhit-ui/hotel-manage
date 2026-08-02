@@ -88,13 +88,16 @@ export const activateAccount = createServerFn({ method: "POST" })
       );
     if (memErr) throw new Error(memErr.message);
 
-    // Remove any other pending placeholder membership rows for this hotel.
-    await supabaseAdmin
-      .from("organization_members")
-      .delete()
-      .eq("organization_id", inv.organization_id)
-      .eq("status", "pending")
-      .neq("user_id", userId);
+    // Remove other pending owner placeholder rows for this hotel (never staff).
+    if (inv.role === "hotel_admin") {
+      await supabaseAdmin
+        .from("organization_members")
+        .delete()
+        .eq("organization_id", inv.organization_id)
+        .eq("status", "pending")
+        .eq("role", "hotel_admin")
+        .neq("user_id", userId);
+    }
 
     await supabaseAdmin.from("user_roles").insert({ user_id: userId, role: inv.role }).select();
 

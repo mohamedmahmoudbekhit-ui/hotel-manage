@@ -14,6 +14,7 @@ export interface LoadResult {
   expiryDate?: string | null;
   renewalDate?: string | null;
   isSuperAdmin?: boolean;
+  memberRole?: string | null;
 }
 
 const stateSchema = z.object({
@@ -22,16 +23,25 @@ const stateSchema = z.object({
   onboarded: z.boolean().optional(),
 });
 
-async function resolveCurrentOrg(supabase: any, userId: string): Promise<string | null> {
+async function resolveCurrentMembership(
+  supabase: any,
+  userId: string,
+): Promise<{ organizationId: string; role: string } | null> {
   const { data } = await supabase
     .from("organization_members")
-    .select("organization_id")
+    .select("organization_id, role")
     .eq("user_id", userId)
     .eq("status", "active")
     .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
-  return data?.organization_id ?? null;
+  if (!data?.organization_id) return null;
+  return { organizationId: data.organization_id, role: data.role };
+}
+
+async function resolveCurrentOrg(supabase: any, userId: string): Promise<string | null> {
+  const m = await resolveCurrentMembership(supabase, userId);
+  return m?.organizationId ?? null;
 }
 
 export const loadHotelState = createServerFn({ method: "GET" })
@@ -44,9 +54,10 @@ export const loadHotelState = createServerFn({ method: "GET" })
       .eq("user_id", context.userId);
     const isSuperAdmin = !!roleRows?.some((r: any) => r.role === "super_admin");
 
-    const orgId = await resolveCurrentOrg(context.supabase, context.userId);
+    const membership = await resolveCurrentMembership(context.supabase, context.userId);
+    const orgId = membership?.organizationId ?? null;
     if (!orgId) {
-      return { exists: false, hotelName: "", onboarded: false, data: null, organizationId: null, isSuperAdmin };
+      return { exists: false, hotelName: "", onboarded: false, data: null, organizationId: null, isSuperAdmin, memberRole: null };
     }
 
     const [{ data: stateRow }, { data: orgRow }] = await Promise.all([
@@ -66,6 +77,7 @@ export const loadHotelState = createServerFn({ method: "GET" })
       expiryDate: orgRow?.expiry_date ?? null,
       renewalDate: orgRow?.renewal_date ?? null,
       isSuperAdmin,
+      memberRole: membership?.role ?? null,
     };
   });
 

@@ -392,11 +392,11 @@ function ImportedBlock({ res, channel, position, onChanged, currency }: { res: I
     position === "start" ? t("cal.checkIn") ?? "Check-in" :
     position === "end" ? t("cal.checkOut") ?? "Check-out" :
     position === "middle" ? "•" : null;
-  const roundedClass =
-    position === "single" ? "rounded-lg" :
-    position === "start" ? "rounded-s-lg rounded-e-none border-e-0" :
-    position === "end" ? "rounded-e-lg rounded-s-none border-s-0" :
-    "rounded-none border-s-0 border-e-0";
+  const roundedClass = blockRounding(position);
+  const resNights = nightsBetween(res.start_date, res.end_date);
+  const nightly =
+    res.override_price != null && resNights > 0 ? res.override_price / resNights : null;
+
 
   const color = channel.color || res.source_color || "#64748b";
   const textColor = pickTextColor(color);

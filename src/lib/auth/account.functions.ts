@@ -51,6 +51,10 @@ export const activateAccount = createServerFn({ method: "POST" })
     if (inv.accepted_at) throw new Error("This activation link has already been used.");
     if (new Date(inv.expires_at) < new Date()) throw new Error("This activation link has expired.");
 
+    const { assertNotPlatformAdminEmail } = await import("@/lib/auth/platform-admin.server");
+    await assertNotPlatformAdminEmail(inv.email);
+
+
     // Resolve (or create) the account for this invited email.
     let userId: string | null = null;
     const { data: created, error: createErr } = await supabaseAdmin.auth.admin.createUser({

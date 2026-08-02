@@ -52,9 +52,13 @@ function LoginPage() {
       if (isSuperAdmin === true) {
         await supabase.auth.signOut();
         setPassword("");
-        toast.error("This account cannot sign in here.");
+        toast.error(
+          "This email is registered as a platform administrator, so it can't be used as a hotel or employee account. Sign in at the admin portal, or ask your owner to invite a different email.",
+          { duration: 8000 },
+        );
         return;
       }
+
 
       navigate({ to: "/", replace: true });
     } catch (err) {

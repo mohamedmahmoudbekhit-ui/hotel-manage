@@ -132,8 +132,33 @@ export const createOrganization = createServerFn({ method: "POST" })
     });
     if (invErr) throw new Error(invErr.message);
 
+    // Create the owner account up-front in a pending state so it exists before
+    // activation. The password is only ever set by the owner themselves.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: createdUser } = await supabaseAdmin.auth.admin.createUser({
+      email: data.contact_email,
+      email_confirm: true,
+    });
+    if (createdUser?.user) {
+      await supabaseAdmin.from("organization_members").upsert({
+        organization_id: inserted.id,
+        user_id: createdUser.user.id,
+        role: "hotel_admin",
+        status: "pending",
+      }, { onConflict: "organization_id,user_id" });
+    }
+
+    await supabaseAdmin.from("auth_audit_log").insert({
+      action: "activation_invited",
+      email: data.contact_email,
+      organization_id: inserted.id,
+      user_id: context.userId,
+      detail: { hotel_name: data.hotel_name, expires_at: expires.toISOString() },
+    });
+
     return { id: inserted.id, inviteToken: token };
   });
+
 
 export const updateOrganization = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

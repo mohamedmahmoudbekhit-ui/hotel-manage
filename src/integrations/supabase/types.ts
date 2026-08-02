@@ -84,6 +84,7 @@ export type Database = {
       }
       calendar_sources: {
         Row: {
+          channel_id: string | null
           color: string
           created_at: string
           ical_url: string
@@ -98,6 +99,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          channel_id?: string | null
           color?: string
           created_at?: string
           ical_url: string
@@ -112,6 +114,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          channel_id?: string | null
           color?: string
           created_at?: string
           ical_url?: string

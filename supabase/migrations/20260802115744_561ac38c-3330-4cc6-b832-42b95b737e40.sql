@@ -1,0 +1,1 @@
+ALTER TABLE public.calendar_sources ADD COLUMN IF NOT EXISTS channel_id text;

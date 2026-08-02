@@ -216,6 +216,22 @@ function BookingsPage() {
               }
             }}
           />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="outline" className="gap-1.5">
+                <Download className="h-4 w-4" /> Export
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={() => doExportCsv()}>
+                <FileSpreadsheet className="me-2 h-4 w-4" /> CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => { void doExportPdf(); }}>
+                <FileText className="me-2 h-4 w-4" /> PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           {view === "month" ? (
             <MonthSelector />
           ) : (

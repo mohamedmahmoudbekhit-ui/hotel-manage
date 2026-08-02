@@ -14,6 +14,7 @@ import { Route as AcceptInviteRouteImport } from './routes/accept-invite'
 import { Route as ConsoleRouteRouteImport } from './routes/console/route'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as ConsoleSetPasswordRouteImport } from './routes/console/set-password'
 import { Route as ConsoleLoginRouteImport } from './routes/console/login'
 import { Route as AuthenticatedSummaryRouteImport } from './routes/_authenticated/summary'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
@@ -50,6 +51,11 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const ConsoleSetPasswordRoute = ConsoleSetPasswordRouteImport.update({
+  id: '/set-password',
+  path: '/set-password',
+  getParentRoute: () => ConsoleRouteRoute,
 } as any)
 const ConsoleLoginRoute = ConsoleLoginRouteImport.update({
   id: '/login',
@@ -123,6 +129,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AuthenticatedSettingsRoute
   '/summary': typeof AuthenticatedSummaryRoute
   '/console/login': typeof ConsoleLoginRoute
+  '/console/set-password': typeof ConsoleSetPasswordRoute
   '/console/hotels': typeof ConsoleShellHotelsRoute
   '/console/security': typeof ConsoleShellSecurityRoute
   '/console/': typeof ConsoleShellIndexRoute
@@ -139,6 +146,7 @@ export interface FileRoutesByTo {
   '/settings': typeof AuthenticatedSettingsRoute
   '/summary': typeof AuthenticatedSummaryRoute
   '/console/login': typeof ConsoleLoginRoute
+  '/console/set-password': typeof ConsoleSetPasswordRoute
   '/': typeof AuthenticatedIndexRoute
   '/console/hotels': typeof ConsoleShellHotelsRoute
   '/console/security': typeof ConsoleShellSecurityRoute
@@ -158,6 +166,7 @@ export interface FileRoutesById {
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/summary': typeof AuthenticatedSummaryRoute
   '/console/login': typeof ConsoleLoginRoute
+  '/console/set-password': typeof ConsoleSetPasswordRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/console/_shell/hotels': typeof ConsoleShellHotelsRoute
   '/console/_shell/security': typeof ConsoleShellSecurityRoute
@@ -178,6 +187,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/summary'
     | '/console/login'
+    | '/console/set-password'
     | '/console/hotels'
     | '/console/security'
     | '/console/'
@@ -194,6 +204,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/summary'
     | '/console/login'
+    | '/console/set-password'
     | '/'
     | '/console/hotels'
     | '/console/security'
@@ -212,6 +223,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings'
     | '/_authenticated/summary'
     | '/console/login'
+    | '/console/set-password'
     | '/_authenticated/'
     | '/console/_shell/hotels'
     | '/console/_shell/security'
@@ -263,6 +275,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/console/set-password': {
+      id: '/console/set-password'
+      path: '/set-password'
+      fullPath: '/console/set-password'
+      preLoaderRoute: typeof ConsoleSetPasswordRouteImport
+      parentRoute: typeof ConsoleRouteRoute
     }
     '/console/login': {
       id: '/console/login'
@@ -392,11 +411,13 @@ const ConsoleShellRouteRouteWithChildren =
 interface ConsoleRouteRouteChildren {
   ConsoleShellRouteRoute: typeof ConsoleShellRouteRouteWithChildren
   ConsoleLoginRoute: typeof ConsoleLoginRoute
+  ConsoleSetPasswordRoute: typeof ConsoleSetPasswordRoute
 }
 
 const ConsoleRouteRouteChildren: ConsoleRouteRouteChildren = {
   ConsoleShellRouteRoute: ConsoleShellRouteRouteWithChildren,
   ConsoleLoginRoute: ConsoleLoginRoute,
+  ConsoleSetPasswordRoute: ConsoleSetPasswordRoute,
 }
 
 const ConsoleRouteRouteWithChildren = ConsoleRouteRoute._addFileChildren(
@@ -413,3 +434,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

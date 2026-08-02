@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { regenerateRecoveryCodes, redeemRecoveryCode } from "@/lib/admin/mfa.functions";
+import { sendConsolePasswordLink } from "@/lib/admin/console-password.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,12 +14,13 @@ export const Route = createFileRoute("/console/login")({
   component: ConsoleLogin,
 });
 
-type Step = "credentials" | "enroll" | "challenge" | "recovery" | "codes";
+type Step = "credentials" | "enroll" | "challenge" | "recovery" | "codes" | "forgot";
 
 function ConsoleLogin() {
   const navigate = useNavigate();
   const genCodes = useServerFn(regenerateRecoveryCodes);
   const redeem = useServerFn(redeemRecoveryCode);
+  const sendPasswordLink = useServerFn(sendConsolePasswordLink);
 
   const [step, setStep] = useState<Step>("credentials");
   const [email, setEmail] = useState("");

@@ -64,13 +64,36 @@ function bootstrapFromDefaults(settings: Settings): StateShape {
   return { settings, months: { [m.key]: m }, currentMonthKey: m.key };
 }
 
-/** Ensure the default month exists and is selected when the app first loads. */
+const MONTH_STORAGE_KEY = "hotel.currentMonthKey";
+
+function readStoredMonthKey(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.localStorage.getItem(MONTH_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function persistMonthKey(key: string) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(MONTH_STORAGE_KEY, key);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Ensure the default month exists; restore the last selected month when available. */
 function withDefaultMonth(s: StateShape): StateShape {
   const months = { ...s.months };
   const key = `${MONTH_NAMES[DEFAULT_MONTH_INDEX]} ${DEFAULT_YEAR}`;
   if (!months[key]) months[key] = emptyMonth(DEFAULT_YEAR, DEFAULT_MONTH_INDEX, s.settings);
-  return { ...s, months, currentMonthKey: key };
+  const stored = readStoredMonthKey();
+  const selected = stored && months[stored] ? stored : months[s.currentMonthKey] ? s.currentMonthKey : key;
+  return { ...s, months, currentMonthKey: selected };
 }
+
 
 function migrateCell(raw: unknown): Cell | null {
   if (!raw || typeof raw !== "object") return null;
@@ -191,7 +214,11 @@ export function HotelProvider({ children }: { children: ReactNode }) {
     return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
   }, [state, hotelName, onboarded, save]);
 
-  const setCurrentMonthKey = useCallback((k: string) => setState((s) => ({ ...s, currentMonthKey: k })), []);
+  const setCurrentMonthKey = useCallback((k: string) => {
+    persistMonthKey(k);
+    setState((s) => ({ ...s, currentMonthKey: k }));
+  }, []);
+
 
   const updateCell = useCallback((room: string, day: number, cell: Cell | null) => {
     setState((s) => {
@@ -303,8 +330,10 @@ export function HotelProvider({ children }: { children: ReactNode }) {
   const addMonth = useCallback((year: number, monthIndex: number) => {
     setState((s) => {
       const m = emptyMonth(year, monthIndex, s.settings);
+      persistMonthKey(m.key);
       if (s.months[m.key]) return { ...s, currentMonthKey: m.key };
       return { ...s, months: { ...s.months, [m.key]: m }, currentMonthKey: m.key };
+
     });
   }, []);
 

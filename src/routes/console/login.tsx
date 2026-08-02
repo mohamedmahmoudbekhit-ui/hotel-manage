@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { regenerateRecoveryCodes, redeemRecoveryCode } from "@/lib/admin/mfa.functions";
+import { sendConsolePasswordLink } from "@/lib/admin/console-password.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,12 +14,13 @@ export const Route = createFileRoute("/console/login")({
   component: ConsoleLogin,
 });
 
-type Step = "credentials" | "enroll" | "challenge" | "recovery" | "codes";
+type Step = "credentials" | "enroll" | "challenge" | "recovery" | "codes" | "forgot";
 
 function ConsoleLogin() {
   const navigate = useNavigate();
   const genCodes = useServerFn(regenerateRecoveryCodes);
   const redeem = useServerFn(redeemRecoveryCode);
+  const sendPasswordLink = useServerFn(sendConsolePasswordLink);
 
   const [step, setStep] = useState<Step>("credentials");
   const [email, setEmail] = useState("");
@@ -134,6 +136,22 @@ function ConsoleLogin() {
     }
   };
 
+  const handleForgot = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      await sendPasswordLink({
+        data: { email, redirectTo: `${window.location.origin}/console/set-password` },
+      });
+    } finally {
+      setBusy(false);
+    }
+    toast.success("If this address is authorized, a link is on its way.");
+    setStep("credentials");
+  };
+
+
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-neutral-950 px-4 py-10">
       <div className="w-full max-w-md">
@@ -165,6 +183,28 @@ function ConsoleLogin() {
               <Button type="submit" className="w-full" disabled={busy}>
                 {busy && <Loader2 className="me-2 h-4 w-4 animate-spin" />} Continue
               </Button>
+              <button type="button" onClick={() => setStep("forgot")} className="flex w-full items-center justify-center gap-1.5 text-xs text-neutral-400 hover:text-neutral-100">
+                <KeyRound className="h-3.5 w-3.5" /> First time here? Set your password
+              </button>
+            </form>
+          )}
+
+          {step === "forgot" && (
+            <form onSubmit={handleForgot} className="space-y-3">
+              <h1 className="text-xl font-bold">Set your password</h1>
+              <p className="text-sm text-neutral-400">
+                We will email a secure one-time link to authorized administrators.
+              </p>
+              <div className="space-y-1.5">
+                <Label htmlFor="forgot-email">Email</Label>
+                <Input id="forgot-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" className="bg-neutral-950" />
+              </div>
+              <Button type="submit" className="w-full" disabled={busy}>
+                {busy && <Loader2 className="me-2 h-4 w-4 animate-spin" />} Send link
+              </Button>
+              <button type="button" onClick={() => setStep("credentials")} className="flex w-full items-center justify-center gap-1.5 text-xs text-neutral-400 hover:text-neutral-100">
+                <ArrowLeft className="h-3.5 w-3.5" /> Back to sign in
+              </button>
             </form>
           )}
 

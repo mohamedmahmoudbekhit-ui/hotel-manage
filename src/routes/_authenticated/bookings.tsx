@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useHotel } from "@/lib/hotel/store";
 import { MonthSelector } from "@/components/month-selector";
-import { cellRevenueLocal, computeMonthTotals, findChannel, formatCurrency, pickTextColor } from "@/lib/hotel/utils";
+import { cellRevenueLocal, computeMonthTotals, findChannel, formatCurrency, nightsBetween, pickTextColor, resolveImportedChannel } from "@/lib/hotel/utils";
 import type { Cell, Channel } from "@/lib/hotel/types";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -19,7 +19,7 @@ import { applyFilters, buildBookingRows, downloadBlob, exportFileBase, exportPdf
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { useI18n } from "@/lib/i18n";
-import { listImportedForMonth, saveImportedOverride, removeImportedReservation, type ImportedReservationRow } from "@/lib/hotel/calendar.functions";
+import { saveImportedOverride, removeImportedReservation, type ImportedReservationRow } from "@/lib/hotel/calendar.functions";
 
 
 export const Route = createFileRoute("/_authenticated/bookings")({
@@ -38,25 +38,20 @@ function channelLabel(ch: Channel, currency: string): string {
 }
 
 function BookingsPage() {
-  const { currentMonth, settings, updateCell, addBookingRange, hotelName } = useHotel();
+  const {
+    currentMonth, settings, updateCell, addBookingRange, hotelName,
+    imported: allImported, reloadImported, analyticsMonth, analyticsSettings,
+  } = useHotel();
   const { t, formatMonthKey } = useI18n();
-  const totals = computeMonthTotals(currentMonth, settings.rooms, settings);
-  const fetchImported = useServerFn(listImportedForMonth);
-  const [imported, setImported] = useState<ImportedReservationRow[]>([]);
+  // Totals include imported iCal reservations, exactly like manual bookings.
+  const totals = computeMonthTotals(analyticsMonth, settings.rooms, analyticsSettings);
 
-  const reloadImported = () => {
-    const y = currentMonth.year;
-    const m = String(currentMonth.monthIndex + 1).padStart(2, "0");
-    const from = `${y}-${m}-01`;
-    const to = `${y}-${m}-${String(currentMonth.daysInMonth).padStart(2, "0")}`;
-    fetchImported({ data: { from, to } })
-      .then(setImported)
-      .catch((e) => console.error("Failed to load imported reservations", e));
-  };
-  useEffect(() => {
-    reloadImported();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentMonth.year, currentMonth.monthIndex, currentMonth.daysInMonth]);
+  /** Imported reservations overlapping the displayed month. */
+  const imported = useMemo(() => {
+    const from = `${currentMonth.year}-${String(currentMonth.monthIndex + 1).padStart(2, "0")}-01`;
+    const to = `${currentMonth.year}-${String(currentMonth.monthIndex + 1).padStart(2, "0")}-${String(currentMonth.daysInMonth).padStart(2, "0")}`;
+    return allImported.filter((r) => (r.start_date ?? "").slice(0, 10) <= to && (r.end_date ?? "").slice(0, 10) > from);
+  }, [allImported, currentMonth.year, currentMonth.monthIndex, currentMonth.daysInMonth]);
 
   /** Map roomName -> Map<day, { res, position }> for O(1) lookup. */
   const importedByRoomDay = useMemo(() => {
@@ -345,7 +340,7 @@ function BookingsPage() {
                   return (
                     <td key={room} className={`border-t p-1.5 align-top ${matchesSource ? "" : "opacity-25"}`}>
                       {importedHere ? (
-                        <ImportedBlock res={importedHere.res} position={importedHere.position} onChanged={reloadImported} currency={settings.currency} />
+                        <ImportedBlock res={importedHere.res} channel={resolveImportedChannel(analyticsSettings, importedHere.res)} position={importedHere.position} onChanged={reloadImported} currency={settings.currency} />
                       ) : (
                         <CellEditor
                           cell={cell}
@@ -381,9 +376,10 @@ const PLATFORM_LABEL: Record<string, string> = {
   other: "iCal",
 };
 
-function ImportedBlock({ res, position, onChanged, currency }: { res: ImportedReservationRow; position: "start" | "middle" | "end" | "single"; onChanged: () => void; currency: string }) {
+function ImportedBlock({ res, channel, position, onChanged, currency }: { res: ImportedReservationRow; channel: Channel; position: "start" | "middle" | "end" | "single"; onChanged: () => void; currency: string }) {
   const { t } = useI18n();
-  const label = PLATFORM_LABEL[res.platform_type] ?? res.source_name;
+  const label = channel.name || PLATFORM_LABEL[res.platform_type] || res.source_name;
+  const channelCurrency = channel.currency === "LOCAL" ? currency : "USD";
   const showLabel = position === "start" || position === "single";
   const positionBadge =
     position === "start" ? t("cal.checkIn") ?? "Check-in" :
@@ -395,7 +391,7 @@ function ImportedBlock({ res, position, onChanged, currency }: { res: ImportedRe
     position === "end" ? "rounded-e-lg rounded-s-none border-s-0" :
     "rounded-none border-s-0 border-e-0";
 
-  const color = res.source_color || "#64748b";
+  const color = channel.color || res.source_color || "#64748b";
   const textColor = pickTextColor(color);
 
   const [open, setOpen] = useState(false);
@@ -466,16 +462,20 @@ function ImportedBlock({ res, position, onChanged, currency }: { res: ImportedRe
         </DialogHeader>
         <div className="space-y-3 text-sm">
           {res.summary && <div className="text-muted-foreground">{res.summary}</div>}
-          <div className="text-xs text-muted-foreground">{res.start_date} → {res.end_date}</div>
+          <div className="text-xs text-muted-foreground">
+            {res.start_date} → {res.end_date} · {nightsBetween(res.start_date, res.end_date)} night(s)
+          </div>
           <div className="space-y-1">
-            <Label className="text-xs">Price ({currency})</Label>
+            <Label className="text-xs">Total price ({channelCurrency})</Label>
             <Input type="number" min={0} step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0" />
           </div>
           <div className="space-y-1">
             <Label className="text-xs">Internal notes</Label>
             <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />
           </div>
-          <p className="text-[11px] text-muted-foreground">Color is controlled by the channel in Settings and applies to all its reservations.</p>
+          <p className="text-[11px] text-muted-foreground">
+            Color and currency are inherited from the “{channel.name}” channel in Settings. The total price is split evenly across the stayed nights (check-out day excluded).
+          </p>
         </div>
         <DialogFooter className="gap-2 sm:justify-between">
           <Button variant="destructive" onClick={doRemove} disabled={saving}>
@@ -663,17 +663,20 @@ function AddBookingDialog({
   const today = new Date().toISOString().slice(0, 10);
   const [room, setRoom] = useState<string>(rooms[0] ?? "");
   const [channelId, setChannelId] = useState<string>(channels[0]?.id ?? "");
+  const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
   const [from, setFrom] = useState<string>(today);
-  const [to, setTo] = useState<string>(today);
+  const [to, setTo] = useState<string>(tomorrow);
   const [price, setPrice] = useState<string>("");
   const [note, setNote] = useState<string>("");
 
-  const nights = useMemo(() => {
-    const s = new Date(`${from}T00:00:00Z`);
-    const e = new Date(`${to}T00:00:00Z`);
-    if (isNaN(s.getTime()) || isNaN(e.getTime()) || e < s) return 0;
-    return Math.round((e.getTime() - s.getTime()) / 86400000) + 1;
-  }, [from, to]);
+  // Nights = check-out - check-in. The check-out day is not a stayed night.
+  const nights = useMemo(() => nightsBetween(from, to), [from, to]);
+  const minCheckout = useMemo(() => {
+    const d = new Date(`${from}T00:00:00Z`);
+    if (isNaN(d.getTime())) return from;
+    d.setUTCDate(d.getUTCDate() + 1);
+    return d.toISOString().slice(0, 10);
+  }, [from]);
 
   const priceNum = parseFloat(price) || 0;
   const perNight = nights > 0 ? priceNum / nights : 0;
@@ -684,7 +687,7 @@ function AddBookingDialog({
     setRoom(rooms[0] ?? "");
     setChannelId(channels[0]?.id ?? "");
     setFrom(today);
-    setTo(today);
+    setTo(tomorrow);
     setPrice("");
     setNote("");
   };
@@ -728,12 +731,20 @@ function AddBookingDialog({
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-xs">From</Label>
-              <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+              <Label className="text-xs">Check-in</Label>
+              <Input type="date" value={from} onChange={(e) => {
+                const v = e.target.value;
+                setFrom(v);
+                if (v && to <= v) {
+                  const d = new Date(`${v}T00:00:00Z`);
+                  d.setUTCDate(d.getUTCDate() + 1);
+                  setTo(d.toISOString().slice(0, 10));
+                }
+              }} />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">To</Label>
-              <Input type="date" value={to} min={from} onChange={(e) => setTo(e.target.value)} />
+              <Label className="text-xs">Check-out</Label>
+              <Input type="date" value={to} min={minCheckout} onChange={(e) => setTo(e.target.value)} />
             </div>
           </div>
           <div className="space-y-1.5">
@@ -763,11 +774,11 @@ function AddBookingDialog({
               onChange={(e) => setPrice(e.target.value)}
               placeholder="0.00"
             />
-            {nights > 0 && priceNum > 0 && (
-              <p className="text-[10px] text-muted-foreground">
-                {nights} night{nights === 1 ? "" : "s"} · {perNight.toFixed(2)} {channelCurrency} / night
-              </p>
-            )}
+            <p className="text-[10px] text-muted-foreground">
+              {nights > 0
+                ? `${nights} night${nights === 1 ? "" : "s"}${priceNum > 0 ? ` · ${perNight.toFixed(2)} ${channelCurrency} / night` : ""} · check-out day is not charged`
+                : "Check-out must be at least one day after check-in."}
+            </p>
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs">Note</Label>

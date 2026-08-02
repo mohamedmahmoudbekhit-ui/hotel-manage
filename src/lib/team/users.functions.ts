@@ -132,11 +132,6 @@ export const regenerateTeamInvite = createServerFn({ method: "POST" })
     const email = data.email.toLowerCase();
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const { data: member } = await supabaseAdmin
-      .from("organization_members")
-      .select("user_id, role, status")
-      .eq("organization_id", orgId);
-
     const { data: existing } = await supabaseAdmin
       .from("organization_invitations")
       .select("id, role")
@@ -158,11 +153,10 @@ export const regenerateTeamInvite = createServerFn({ method: "POST" })
         .eq("id", existing.id);
       if (error) throw new Error(error.message);
     } else {
-      const role = (member ?? []).length ? "hotel_staff" : "hotel_staff";
       const { error } = await supabaseAdmin.from("organization_invitations").insert({
         organization_id: orgId,
         email,
-        role,
+        role: "hotel_staff",
         token,
         expires_at: expires.toISOString(),
         created_by: context.userId,

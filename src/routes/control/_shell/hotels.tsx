@@ -208,6 +208,7 @@ function HotelsPage() {
                   <td className="px-3 py-2">{r.renewal_date ?? "—"}</td>
                   <td className="px-3 py-2">
                     <div className="flex justify-end gap-1">
+                      <Button size="sm" variant="ghost" title="Edit details" onClick={() => setEditRow(r)}><Pencil className="h-3.5 w-3.5" /></Button>
                       <Button size="sm" variant="ghost" title="Resend invitation" onClick={() => handleResend(r)}><Send className="h-3.5 w-3.5" /></Button>
                       <Button size="sm" variant="ghost" title="Extend" onClick={() => { setExtendFor(r); setExtendDate(r.expiry_date ?? ""); }}><CalendarPlus className="h-3.5 w-3.5" /></Button>
                       {r.account_status === "suspended" ? (

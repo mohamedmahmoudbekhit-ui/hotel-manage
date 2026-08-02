@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useHotel } from "@/lib/hotel/store";
-import { findChannel, monthKey, pickTextColor } from "@/lib/hotel/utils";
+import { findChannel, monthKey, pickTextColor, resolveImportedChannel } from "@/lib/hotel/utils";
 import type { ImportedReservationRow } from "@/lib/hotel/calendar.functions";
 import { LogIn, LogOut, BedDouble, DoorOpen } from "lucide-react";
 
@@ -48,8 +48,9 @@ export function DailyView({
       for (const r of impByRoom.get(room) ?? []) {
         const start = (r.start_date ?? "").slice(0, 10);
         const end = (r.end_date ?? "").slice(0, 10); // checkout day (exclusive night)
-        const color = r.source_color || "#64748b";
-        const label = r.source_name;
+        const ch = resolveImportedChannel(settings, r);
+        const color = ch.color || "#64748b";
+        const label = ch.name;
         if (todayIso === start) return { room, status: "checkin", label, color, note: r.override_notes };
         if (todayIso === end) return { room, status: "checkout", label, color, note: r.override_notes };
         if (todayIso > start && todayIso < end) return { room, status: "occupied", label, color, note: r.override_notes };

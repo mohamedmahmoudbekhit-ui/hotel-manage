@@ -1,5 +1,5 @@
 import type { MonthData, Settings } from "./types";
-import { cellRevenueLocal, findChannel, MONTH_NAMES } from "./utils";
+import { cellRevenueLocal, findChannel, MONTH_NAMES, nightsBetween, resolveImportedChannel } from "./utils";
 import type { ImportedReservationRow } from "./calendar.functions";
 
 export interface BookingExportRow {
@@ -13,6 +13,7 @@ export interface BookingExportRow {
   guests: string;
   amount: number; // local currency
   nights: number;
+  currency: string; // channel currency code shown to the user
 }
 
 export interface ExportFilters {
@@ -61,6 +62,7 @@ export function buildBookingRows(
         guests: "—",
         amount: run.amount,
         nights: run.nights,
+        currency: ch.currency === "LOCAL" ? settings.currency : "USD",
       });
       run = null;
     };
@@ -84,21 +86,24 @@ export function buildBookingRows(
     const start = (r.start_date ?? "").slice(0, 10);
     const end = (r.end_date ?? "").slice(0, 10);
     if (!start || !end) continue;
-    const nights = Math.max(
-      1,
-      Math.round((new Date(`${end}T00:00:00Z`).getTime() - new Date(`${start}T00:00:00Z`).getTime()) / 86400000),
-    );
+    const nights = nightsBetween(start, end);
+    if (nights <= 0) continue;
+    const ch = resolveImportedChannel(settings, r);
+    const total = r.override_price ?? 0;
+    // Imported prices are entered in the mapped channel's currency.
+    const amountLocal = ch.currency === "USD" ? total * month.usdRate : total;
     rows.push({
       guestName: firstLine(r.summary) || firstLine(r.override_notes) || "—",
       room: r.room_name,
       checkIn: start,
       checkOut: end,
-      source: r.source_name,
+      source: ch.name,
       sourceKey: r.source_id,
       status: "Confirmed",
       guests: "—",
-      amount: r.override_price ?? 0,
+      amount: amountLocal,
       nights,
+      currency: ch.currency === "LOCAL" ? settings.currency : "USD",
     });
   }
 
@@ -130,13 +135,15 @@ export function toCsv(rows: BookingExportRow[], currency: string): string {
     "Check-out Date",
     "Booking Source",
     "Booking Status",
+    "Nights",
     "Number of Guests",
+    "Channel Currency",
     `Total Amount (${currency})`,
   ];
   const lines = [header.map(csvCell).join(",")];
   for (const r of rows) {
     lines.push(
-      [r.guestName, r.room, r.checkIn, r.checkOut, r.source, r.status, r.guests, Math.round(r.amount)]
+      [r.guestName, r.room, r.checkIn, r.checkOut, r.source, r.status, r.nights, r.guests, r.currency, Math.round(r.amount)]
         .map(csvCell)
         .join(","),
     );
@@ -194,25 +201,26 @@ export async function exportPdf(opts: {
   autoTable(doc, {
     startY: opts.filterSummary ? 128 : 112,
     margin: { left: 40, right: 40, bottom: 40 },
-    head: [["Guest Name", "Room", "Check-in", "Check-out", "Source", "Status", `Amount (${opts.currency})`]],
+    head: [["Guest Name", "Room", "Check-in", "Check-out", "Nights", "Source", "Status", `Amount (${opts.currency})`]],
     body: opts.rows.map((r) => [
       r.guestName,
       r.room,
       r.checkIn,
       r.checkOut,
+      String(r.nights),
       r.source,
       r.status,
       Math.round(r.amount).toLocaleString(),
     ]),
-    foot: [["", "", "", "", "", "Total", Math.round(total).toLocaleString()]],
+    foot: [["", "", "", "", String(opts.rows.reduce((n, r) => n + r.nights, 0)), "", "Total", Math.round(total).toLocaleString()]],
     showFoot: "lastPage",
     styles: { fontSize: 9, cellPadding: 5, overflow: "linebreak" },
     headStyles: { fillColor: [30, 41, 59], textColor: 255, fontStyle: "bold" },
     footStyles: { fillColor: [241, 245, 249], textColor: 20, fontStyle: "bold", halign: "left" },
     alternateRowStyles: { fillColor: [248, 250, 252] },
-    columnStyles: { 6: { halign: "right" } },
+    columnStyles: { 4: { halign: "right" }, 7: { halign: "right" } },
     didParseCell: (data: { section: string; column: { index: number }; cell: { styles: { halign: string } } }) => {
-      if (data.section === "foot" && data.column.index === 6) data.cell.styles.halign = "right";
+      if (data.section === "foot" && (data.column.index === 7 || data.column.index === 4)) data.cell.styles.halign = "right";
     },
   });
 

@@ -321,21 +321,21 @@ function BookingsPage() {
         <span className="ms-auto text-muted-foreground">{t("common.tapCell")}</span>
       </div>
 
-      <div className="rounded-2xl border bg-card shadow-soft">
-        <table className="w-full border-separate border-spacing-0 text-sm">
+      <div className="max-h-[70vh] overflow-auto overscroll-contain rounded-2xl border bg-card shadow-soft">
+        <table className="w-full min-w-max border-separate border-spacing-0 text-sm">
 
-          <thead className="sticky top-14 z-20 bg-muted/95 backdrop-blur supports-[backdrop-filter]:bg-muted/75">
+          <thead className="sticky top-0 z-20 bg-muted/95 backdrop-blur supports-[backdrop-filter]:bg-muted/75">
             <tr>
-              <th className="sticky start-0 z-20 bg-muted/80 px-3 py-3 text-start text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("bookings.day")}</th>
+              <th className="sticky start-0 z-30 w-12 bg-muted px-2 py-3 text-start text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:px-3">{t("bookings.day")}</th>
               {visibleRooms.map((r) => (
-                <th key={r} className="px-3 py-3 text-start text-xs font-semibold uppercase tracking-wider text-muted-foreground">{r}</th>
+                <th key={r} className="min-w-[140px] bg-muted/95 px-3 py-3 text-start text-xs font-semibold uppercase tracking-wider text-muted-foreground">{r}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {visibleDays.map((day) => (
               <tr key={day} className="group">
-                <td className="sticky start-0 z-10 border-t bg-card px-3 py-2 text-xs font-semibold text-muted-foreground group-hover:bg-muted/40">{day}</td>
+                <td className="sticky start-0 z-10 border-t bg-card px-2 py-2 text-xs font-semibold text-muted-foreground group-hover:bg-muted/40 sm:px-3">{day}</td>
                 {visibleRooms.map((room) => {
                   const cell = currentMonth.cells[room]?.[day] ?? null;
                   const importedHere = !cell ? importedByRoomDay.get(room)?.get(day) ?? null : null;

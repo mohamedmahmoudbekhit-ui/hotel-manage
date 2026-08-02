@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { ShieldCheck, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/admin/set-password")({
+export const Route = createFileRoute("/control/set-password")({
   ssr: false,
   component: SetPassword,
 });
@@ -45,7 +45,7 @@ function SetPassword() {
       }
       if (!cancelled) {
         toast.error("This link is invalid or has expired.");
-        navigate({ to: "/admin/login", replace: true });
+        navigate({ to: "/control/login", replace: true });
       }
     })();
 
@@ -70,7 +70,7 @@ function SetPassword() {
       if (error) throw error;
       await supabase.auth.signOut();
       toast.success("Password set. Sign in to continue.");
-      navigate({ to: "/admin/login", replace: true });
+      navigate({ to: "/control/login", replace: true });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not set the password");
     } finally {

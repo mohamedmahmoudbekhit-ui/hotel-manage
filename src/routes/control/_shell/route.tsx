@@ -4,20 +4,20 @@ import { Button } from "@/components/ui/button";
 import { LogOut, LayoutDashboard, Building2, ShieldCheck } from "lucide-react";
 
 /** Gate for every console page: super admin + a verified second factor (AAL2). */
-export const Route = createFileRoute("/admin/_shell")({
+export const Route = createFileRoute("/control/_shell")({
   ssr: false,
   beforeLoad: async () => {
     const { data } = await supabase.auth.getUser();
-    if (!data.user) throw redirect({ to: "/admin/login" });
+    if (!data.user) throw redirect({ to: "/control/login" });
 
     const { data: isSuperAdmin } = await supabase.rpc("ensure_super_admin_self");
     if (isSuperAdmin !== true) {
       await supabase.auth.signOut();
-      throw redirect({ to: "/admin/login" });
+      throw redirect({ to: "/control/login" });
     }
 
     const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-    if (aal?.currentLevel !== "aal2") throw redirect({ to: "/admin/login" });
+    if (aal?.currentLevel !== "aal2") throw redirect({ to: "/control/login" });
 
     return { user: data.user };
   },
@@ -29,7 +29,7 @@ function ConsoleShell() {
   const navigate = useNavigate();
   const signOut = async () => {
     await supabase.auth.signOut();
-    navigate({ to: "/admin/login", replace: true });
+    navigate({ to: "/control/login", replace: true });
   };
   return (
     <div className="flex min-h-screen bg-background">
@@ -42,9 +42,9 @@ function ConsoleShell() {
           </div>
         </div>
         <nav className="space-y-1 p-3">
-          <NavItem to="/admin" icon={<LayoutDashboard className="h-4 w-4" />} label="Dashboard" active={pathname === "/admin"} />
-          <NavItem to="/admin/hotels" icon={<Building2 className="h-4 w-4" />} label="Hotels" active={pathname.startsWith("/admin/hotels")} />
-          <NavItem to="/admin/security" icon={<ShieldCheck className="h-4 w-4" />} label="Security" active={pathname.startsWith("/admin/security")} />
+          <NavItem to="/control" icon={<LayoutDashboard className="h-4 w-4" />} label="Dashboard" active={pathname === "/control"} />
+          <NavItem to="/control/hotels" icon={<Building2 className="h-4 w-4" />} label="Hotels" active={pathname.startsWith("/control/hotels")} />
+          <NavItem to="/control/security" icon={<ShieldCheck className="h-4 w-4" />} label="Security" active={pathname.startsWith("/control/security")} />
         </nav>
       </aside>
       <div className="flex flex-1 flex-col">

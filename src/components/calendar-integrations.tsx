@@ -7,8 +7,12 @@ import {
   deleteCalendarSource,
   syncOneSource,
   syncAllForUser,
+  testIcalConnection,
+  listSyncLogs,
   type CalendarSourceRow,
   type RoomRow,
+  type IcalTestResult,
+  type SyncLogRow,
 } from "@/lib/hotel/calendar.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +20,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Plus, RefreshCw, Trash2, AlertCircle, CheckCircle2, Link as LinkIcon, Pencil } from "lucide-react";
+import { Plus, RefreshCw, Trash2, AlertCircle, CheckCircle2, Link as LinkIcon, Pencil, PlugZap, History } from "lucide-react";
 import { toast } from "sonner";
 import { useI18n } from "@/lib/i18n";
 import { isLikelyIcalUrl } from "@/lib/ical/parse";
@@ -29,6 +33,7 @@ const PLATFORMS = [
   { value: "direct", label: "Direct" },
   { value: "other", label: "Other" },
 ];
+
 
 interface EditorState {
   id?: string;
@@ -238,12 +243,17 @@ export function CalendarIntegrations() {
                         <span>{t("cal.created")}: {new Date(s.created_at).toLocaleDateString()}</span>
                       </div>
                       {s.last_sync_error && (
-                        <div className="mt-1 inline-flex items-center gap-1 text-[11px] text-destructive">
-                          <AlertCircle className="h-3 w-3" />
-                          {s.last_sync_error}
+                        <div className="mt-1 flex items-start gap-1 rounded-md bg-destructive/10 p-1.5 text-[11px] text-destructive">
+                          <AlertCircle className="mt-0.5 h-3 w-3 shrink-0" />
+                          <span>
+                            <span className="font-semibold">{t("cal.errorDetails")}: </span>
+                            {s.last_sync_error}
+                          </span>
                         </div>
                       )}
+                      <SyncLogPanel sourceId={s.id} />
                     </li>
+
                   ))}
                 </ul>
               )}
@@ -271,10 +281,30 @@ function SourceEditor({
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [state, setState] = useState<EditorState>(initial);
+  const [test, setTest] = useState<IcalTestResult | null>(null);
+  const [testing, setTesting] = useState(false);
+  const runTestFn = useServerFn(testIcalConnection);
 
   useEffect(() => {
-    if (open) setState(initial);
+    if (open) { setState(initial); setTest(null); }
   }, [open, initial]);
+
+  const runTest = async () => {
+    setTesting(true);
+    try {
+      const res = await runTestFn({ data: { ical_url: state.ical_url } });
+      setTest(res);
+      if (res.ok) toast.success(t("cal.testOk", { n: res.totalEvents ?? 0 }));
+      else toast.error(res.error ?? t("cal.syncFail"));
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setTest({ ok: false, error: msg });
+      toast.error(msg);
+    } finally {
+      setTesting(false);
+    }
+  };
+
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -307,8 +337,44 @@ function SourceEditor({
           )}
           <div className="space-y-1.5">
             <Label className="text-xs">{t("cal.icalUrl")}</Label>
-            <Input value={state.ical_url} onChange={(e) => setState((s) => ({ ...s, ical_url: e.target.value }))} placeholder="https://…/calendar.ics" />
+            <Input
+              value={state.ical_url}
+              onChange={(e) => { setState((s) => ({ ...s, ical_url: e.target.value })); setTest(null); }}
+              placeholder="https://www.airbnb.com/calendar/ical/…​.ics"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-full"
+              disabled={testing || !state.ical_url.trim()}
+              onClick={runTest}
+            >
+              <PlugZap className={`me-1 h-3.5 w-3.5 ${testing ? "animate-pulse" : ""}`} />
+              {testing ? t("cal.testing") : t("cal.test")}
+            </Button>
+            {test && !test.ok && (
+              <p className="rounded-md bg-destructive/10 p-1.5 text-[11px] text-destructive">{test.error}</p>
+            )}
+            {test?.ok && (
+              <div className="rounded-md border bg-muted/40 p-1.5 text-[11px]">
+                <p className="font-medium text-emerald-600 dark:text-emerald-400">
+                  {t("cal.testOk", { n: test.totalEvents ?? 0 })}
+                </p>
+                {(test.upcoming?.length ?? 0) > 0 && (
+                  <ul className="mt-1 max-h-28 space-y-0.5 overflow-y-auto">
+                    {test.upcoming!.map((e) => (
+                      <li key={e.uid} className="flex justify-between gap-2 text-muted-foreground">
+                        <span className="truncate">{e.summary || "Reserved"}</span>
+                        <span className="shrink-0 tabular-nums">{e.start} → {e.end}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
           </div>
+
           <div className="flex items-center justify-between rounded-md border p-2">
             <Label className="text-xs">Color</Label>
             <input
@@ -332,5 +398,71 @@ function SourceEditor({
         </div>
       </PopoverContent>
     </Popover>
+  );
+}
+
+function SyncLogPanel({ sourceId }: { sourceId: string }) {
+  const { t } = useI18n();
+  const fetchLogs = useServerFn(listSyncLogs);
+  const [open, setOpen] = useState(false);
+  const [logs, setLogs] = useState<SyncLogRow[] | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      setLogs(await fetchLogs({ data: { source_id: sourceId, limit: 10 } }));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="mt-1.5">
+      <button
+        type="button"
+        className="inline-flex items-center gap-1 text-[11px] text-muted-foreground underline-offset-2 hover:underline"
+        onClick={() => {
+          const next = !open;
+          setOpen(next);
+          if (next) void load();
+        }}
+      >
+        <History className="h-3 w-3" />
+        {open ? t("cal.hideLogs") : t("cal.logs")}
+      </button>
+      {open && (
+        <div className="mt-1 rounded-md border bg-muted/30 p-1.5 text-[11px]">
+          {loading && <p className="text-muted-foreground">…</p>}
+          {!loading && (logs?.length ?? 0) === 0 && (
+            <p className="text-muted-foreground">{t("cal.noLogs")}</p>
+          )}
+          {!loading && (logs?.length ?? 0) > 0 && (
+            <ul className="space-y-1">
+              {logs!.map((l) => (
+                <li key={l.id} className="flex flex-wrap items-center gap-x-2">
+                  <span
+                    className={
+                      l.status === "success"
+                        ? "font-medium text-emerald-600 dark:text-emerald-400"
+                        : "font-medium text-destructive"
+                    }
+                  >
+                    {l.status}
+                  </span>
+                  <span className="text-muted-foreground">{new Date(l.created_at).toLocaleString()}</span>
+                  <span className="text-muted-foreground">
+                    {l.events_found} found · {l.imported} imported · {l.removed} removed · {l.duration_ms}ms · {l.trigger_source}
+                  </span>
+                  {l.error_message && <span className="w-full text-destructive">{l.error_message}</span>}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

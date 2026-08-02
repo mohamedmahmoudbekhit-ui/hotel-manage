@@ -142,6 +142,63 @@ export type Database = {
           },
         ]
       }
+      calendar_sync_logs: {
+        Row: {
+          created_at: string
+          duration_ms: number
+          error_message: string | null
+          events_found: number
+          id: string
+          imported: number
+          organization_id: string
+          removed: number
+          source_id: string
+          status: string
+          trigger_source: string
+        }
+        Insert: {
+          created_at?: string
+          duration_ms?: number
+          error_message?: string | null
+          events_found?: number
+          id?: string
+          imported?: number
+          organization_id: string
+          removed?: number
+          source_id: string
+          status?: string
+          trigger_source?: string
+        }
+        Update: {
+          created_at?: string
+          duration_ms?: number
+          error_message?: string | null
+          events_found?: number
+          id?: string
+          imported?: number
+          organization_id?: string
+          removed?: number
+          source_id?: string
+          status?: string
+          trigger_source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_sync_logs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_sync_logs_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "calendar_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hotel_state: {
         Row: {
           created_at: string

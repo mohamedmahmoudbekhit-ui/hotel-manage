@@ -199,6 +199,16 @@ const en: Dict = {
   "cal.syncAllPartial": "Synced {total} feed(s); {failed} failed.",
   "cal.importedBadge": "iCal",
   "cal.importedFrom": "Imported from",
+  "cal.test": "Test connection",
+  "cal.testing": "Testing…",
+  "cal.testOk": "Connection works — {n} reservations found.",
+  "cal.preview": "Preview",
+  "cal.logs": "Sync history",
+  "cal.noLogs": "No sync attempts recorded yet.",
+  "cal.hideLogs": "Hide history",
+  "cal.errorDetails": "Error details",
+  "cal.testFirst": "Test the connection before saving.",
+
 };
 
 
@@ -397,6 +407,16 @@ const ar: Dict = {
   "cal.syncAllPartial": "تمت مزامنة {total} رابطاً؛ فشل {failed}.",
   "cal.importedBadge": "iCal",
   "cal.importedFrom": "مستورد من",
+  "cal.test": "اختبار الاتصال",
+  "cal.testing": "جارٍ الاختبار…",
+  "cal.testOk": "الاتصال ناجح — تم العثور على {n} حجزاً.",
+  "cal.preview": "معاينة",
+  "cal.logs": "سجل المزامنة",
+  "cal.noLogs": "لا توجد محاولات مزامنة بعد.",
+  "cal.hideLogs": "إخفاء السجل",
+  "cal.errorDetails": "تفاصيل الخطأ",
+  "cal.testFirst": "اختبر الاتصال قبل الحفظ.",
+
 };
 
 

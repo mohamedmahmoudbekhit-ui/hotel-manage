@@ -173,3 +173,100 @@ export function newChannelId(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return `ch-${crypto.randomUUID().slice(0, 8)}`;
   return `ch-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 }
+
+// ---------------------------------------------------------------------------
+// Nights & imported-reservation analytics
+// ---------------------------------------------------------------------------
+
+/** Nights between two ISO dates: checkout - checkin. Same day = 0 nights. */
+export function nightsBetween(fromIso: string, toIso: string): number {
+  const s = new Date(`${(fromIso ?? "").slice(0, 10)}T00:00:00Z`).getTime();
+  const e = new Date(`${(toIso ?? "").slice(0, 10)}T00:00:00Z`).getTime();
+  if (!isFinite(s) || !isFinite(e)) return 0;
+  const n = Math.round((e - s) / 86400000);
+  return n > 0 ? n : 0;
+}
+
+/** Minimal shape of an imported (iCal) reservation used by analytics. */
+export interface ImportedLike {
+  room_name: string;
+  source_id: string;
+  source_name: string;
+  source_color: string;
+  channel_id?: string | null;
+  start_date: string;
+  end_date: string;
+  override_price: number | null;
+  override_notes: string | null;
+}
+
+/**
+ * Resolve the app channel an imported reservation belongs to. Mapped sources
+ * inherit the channel's color/currency/name; unmapped sources fall back to a
+ * synthetic channel derived from the iCal source itself.
+ */
+export function resolveImportedChannel(settings: Settings, res: ImportedLike): Channel {
+  const mapped = res.channel_id ? settings.channels.find((c) => c.id === res.channel_id) : undefined;
+  if (mapped) return mapped;
+  return {
+    id: `ical:${res.source_id}`,
+    name: res.source_name,
+    currency: "LOCAL",
+    color: res.source_color || "#64748b",
+  };
+}
+
+/**
+ * Merge imported reservations into a month as nightly cells so that every
+ * downstream calculation (revenue, occupancy, ADR, channel stats) treats them
+ * exactly like manual bookings. Revenue is split evenly across actual nights
+ * (check-out day excluded). Returns the augmented month plus a settings copy
+ * containing any synthetic channels needed for unmapped sources.
+ */
+export function mergeImportedIntoMonth(
+  month: MonthData,
+  settings: Settings,
+  imported: ImportedLike[],
+): { month: MonthData; settings: Settings } {
+  if (!imported || imported.length === 0) return { month, settings };
+  const cells: MonthData["cells"] = {};
+  for (const [room, days] of Object.entries(month.cells ?? {})) cells[room] = { ...days };
+  const extra = new Map<string, Channel>();
+  let touched = false;
+
+  for (const res of imported) {
+    if (!settings.rooms.includes(res.room_name)) continue;
+    const start = (res.start_date ?? "").slice(0, 10);
+    const end = (res.end_date ?? "").slice(0, 10);
+    const nights = nightsBetween(start, end);
+    if (nights <= 0) continue;
+    const ch = resolveImportedChannel(settings, res);
+    if (!settings.channels.some((c) => c.id === ch.id)) extra.set(ch.id, ch);
+    const perNight = (res.override_price ?? 0) / nights;
+    const d = new Date(`${start}T00:00:00Z`);
+    for (let i = 0; i < nights; i++) {
+      if (d.getUTCFullYear() === month.year && d.getUTCMonth() === month.monthIndex) {
+        const day = d.getUTCDate();
+        if (!cells[res.room_name]) {
+          cells[res.room_name] = {};
+          for (let dd = 1; dd <= month.daysInMonth; dd++) cells[res.room_name][dd] = null;
+        }
+        if (!cells[res.room_name][day]) {
+          cells[res.room_name][day] = {
+            price: perNight,
+            channelId: ch.id,
+            ...(res.override_notes ? { note: res.override_notes } : {}),
+          };
+          touched = true;
+        }
+      }
+      d.setUTCDate(d.getUTCDate() + 1);
+    }
+  }
+
+  if (!touched && extra.size === 0) return { month, settings };
+  return {
+    month: { ...month, cells },
+    settings: extra.size > 0 ? { ...settings, channels: [...settings.channels, ...extra.values()] } : settings,
+  };
+}

@@ -16,6 +16,7 @@ export interface CalendarSourceRow {
   ical_url: string;
   is_active: boolean;
   color: string;
+  channel_id: string | null;
   last_sync_at: string | null;
   last_sync_error: string | null;
   created_at: string;
@@ -28,6 +29,7 @@ export interface ImportedReservationRow {
   source_id: string;
   source_name: string;
   source_color: string;
+  channel_id: string | null;
   platform_type: string;
   external_uid: string;
   summary: string | null;
@@ -48,7 +50,9 @@ const upsertSchema = z.object({
   ical_url: z.string().url().max(2000),
   is_active: z.boolean(),
   color: z.string().regex(HEX_COLOR).optional(),
+  channel_id: z.string().trim().min(1).max(80),
 });
+
 
 async function resolveOrg(supabase: any, userId: string): Promise<string> {
   const { data } = await supabase

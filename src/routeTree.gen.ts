@@ -13,6 +13,7 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as ActivateRouteImport } from './routes/activate'
 import { Route as AcceptInviteRouteImport } from './routes/accept-invite'
 import { Route as ControlRouteRouteImport } from './routes/control/route'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
@@ -49,6 +50,11 @@ const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ActivateRoute = ActivateRouteImport.update({
+  id: '/activate',
+  path: '/activate',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AcceptInviteRoute = AcceptInviteRouteImport.update({
@@ -139,6 +145,7 @@ export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/control': typeof ControlRouteRouteWithChildren
   '/accept-invite': typeof AcceptInviteRoute
+  '/activate': typeof ActivateRoute
   '/auth': typeof AuthRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
@@ -159,6 +166,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/control': typeof ControlShellIndexRoute
   '/accept-invite': typeof AcceptInviteRoute
+  '/activate': typeof ActivateRoute
   '/auth': typeof AuthRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
@@ -181,6 +189,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/control': typeof ControlRouteRouteWithChildren
   '/accept-invite': typeof AcceptInviteRoute
+  '/activate': typeof ActivateRoute
   '/auth': typeof AuthRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
@@ -206,6 +215,7 @@ export interface FileRouteTypes {
     | '/'
     | '/control'
     | '/accept-invite'
+    | '/activate'
     | '/auth'
     | '/forgot-password'
     | '/login'
@@ -226,6 +236,7 @@ export interface FileRouteTypes {
   to:
     | '/control'
     | '/accept-invite'
+    | '/activate'
     | '/auth'
     | '/forgot-password'
     | '/login'
@@ -247,6 +258,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/control'
     | '/accept-invite'
+    | '/activate'
     | '/auth'
     | '/forgot-password'
     | '/login'
@@ -271,6 +283,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   ControlRouteRoute: typeof ControlRouteRouteWithChildren
   AcceptInviteRoute: typeof AcceptInviteRoute
+  ActivateRoute: typeof ActivateRoute
   AuthRoute: typeof AuthRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
@@ -306,6 +319,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/activate': {
+      id: '/activate'
+      path: '/activate'
+      fullPath: '/activate'
+      preLoaderRoute: typeof ActivateRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/accept-invite': {
@@ -488,6 +508,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   ControlRouteRoute: ControlRouteRouteWithChildren,
   AcceptInviteRoute: AcceptInviteRoute,
+  ActivateRoute: ActivateRoute,
   AuthRoute: AuthRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,

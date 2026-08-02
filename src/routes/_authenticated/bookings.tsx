@@ -11,13 +11,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, CalendarClock, CalendarPlus, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Trash2, CalendarClock, CalendarPlus, ChevronLeft, ChevronRight, Download, FileSpreadsheet, FileText, X } from "lucide-react";
 import { DailyView } from "@/components/daily-view";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { applyFilters, buildBookingRows, downloadBlob, exportFileBase, exportPdf, toCsv, type ExportFilters } from "@/lib/hotel/export";
 
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { useI18n } from "@/lib/i18n";
 import { listImportedForMonth, saveImportedOverride, removeImportedReservation, type ImportedReservationRow } from "@/lib/hotel/calendar.functions";
+
 
 export const Route = createFileRoute("/_authenticated/bookings")({
 
@@ -35,7 +38,7 @@ function channelLabel(ch: Channel, currency: string): string {
 }
 
 function BookingsPage() {
-  const { currentMonth, settings, updateCell, addBookingRange } = useHotel();
+  const { currentMonth, settings, updateCell, addBookingRange, hotelName } = useHotel();
   const { t, formatMonthKey } = useI18n();
   const totals = computeMonthTotals(currentMonth, settings.rooms, settings);
   const fetchImported = useServerFn(listImportedForMonth);
@@ -104,6 +107,73 @@ function BookingsPage() {
     setDayIso(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
   };
 
+  // ---- Filters (apply to the grid and to exports) ----
+  const monthStart = `${currentMonth.year}-${String(currentMonth.monthIndex + 1).padStart(2, "0")}-01`;
+  const monthEnd = `${currentMonth.year}-${String(currentMonth.monthIndex + 1).padStart(2, "0")}-${String(currentMonth.daysInMonth).padStart(2, "0")}`;
+  const [filters, setFilters] = useState<ExportFilters>({ from: monthStart, to: monthEnd, sourceKey: "all", room: "all" });
+  useEffect(() => {
+    setFilters((f) => ({ ...f, from: monthStart, to: monthEnd }));
+  }, [monthStart, monthEnd]);
+
+  const importedSources = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const r of imported) map.set(r.source_id, r.source_name);
+    return Array.from(map, ([id, name]) => ({ id, name }));
+  }, [imported]);
+
+  const filtersActive =
+    filters.from !== monthStart || filters.to !== monthEnd || filters.sourceKey !== "all" || filters.room !== "all";
+
+  const visibleRooms = filters.room === "all" ? settings.rooms : settings.rooms.filter((r) => r === filters.room);
+  const visibleDays = useMemo(() => {
+    const all = Array.from({ length: currentMonth.daysInMonth }, (_, i) => i + 1);
+    return all.filter((d) => {
+      const iso = `${currentMonth.year}-${String(currentMonth.monthIndex + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      if (filters.from && iso < filters.from) return false;
+      if (filters.to && iso > filters.to) return false;
+      return true;
+    });
+  }, [currentMonth.daysInMonth, currentMonth.year, currentMonth.monthIndex, filters.from, filters.to]);
+
+  const exportRows = useMemo(
+    () => applyFilters(buildBookingRows(currentMonth, settings, imported), filters),
+    [currentMonth, settings, imported, filters],
+  );
+
+  const periodLabel = `${formatMonthKey(currentMonth.key)}${filtersActive && (filters.from !== monthStart || filters.to !== monthEnd) ? ` (${filters.from} → ${filters.to})` : ""}`;
+  const filterSummary = [
+    filters.room !== "all" ? `Room: ${filters.room}` : null,
+    filters.sourceKey !== "all"
+      ? `Source: ${settings.channels.find((c) => c.id === filters.sourceKey)?.name ?? importedSources.find((s) => s.id === filters.sourceKey)?.name ?? filters.sourceKey}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  const doExportCsv = () => {
+    if (exportRows.length === 0) { toast.error("No bookings match the current filters."); return; }
+    downloadBlob(toCsv(exportRows, settings.currency), `${exportFileBase(currentMonth)}.csv`, "text/csv;charset=utf-8;");
+    toast.success(`Exported ${exportRows.length} booking(s) to CSV.`);
+  };
+
+  const doExportPdf = async () => {
+    if (exportRows.length === 0) { toast.error("No bookings match the current filters."); return; }
+    try {
+      await exportPdf({
+        rows: exportRows,
+        hotelName,
+        currency: settings.currency,
+        periodLabel,
+        filterSummary,
+        filename: `${exportFileBase(currentMonth)}.pdf`,
+      });
+      toast.success(`Exported ${exportRows.length} booking(s) to PDF.`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to generate PDF");
+    }
+  };
+
+
   return (
     <div className="mx-auto max-w-[1400px] space-y-4 px-4 py-6 sm:px-6 lg:px-8">
       <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 sm:flex sm:flex-wrap sm:items-end sm:justify-between">
@@ -146,6 +216,22 @@ function BookingsPage() {
               }
             }}
           />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="outline" className="gap-1.5">
+                <Download className="h-4 w-4" /> Export
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={() => doExportCsv()}>
+                <FileSpreadsheet className="me-2 h-4 w-4" /> CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => { void doExportPdf(); }}>
+                <FileText className="me-2 h-4 w-4" /> PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           {view === "month" ? (
             <MonthSelector />
           ) : (
@@ -161,6 +247,54 @@ function BookingsPage() {
           )}
         </div>
       </header>
+
+      <div className="flex flex-wrap items-end gap-3 rounded-xl border bg-card p-3">
+        <div className="space-y-1">
+          <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">From</Label>
+          <Input type="date" value={filters.from} className="h-9 w-[150px]" onChange={(e) => setFilters((f) => ({ ...f, from: e.target.value }))} />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">To</Label>
+          <Input type="date" value={filters.to} min={filters.from} className="h-9 w-[150px]" onChange={(e) => setFilters((f) => ({ ...f, to: e.target.value }))} />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Source</Label>
+          <Select value={filters.sourceKey} onValueChange={(v) => setFilters((f) => ({ ...f, sourceKey: v }))}>
+            <SelectTrigger className="h-9 w-[180px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All sources</SelectItem>
+              {settings.channels.map((ch) => (
+                <SelectItem key={ch.id} value={ch.id}>{ch.name}</SelectItem>
+              ))}
+              {importedSources.map((s) => (
+                <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Room</Label>
+          <Select value={filters.room} onValueChange={(v) => setFilters((f) => ({ ...f, room: v }))}>
+            <SelectTrigger className="h-9 w-[160px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All rooms</SelectItem>
+              {settings.rooms.map((r) => (
+                <SelectItem key={r} value={r}>{r}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="ms-auto flex items-center gap-2 text-xs text-muted-foreground">
+          <span><span className="font-semibold text-foreground">{exportRows.length}</span> booking(s) match</span>
+          {filtersActive && (
+            <Button variant="ghost" size="sm" onClick={() => setFilters({ from: monthStart, to: monthEnd, sourceKey: "all", room: "all" })}>
+              <X className="me-1 h-3.5 w-3.5" /> Clear
+            </Button>
+          )}
+        </div>
+      </div>
+
+
 
       {view === "day" ? (
         <>
@@ -193,20 +327,23 @@ function BookingsPage() {
           <thead className="sticky top-14 z-20 bg-muted/95 backdrop-blur supports-[backdrop-filter]:bg-muted/75">
             <tr>
               <th className="sticky start-0 z-20 bg-muted/80 px-3 py-3 text-start text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("bookings.day")}</th>
-              {settings.rooms.map((r) => (
+              {visibleRooms.map((r) => (
                 <th key={r} className="px-3 py-3 text-start text-xs font-semibold uppercase tracking-wider text-muted-foreground">{r}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {Array.from({ length: currentMonth.daysInMonth }, (_, i) => i + 1).map((day) => (
+            {visibleDays.map((day) => (
               <tr key={day} className="group">
                 <td className="sticky start-0 z-10 border-t bg-card px-3 py-2 text-xs font-semibold text-muted-foreground group-hover:bg-muted/40">{day}</td>
-                {settings.rooms.map((room) => {
+                {visibleRooms.map((room) => {
                   const cell = currentMonth.cells[room]?.[day] ?? null;
                   const importedHere = !cell ? importedByRoomDay.get(room)?.get(day) ?? null : null;
+                  const matchesSource =
+                    filters.sourceKey === "all" ||
+                    (importedHere ? importedHere.res.source_id === filters.sourceKey : cell ? cell.channelId === filters.sourceKey : true);
                   return (
-                    <td key={room} className="border-t p-1.5 align-top">
+                    <td key={room} className={`border-t p-1.5 align-top ${matchesSource ? "" : "opacity-25"}`}>
                       {importedHere ? (
                         <ImportedBlock res={importedHere.res} position={importedHere.position} onChanged={reloadImported} currency={settings.currency} />
                       ) : (
@@ -222,6 +359,7 @@ function BookingsPage() {
                     </td>
                   );
                 })}
+
               </tr>
 
             ))}

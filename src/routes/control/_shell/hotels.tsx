@@ -348,11 +348,11 @@ function HotelsPage() {
   );
 }
 
-function Field({ label, name, type = "text", required }: { label: string; name: string; type?: string; required?: boolean }) {
+function Field({ label, name, type = "text", required, defaultValue }: { label: string; name: string; type?: string; required?: boolean; defaultValue?: string }) {
   return (
     <div>
       <Label htmlFor={name}>{label}</Label>
-      <Input id={name} name={name} type={type} required={required} className="mt-1" />
+      <Input id={name} name={name} type={type} required={required} defaultValue={defaultValue} className="mt-1" />
     </div>
   );
 }

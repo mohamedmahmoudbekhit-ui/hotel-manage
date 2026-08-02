@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AcceptInviteRouteImport } from './routes/accept-invite'
+import { Route as ConsoleRouteRouteImport } from './routes/console/route'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedSummaryRouteImport } from './routes/_authenticated/summary'
@@ -32,6 +33,11 @@ const AuthRoute = AuthRouteImport.update({
 const AcceptInviteRoute = AcceptInviteRouteImport.update({
   id: '/accept-invite',
   path: '/accept-invite',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConsoleRouteRoute = ConsoleRouteRouteImport.update({
+  id: '/console',
+  path: '/console',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
@@ -97,6 +103,7 @@ const ApiPublicHooksSyncIcalRoute = ApiPublicHooksSyncIcalRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
+  '/console': typeof ConsoleRouteRoute
   '/accept-invite': typeof AcceptInviteRoute
   '/auth': typeof AuthRoute
   '/admin': typeof AuthenticatedAdminRouteRouteWithChildren
@@ -111,6 +118,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/sync-ical': typeof ApiPublicHooksSyncIcalRoute
 }
 export interface FileRoutesByTo {
+  '/console': typeof ConsoleRouteRoute
   '/accept-invite': typeof AcceptInviteRoute
   '/auth': typeof AuthRoute
   '/bookings': typeof AuthenticatedBookingsRoute
@@ -127,6 +135,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/console': typeof ConsoleRouteRoute
   '/accept-invite': typeof AcceptInviteRoute
   '/auth': typeof AuthRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteRouteWithChildren
@@ -145,6 +154,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/console'
     | '/accept-invite'
     | '/auth'
     | '/admin'
@@ -159,6 +169,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/sync-ical'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/console'
     | '/accept-invite'
     | '/auth'
     | '/bookings'
@@ -174,6 +185,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/_authenticated'
+    | '/console'
     | '/accept-invite'
     | '/auth'
     | '/_authenticated/admin'
@@ -191,6 +203,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  ConsoleRouteRoute: typeof ConsoleRouteRoute
   AcceptInviteRoute: typeof AcceptInviteRoute
   AuthRoute: typeof AuthRoute
   ApiPublicHooksSyncIcalRoute: typeof ApiPublicHooksSyncIcalRoute
@@ -210,6 +223,13 @@ declare module '@tanstack/react-router' {
       path: '/accept-invite'
       fullPath: '/accept-invite'
       preLoaderRoute: typeof AcceptInviteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/console': {
+      id: '/console'
+      path: '/console'
+      fullPath: '/console'
+      preLoaderRoute: typeof ConsoleRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -342,6 +362,7 @@ const AuthenticatedRouteRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  ConsoleRouteRoute: ConsoleRouteRoute,
   AcceptInviteRoute: AcceptInviteRoute,
   AuthRoute: AuthRoute,
   ApiPublicHooksSyncIcalRoute: ApiPublicHooksSyncIcalRoute,

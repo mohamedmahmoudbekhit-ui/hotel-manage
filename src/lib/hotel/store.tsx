@@ -367,6 +367,40 @@ export function HotelProvider({ children }: { children: ReactNode }) {
     [state.months, state.currentMonthKey],
   );
 
+  // ---- Imported (iCal) reservations across every month held in state ----
+  const [imported, setImported] = useState<ImportedReservationRow[]>([]);
+  const fetchImported = useServerFn(listImportedForMonth);
+  const monthKeysSig = Object.keys(state.months).sort().join("|");
+
+  const reloadImported = useCallback(() => {
+    const list = Object.values(state.months);
+    if (list.length === 0) return;
+    const sorted = [...list].sort((a, b) => (a.year !== b.year ? a.year - b.year : a.monthIndex - b.monthIndex));
+    const first = sorted[0];
+    const last = sorted[sorted.length - 1];
+    const from = `${first.year}-${String(first.monthIndex + 1).padStart(2, "0")}-01`;
+    const to = `${last.year}-${String(last.monthIndex + 1).padStart(2, "0")}-${String(last.daysInMonth).padStart(2, "0")}`;
+    fetchImported({ data: { from, to } })
+      .then(setImported)
+      .catch((e) => console.error("Failed to load imported reservations", e));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchImported, monthKeysSig]);
+
+  useEffect(() => {
+    if (loading || !onboarded) return;
+    reloadImported();
+  }, [loading, onboarded, reloadImported]);
+
+  const analyticsFor = useCallback(
+    (m: MonthData) => mergeImportedIntoMonth(m, state.settings, imported),
+    [state.settings, imported],
+  );
+
+  const analytics = useMemo(
+    () => mergeImportedIntoMonth(currentMonth, state.settings, imported),
+    [currentMonth, state.settings, imported],
+  );
+
   const value: Ctx = {
     ...state,
     hotelName,
@@ -378,6 +412,12 @@ export function HotelProvider({ children }: { children: ReactNode }) {
     isBookingAgent: memberRole === "hotel_staff",
     subscriptionStatus,
     currentMonth,
+    imported,
+    reloadImported,
+    analyticsMonth: analytics.month,
+    analyticsSettings: analytics.settings,
+    analyticsFor,
+
     setCurrentMonthKey,
     updateCell,
     addBookingRange,

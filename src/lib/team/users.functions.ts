@@ -89,6 +89,9 @@ export const inviteTeamMember = createServerFn({ method: "POST" })
     const email = data.email.toLowerCase();
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
+    const { assertNotPlatformAdminEmail } = await import("@/lib/auth/platform-admin.server");
+    await assertNotPlatformAdminEmail(email);
+
     const token = randomToken();
     const expires = new Date();
     expires.setHours(expires.getHours() + 24);

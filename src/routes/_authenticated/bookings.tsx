@@ -447,21 +447,30 @@ function ImportedBlock({ res, channel, position, onChanged, currency }: { res: I
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <button
-          className={`relative flex h-11 w-full items-center gap-1 border px-2 text-start text-[10px] font-semibold uppercase tracking-wide ${roundedClass}`}
+          className={`relative flex h-11 w-full flex-col justify-center border px-2 text-start ${roundedClass}`}
           style={{ backgroundColor: color, color: textColor, borderColor: color }}
         >
-          {showLabel ? (
-            <>
-              <CalendarClock className="h-3 w-3 shrink-0 opacity-80" />
-              <span className="truncate">{label}</span>
-            </>
-          ) : (
-            <span className="mx-auto text-[9px] opacity-80">{positionBadge}</span>
+          <span className="flex items-center gap-1 truncate text-[10px] font-semibold uppercase tracking-wide opacity-90">
+            {showLabel ? (
+              <>
+                <CalendarClock className="h-3 w-3 shrink-0 opacity-80" />
+                <span className="truncate">{label}</span>
+              </>
+            ) : (
+              <span className="truncate">{positionBadge}</span>
+            )}
+          </span>
+          {nightly != null && (
+            <span className="truncate text-xs font-bold tabular-nums">
+              {nightly.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+              <span className="ms-1 text-[9px] font-semibold opacity-80">{channelCurrency}</span>
+            </span>
           )}
           {hasNote && (
             <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-current opacity-90" />
           )}
         </button>
+
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>

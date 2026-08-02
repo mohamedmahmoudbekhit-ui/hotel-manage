@@ -248,6 +248,54 @@ function BookingsPage() {
         </div>
       </header>
 
+      <div className="flex flex-wrap items-end gap-3 rounded-xl border bg-card p-3">
+        <div className="space-y-1">
+          <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">From</Label>
+          <Input type="date" value={filters.from} className="h-9 w-[150px]" onChange={(e) => setFilters((f) => ({ ...f, from: e.target.value }))} />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">To</Label>
+          <Input type="date" value={filters.to} min={filters.from} className="h-9 w-[150px]" onChange={(e) => setFilters((f) => ({ ...f, to: e.target.value }))} />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Source</Label>
+          <Select value={filters.sourceKey} onValueChange={(v) => setFilters((f) => ({ ...f, sourceKey: v }))}>
+            <SelectTrigger className="h-9 w-[180px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All sources</SelectItem>
+              {settings.channels.map((ch) => (
+                <SelectItem key={ch.id} value={ch.id}>{ch.name}</SelectItem>
+              ))}
+              {importedSources.map((s) => (
+                <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Room</Label>
+          <Select value={filters.room} onValueChange={(v) => setFilters((f) => ({ ...f, room: v }))}>
+            <SelectTrigger className="h-9 w-[160px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All rooms</SelectItem>
+              {settings.rooms.map((r) => (
+                <SelectItem key={r} value={r}>{r}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="ms-auto flex items-center gap-2 text-xs text-muted-foreground">
+          <span><span className="font-semibold text-foreground">{exportRows.length}</span> booking(s) match</span>
+          {filtersActive && (
+            <Button variant="ghost" size="sm" onClick={() => setFilters({ from: monthStart, to: monthEnd, sourceKey: "all", room: "all" })}>
+              <X className="me-1 h-3.5 w-3.5" /> Clear
+            </Button>
+          )}
+        </div>
+      </div>
+
+
+
       {view === "day" ? (
         <>
           <p className="text-sm text-muted-foreground">

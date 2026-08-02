@@ -281,10 +281,30 @@ function SourceEditor({
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [state, setState] = useState<EditorState>(initial);
+  const [test, setTest] = useState<IcalTestResult | null>(null);
+  const [testing, setTesting] = useState(false);
+  const runTestFn = useServerFn(testIcalConnection);
 
   useEffect(() => {
-    if (open) setState(initial);
+    if (open) { setState(initial); setTest(null); }
   }, [open, initial]);
+
+  const runTest = async () => {
+    setTesting(true);
+    try {
+      const res = await runTestFn({ data: { ical_url: state.ical_url } });
+      setTest(res);
+      if (res.ok) toast.success(t("cal.testOk", { n: res.totalEvents ?? 0 }));
+      else toast.error(res.error ?? t("cal.syncFail"));
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setTest({ ok: false, error: msg });
+      toast.error(msg);
+    } finally {
+      setTesting(false);
+    }
+  };
+
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

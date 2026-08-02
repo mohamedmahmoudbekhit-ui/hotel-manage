@@ -156,7 +156,7 @@ function SettingsPage() {
         <p className="text-xs text-muted-foreground">{t("settings.channelsSub")}</p>
         <div className="mt-4 space-y-2">
           {settings.channels.map((ch) => (
-            <div key={ch.id} className="grid grid-cols-[auto_minmax(0,1fr)_auto_auto_auto] items-center gap-2 rounded-lg border bg-background px-3 py-2">
+            <div key={ch.id} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-lg border bg-background px-3 py-2 sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto]">
               <input
                 type="color"
                 value={ch.color}
@@ -170,13 +170,13 @@ function SettingsPage() {
                 className="h-9"
               />
               <Select value={ch.currency} onValueChange={(v) => updateChannel(ch.id, { currency: v as "LOCAL" | "USD" })}>
-                <SelectTrigger className="h-9 w-32"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="col-span-2 h-9 w-full sm:col-span-1 sm:w-32"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="LOCAL">{settings.currency} ({t("settings.local")})</SelectItem>
                   <SelectItem value="USD">USD</SelectItem>
                 </SelectContent>
               </Select>
-              <span className="h-6 w-6 rounded-full border" style={{ background: ch.color }} />
+              <span className="hidden h-6 w-6 rounded-full border sm:block" style={{ background: ch.color }} />
               <Button variant="ghost" size="icon" onClick={() => {
                 if (settings.channels.length <= 1) { toast.error(t("settings.channelKeepOne")); return; }
                 removeChannel(ch.id);
@@ -186,7 +186,7 @@ function SettingsPage() {
             </div>
           ))}
         </div>
-        <div className="mt-4 grid grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-2 rounded-lg border border-dashed bg-background/50 p-3">
+        <div className="mt-4 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2 rounded-lg border border-dashed bg-background/50 p-3 sm:grid-cols-[auto_minmax(0,1fr)_auto_auto]">
           <input
             type="color"
             value={newCh.color}
@@ -201,7 +201,7 @@ function SettingsPage() {
             className="h-9"
           />
           <Select value={newCh.currency} onValueChange={(v) => setNewCh((s) => ({ ...s, currency: v as "LOCAL" | "USD" }))}>
-            <SelectTrigger className="h-9 w-32"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="col-span-2 h-9 w-full sm:col-span-1 sm:w-32"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="LOCAL">{settings.currency} ({t("settings.local")})</SelectItem>
               <SelectItem value="USD">USD</SelectItem>
@@ -257,7 +257,7 @@ function SettingsPage() {
 
 
       <section className="rounded-2xl border bg-card p-6 shadow-soft">
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 sm:flex sm:justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <h2 className="text-base font-semibold">{t("settings.monthParams")}</h2>
             <p className="text-xs text-muted-foreground">

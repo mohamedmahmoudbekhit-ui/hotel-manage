@@ -21,9 +21,9 @@ export function MonthSelector() {
   };
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex w-full min-w-0 items-center gap-2 sm:w-auto">
       <Select value={currentMonthKey} onValueChange={setCurrentMonthKey}>
-        <SelectTrigger className="w-[180px]">
+        <SelectTrigger className="min-w-0 flex-1 sm:w-[180px] sm:flex-none">
           <SelectValue>{formatMonthKey(currentMonthKey)}</SelectValue>
         </SelectTrigger>
         <SelectContent>
@@ -32,7 +32,7 @@ export function MonthSelector() {
           ))}
         </SelectContent>
       </Select>
-      <Button variant="outline" size="icon" onClick={handleAdd} title="Add next month">
+      <Button variant="outline" size="icon" className="shrink-0" onClick={handleAdd} title="Add next month">
         <Plus className="h-4 w-4" />
       </Button>
     </div>

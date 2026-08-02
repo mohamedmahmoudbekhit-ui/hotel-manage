@@ -235,7 +235,7 @@ export function CalendarIntegrations() {
                         </span>
                       </div>
                       <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
-                        <span className="inline-flex items-center gap-1 truncate max-w-[260px]">
+                        <span className="inline-flex items-center gap-1 min-w-0 max-w-full truncate">
                           <LinkIcon className="h-3 w-3 shrink-0" />
                           <span className="truncate">{s.ical_url}</span>
                         </span>
@@ -309,7 +309,7 @@ function SourceEditor({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-      <PopoverContent className="w-80" align="end">
+      <PopoverContent className="max-h-[75dvh] w-[min(20rem,calc(100vw-2rem))] overflow-y-auto" align="end" collisionPadding={12}>
         <div className="space-y-3">
           <div className="space-y-1.5">
             <Label className="text-xs">{t("cal.sourceName")}</Label>

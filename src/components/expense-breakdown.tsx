@@ -25,7 +25,7 @@ export function ExpenseBreakdown() {
   };
 
   return (
-    <section className="rounded-2xl border bg-card p-6 shadow-soft">
+    <section className="rounded-2xl border bg-card p-4 shadow-soft sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
@@ -36,7 +36,7 @@ export function ExpenseBreakdown() {
             {t("expenses.subtitle")} — <span className="font-medium text-foreground">{formatMonthKey(currentMonth.key)}</span>
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
           <MonthSelector />
           <div className="rounded-xl border bg-muted/40 px-4 py-2 text-end">
             <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("expenses.total")}</div>
@@ -45,8 +45,8 @@ export function ExpenseBreakdown() {
         </div>
       </div>
 
-      <div className="mt-4 overflow-hidden rounded-xl border">
-        <table className="w-full text-sm">
+      <div className="mt-4 overflow-x-auto rounded-xl border">
+        <table className="w-full min-w-[560px] text-sm">
           <thead className="bg-muted/50 text-xs uppercase tracking-wider text-muted-foreground">
             <tr>
               <th className="px-3 py-2 text-start">{t("expenses.description")}</th>

@@ -42,7 +42,7 @@ function ChartsPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
-      <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 sm:flex sm:flex-wrap sm:items-end sm:justify-between">
+      <header className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
         <div className="min-w-0">
           <h1 className="truncate text-2xl font-bold tracking-tight sm:text-3xl">{t("charts.title")}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{t("charts.visualFor")} {formatMonthKey(currentMonth.key)}</p>

@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Search, Copy, Ban, PlayCircle, CalendarPlus, Trash2, Send, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/_authenticated/admin/hotels")({
+export const Route = createFileRoute("/console/_shell/hotels")({
   component: HotelsPage,
 });
 

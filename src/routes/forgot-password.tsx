@@ -4,8 +4,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, MailCheck, ArrowLeft } from "lucide-react";
-import { requestPasswordReset } from "@/lib/auth/account.functions";
+import { Loader2, ShieldCheck, ArrowLeft } from "lucide-react";
+import { submitPasswordResetRequest } from "@/lib/auth/reset-requests.functions";
 import { AuthShell } from "@/components/auth-shell";
 
 export const Route = createFileRoute("/forgot-password")({
@@ -23,7 +23,7 @@ export const Route = createFileRoute("/forgot-password")({
 });
 
 function ForgotPassword() {
-  const request = useServerFn(requestPasswordReset);
+  const request = useServerFn(submitPasswordResetRequest);
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
@@ -32,7 +32,7 @@ function ForgotPassword() {
     e.preventDefault();
     setBusy(true);
     try {
-      await request({ data: { email, redirectTo: `${window.location.origin}/reset-password` } });
+      await request({ data: { email } });
     } catch {
       // Deliberately ignored: the response must never differ per address.
     } finally {
@@ -45,10 +45,11 @@ function ForgotPassword() {
     <AuthShell>
       {sent ? (
         <div className="text-center">
-          <MailCheck className="mx-auto h-10 w-10 text-primary" />
-          <h1 className="mt-3 text-xl font-bold">Check your inbox</h1>
+          <ShieldCheck className="mx-auto h-10 w-10 text-primary" />
+          <h1 className="mt-3 text-xl font-bold">Request received</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            If an account exists for this email, a reset link has been sent. The link expires in 1 hour and can be used once.
+            If an account exists for this email, your administrator will send you a secure reset link. The link expires
+            in 1 hour and can be used once.
           </p>
           <Button asChild variant="outline" className="mt-5 w-full">
             <Link to="/login">Back to sign in</Link>
@@ -58,7 +59,7 @@ function ForgotPassword() {
         <>
           <h1 className="text-xl font-bold">Forgot your password?</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Enter your email and we'll send you a secure link to choose a new password.
+            Enter your email and your administrator will share a secure link so you can choose a new password.
           </p>
           <form onSubmit={submit} className="mt-5 space-y-3">
             <div className="space-y-1.5">
@@ -67,7 +68,7 @@ function ForgotPassword() {
             </div>
             <Button type="submit" className="w-full" disabled={busy}>
               {busy && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
-              Send reset link
+              Request reset link
             </Button>
           </form>
           <Link to="/login" className="mt-4 flex items-center justify-center gap-1 text-xs text-muted-foreground hover:underline">

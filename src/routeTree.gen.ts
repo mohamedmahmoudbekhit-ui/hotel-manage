@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as NewPasswordRouteImport } from './routes/new-password'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -35,6 +36,11 @@ import { Route as ApiPublicHooksSyncIcalRouteImport } from './routes/api/public/
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NewPasswordRoute = NewPasswordRouteImport.update({
+  id: '/new-password',
+  path: '/new-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -149,6 +155,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/new-password': typeof NewPasswordRoute
   '/reset-password': typeof ResetPasswordRoute
   '/bookings': typeof AuthenticatedBookingsRoute
   '/charts': typeof AuthenticatedChartsRoute
@@ -170,6 +177,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/new-password': typeof NewPasswordRoute
   '/reset-password': typeof ResetPasswordRoute
   '/bookings': typeof AuthenticatedBookingsRoute
   '/charts': typeof AuthenticatedChartsRoute
@@ -193,6 +201,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/new-password': typeof NewPasswordRoute
   '/reset-password': typeof ResetPasswordRoute
   '/control/_shell': typeof ControlShellRouteRouteWithChildren
   '/_authenticated/bookings': typeof AuthenticatedBookingsRoute
@@ -219,6 +228,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/forgot-password'
     | '/login'
+    | '/new-password'
     | '/reset-password'
     | '/bookings'
     | '/charts'
@@ -240,6 +250,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/forgot-password'
     | '/login'
+    | '/new-password'
     | '/reset-password'
     | '/bookings'
     | '/charts'
@@ -262,6 +273,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/forgot-password'
     | '/login'
+    | '/new-password'
     | '/reset-password'
     | '/control/_shell'
     | '/_authenticated/bookings'
@@ -287,6 +299,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
+  NewPasswordRoute: typeof NewPasswordRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   ApiPublicHooksSyncIcalRoute: typeof ApiPublicHooksSyncIcalRoute
 }
@@ -298,6 +311,13 @@ declare module '@tanstack/react-router' {
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/new-password': {
+      id: '/new-password'
+      path: '/new-password'
+      fullPath: '/new-password'
+      preLoaderRoute: typeof NewPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -512,6 +532,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
+  NewPasswordRoute: NewPasswordRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   ApiPublicHooksSyncIcalRoute: ApiPublicHooksSyncIcalRoute,
 }

@@ -2,9 +2,10 @@ import { useMemo } from "react";
 import { useHotel } from "@/lib/hotel/store";
 import { findChannel, monthKey, pickTextColor, resolveImportedChannel } from "@/lib/hotel/utils";
 import type { ImportedReservationRow } from "@/lib/hotel/calendar.functions";
-import { LogIn, LogOut, BedDouble, DoorOpen } from "lucide-react";
+import { LogIn, LogOut, BedDouble, DoorOpen, RefreshCw } from "lucide-react";
 
-export type DayStatus = "checkin" | "checkout" | "occupied" | "vacant";
+export type DayStatus = "turnover" | "checkin" | "checkout" | "occupied" | "vacant";
+
 
 interface RoomDay {
   room: string;
@@ -44,51 +45,56 @@ export function DailyView({
     }
 
     return settings.rooms.map((room): RoomDay => {
-      // Imported reservations take priority when they cover this date.
+      let arrival: { label: string; color: string; note: string | null } | null = null;
+      let departure: { label: string; color: string; note: string | null } | null = null;
+      let staying: { label: string; color: string; note: string | null } | null = null;
+
       for (const r of impByRoom.get(room) ?? []) {
         const start = (r.start_date ?? "").slice(0, 10);
         const end = (r.end_date ?? "").slice(0, 10); // checkout day (exclusive night)
         const ch = resolveImportedChannel(settings, r);
-        const color = ch.color || "#64748b";
-        const label = ch.name;
-        if (todayIso === start) return { room, status: "checkin", label, color, note: r.override_notes };
-        if (todayIso === end) return { room, status: "checkout", label, color, note: r.override_notes };
-        if (todayIso > start && todayIso < end) return { room, status: "occupied", label, color, note: r.override_notes };
+        const info = { label: ch.name, color: ch.color || "#64748b", note: r.override_notes ?? null };
+        if (todayIso === start) arrival = arrival ?? info;
+        else if (todayIso === end) departure = departure ?? info;
+        else if (todayIso > start && todayIso < end) staying = staying ?? info;
       }
 
       const today = cellAt(room, date);
       const yesterday = cellAt(room, prev);
       if (today) {
         const ch = findChannel(settings, today.channelId);
-        return {
-          room,
-          status: yesterday ? "occupied" : "checkin",
-          label: ch.name,
-          color: ch.color,
-          note: today.note ?? null,
-        };
-      }
-      if (yesterday) {
+        const info = { label: ch.name, color: ch.color, note: today.note ?? null };
+        if (yesterday) staying = staying ?? info;
+        else arrival = arrival ?? info;
+      } else if (yesterday) {
         const ch = findChannel(settings, yesterday.channelId);
-        return { room, status: "checkout", label: ch.name, color: ch.color, note: yesterday.note ?? null };
+        departure = departure ?? { label: ch.name, color: ch.color, note: yesterday.note ?? null };
       }
+
+      if (arrival && departure) return { room, status: "turnover", ...arrival };
+      if (arrival) return { room, status: "checkin", ...arrival };
+      if (departure) return { room, status: "checkout", ...departure };
+      if (staying) return { room, status: "occupied", ...staying };
       return { room, status: "vacant" };
     });
   }, [date, imported, months, settings]);
 
   const counts = rows.reduce<Record<DayStatus, number>>(
     (acc, r) => ({ ...acc, [r.status]: acc[r.status] + 1 }),
-    { checkin: 0, checkout: 0, occupied: 0, vacant: 0 },
+    { turnover: 0, checkin: 0, checkout: 0, occupied: 0, vacant: 0 },
   );
+
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <SummaryTile icon={<LogIn className="h-4 w-4" />} label="Check-in today" value={counts.checkin} tone="text-emerald-600 dark:text-emerald-400" />
-        <SummaryTile icon={<LogOut className="h-4 w-4" />} label="Check-out today" value={counts.checkout} tone="text-amber-600 dark:text-amber-400" />
-        <SummaryTile icon={<BedDouble className="h-4 w-4" />} label="Occupied" value={counts.occupied} tone="text-primary" />
-        <SummaryTile icon={<DoorOpen className="h-4 w-4" />} label="Vacant" value={counts.vacant} tone="text-muted-foreground" />
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+        <SummaryTile icon={<RefreshCw className="h-4 w-4 shrink-0" />} label="Turnover" value={counts.turnover} tone="text-fuchsia-600 dark:text-fuchsia-400" />
+        <SummaryTile icon={<LogIn className="h-4 w-4 shrink-0" />} label="Check-in today" value={counts.checkin} tone="text-emerald-600 dark:text-emerald-400" />
+        <SummaryTile icon={<LogOut className="h-4 w-4 shrink-0" />} label="Check-out today" value={counts.checkout} tone="text-amber-600 dark:text-amber-400" />
+        <SummaryTile icon={<BedDouble className="h-4 w-4 shrink-0" />} label="Occupied" value={counts.occupied} tone="text-primary" />
+        <SummaryTile icon={<DoorOpen className="h-4 w-4 shrink-0" />} label="Vacant" value={counts.vacant} tone="text-muted-foreground" />
       </div>
+
 
       <div className="overflow-x-auto rounded-2xl border bg-card shadow-soft">
         <table className="w-full min-w-[640px] text-sm">
@@ -141,11 +147,13 @@ function SummaryTile({ icon, label, value, tone }: { icon: React.ReactNode; labe
 
 function StatusBadge({ status }: { status: DayStatus }) {
   const map: Record<DayStatus, { text: string; cls: string; icon: React.ReactNode }> = {
-    checkin: { text: "Check-in today", cls: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400", icon: <LogIn className="h-3 w-3" /> },
-    checkout: { text: "Check-out today", cls: "bg-amber-500/15 text-amber-700 dark:text-amber-400", icon: <LogOut className="h-3 w-3" /> },
-    occupied: { text: "Occupied", cls: "bg-primary/15 text-primary", icon: <BedDouble className="h-3 w-3" /> },
-    vacant: { text: "Vacant", cls: "bg-muted text-muted-foreground", icon: <DoorOpen className="h-3 w-3" /> },
+    turnover: { text: "Turnover", cls: "bg-fuchsia-500/15 text-fuchsia-700 dark:text-fuchsia-400", icon: <RefreshCw className="h-3 w-3 shrink-0" /> },
+    checkin: { text: "Check-in today", cls: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400", icon: <LogIn className="h-3 w-3 shrink-0" /> },
+    checkout: { text: "Check-out today", cls: "bg-amber-500/15 text-amber-700 dark:text-amber-400", icon: <LogOut className="h-3 w-3 shrink-0" /> },
+    occupied: { text: "Occupied", cls: "bg-primary/15 text-primary", icon: <BedDouble className="h-3 w-3 shrink-0" /> },
+    vacant: { text: "Vacant", cls: "bg-muted text-muted-foreground", icon: <DoorOpen className="h-3 w-3 shrink-0" /> },
   };
+
   const s = map[status];
   return (
     <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ${s.cls}`}>

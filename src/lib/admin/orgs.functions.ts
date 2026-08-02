@@ -27,6 +27,7 @@ export interface OrgRow {
   owner_status: "pending" | "active" | "expired";
   invitation_created_at: string | null;
   activated_at: string | null;
+  invitation_token: string | null;
 }
 
 export interface DashboardStats {
@@ -55,7 +56,7 @@ export const listOrganizations = createServerFn({ method: "GET" })
     const [{ data: invites }, { data: members }] = await Promise.all([
       supabaseAdmin
         .from("organization_invitations")
-        .select("organization_id, email, role, created_at, accepted_at, expires_at")
+        .select("organization_id, email, role, token, created_at, accepted_at, expires_at")
         .in("organization_id", ids)
         .eq("role", "hotel_admin")
         .order("created_at", { ascending: false }),
@@ -85,6 +86,7 @@ export const listOrganizations = createServerFn({ method: "GET" })
         owner_status,
         invitation_created_at: latest?.created_at ?? null,
         activated_at: accepted.length ? accepted[0].accepted_at : null,
+        invitation_token: owner_status === "active" ? null : (latest?.token ?? null),
       } as OrgRow;
     });
   });

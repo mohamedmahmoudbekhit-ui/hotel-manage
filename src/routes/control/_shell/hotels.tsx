@@ -117,6 +117,40 @@ function HotelsPage() {
     } catch (err) { toast.error(err instanceof Error ? err.message : "Failed"); }
   };
 
+  const handleEdit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!editRow) return;
+    const fd = new FormData(e.currentTarget);
+    const str = (k: string) => String(fd.get(k) ?? "").trim();
+    setEditBusy(true);
+    try {
+      await updateFn({ data: {
+        id: editRow.id,
+        patch: {
+          hotel_name: str("hotel_name"),
+          contact_person: str("contact_person") || null,
+          contact_email: str("contact_email"),
+          contact_mobile: str("contact_mobile"),
+          subscription_plan: str("subscription_plan"),
+          subscription_status: str("subscription_status") as "trial" | "active" | "expired" | "suspended" | "cancelled",
+          account_status: str("account_status") as "active" | "suspended",
+          renewal_date: str("renewal_date") || null,
+          expiry_date: str("expiry_date") || null,
+          notes: str("notes") || null,
+        },
+      }});
+      toast.success("Hotel details updated");
+      setEditRow(null);
+      refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed");
+    } finally {
+      setEditBusy(false);
+    }
+  };
+
+
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">

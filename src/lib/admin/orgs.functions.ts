@@ -263,6 +263,14 @@ export const resendInvitation = createServerFn({ method: "POST" })
       created_by: context.userId,
     });
     if (error) throw new Error(error.message);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await supabaseAdmin.from("auth_audit_log").insert({
+      action: "activation_link_regenerated",
+      email: (org as any).contact_email,
+      organization_id: data.organization_id,
+      user_id: context.userId,
+      detail: { expires_at: expires.toISOString() },
+    });
     return { token, email: (org as any).contact_email };
   });
 

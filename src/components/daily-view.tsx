@@ -89,8 +89,8 @@ export function DailyView({
         <SummaryTile icon={<DoorOpen className="h-4 w-4" />} label="Vacant" value={counts.vacant} tone="text-muted-foreground" />
       </div>
 
-      <div className="overflow-hidden rounded-2xl border bg-card shadow-soft">
-        <table className="w-full text-sm">
+      <div className="overflow-x-auto rounded-2xl border bg-card shadow-soft">
+        <table className="w-full min-w-[640px] text-sm">
           <thead className="bg-muted/60">
             <tr>
               <th className="px-4 py-3 text-start text-xs font-semibold uppercase tracking-wider text-muted-foreground">Room</th>

@@ -337,6 +337,12 @@ function BookingsPage() {
                   const matchesSource =
                     filters.sourceKey === "all" ||
                     (importedHere ? importedHere.res.source_id === filters.sourceKey : cell ? cell.channelId === filters.sourceKey : true);
+                  const prev = currentMonth.cells[room]?.[day - 1] ?? null;
+                  const next = currentMonth.cells[room]?.[day + 1] ?? null;
+                  const contPrev = !!cell && !!prev && prev.channelId === cell.channelId;
+                  const contNext = !!cell && !!next && next.channelId === cell.channelId;
+                  const position: "start" | "middle" | "end" | "single" =
+                    !contPrev && !contNext ? "single" : !contPrev ? "start" : !contNext ? "end" : "middle";
                   return (
                     <td key={room} className={`border-t p-1.5 align-top ${matchesSource ? "" : "opacity-25"}`}>
                       {importedHere ? (
@@ -344,6 +350,7 @@ function BookingsPage() {
                       ) : (
                         <CellEditor
                           cell={cell}
+                          position={position}
                           onSave={(c) => updateCell(room, day, c)}
                           onDelete={() => updateCell(room, day, null)}
                           usdRate={currentMonth.usdRate}
@@ -351,6 +358,10 @@ function BookingsPage() {
                           currency={settings.currency}
                         />
                       )}
+                    </td>
+                  );
+                })}
+
                     </td>
                   );
                 })}

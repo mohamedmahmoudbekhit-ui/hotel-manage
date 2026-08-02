@@ -199,6 +199,16 @@ const en: Dict = {
   "cal.syncAllPartial": "Synced {total} feed(s); {failed} failed.",
   "cal.importedBadge": "iCal",
   "cal.importedFrom": "Imported from",
+  "cal.test": "Test connection",
+  "cal.testing": "Testing…",
+  "cal.testOk": "Connection works — {n} reservations found.",
+  "cal.preview": "Preview",
+  "cal.logs": "Sync history",
+  "cal.noLogs": "No sync attempts recorded yet.",
+  "cal.hideLogs": "Hide history",
+  "cal.errorDetails": "Error details",
+  "cal.testFirst": "Test the connection before saving.",
+
 };
 
 

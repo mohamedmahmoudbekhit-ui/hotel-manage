@@ -566,7 +566,7 @@ function CellEditor({
           </button>
         )}
       </PopoverTrigger>
-      <PopoverContent className="w-80" align="start">
+      <PopoverContent className="max-h-[75dvh] w-[min(20rem,calc(100vw-2rem))] overflow-y-auto" align="start" collisionPadding={12}>
         <div className="space-y-3">
           <div className="space-y-1.5">
             <Label htmlFor="price" className="text-xs">{t("bookings.price")}</Label>

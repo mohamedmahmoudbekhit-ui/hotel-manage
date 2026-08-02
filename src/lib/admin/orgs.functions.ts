@@ -22,6 +22,11 @@ export interface OrgRow {
   expiry_date: string | null;
   notes: string | null;
   created_at: string;
+  owner_name: string | null;
+  owner_email: string;
+  owner_status: "pending" | "active" | "expired";
+  invitation_created_at: string | null;
+  activated_at: string | null;
 }
 
 export interface DashboardStats {

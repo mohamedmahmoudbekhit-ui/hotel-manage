@@ -407,6 +407,16 @@ const ar: Dict = {
   "cal.syncAllPartial": "تمت مزامنة {total} رابطاً؛ فشل {failed}.",
   "cal.importedBadge": "iCal",
   "cal.importedFrom": "مستورد من",
+  "cal.test": "اختبار الاتصال",
+  "cal.testing": "جارٍ الاختبار…",
+  "cal.testOk": "الاتصال ناجح — تم العثور على {n} حجزاً.",
+  "cal.preview": "معاينة",
+  "cal.logs": "سجل المزامنة",
+  "cal.noLogs": "لا توجد محاولات مزامنة بعد.",
+  "cal.hideLogs": "إخفاء السجل",
+  "cal.errorDetails": "تفاصيل الخطأ",
+  "cal.testFirst": "اختبر الاتصال قبل الحفظ.",
+
 };
 
 

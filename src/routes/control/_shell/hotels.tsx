@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Copy, Ban, PlayCircle, CalendarPlus, Trash2, Send, Loader2 } from "lucide-react";
+import { Plus, Search, Copy, Ban, PlayCircle, CalendarPlus, Trash2, Send, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/control/_shell/hotels")({
@@ -32,7 +32,8 @@ function HotelsPage() {
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [showCreate, setShowCreate] = useState(false);
-  const [inviteInfo, setInviteInfo] = useState<{ url: string; email: string } | null>(null);
+  const [inviteInfo, setInviteInfo] = useState<{ url: string; email: string; orgId: string } | null>(null);
+  const [regenBusy, setRegenBusy] = useState(false);
   const [extendFor, setExtendFor] = useState<OrgRow | null>(null);
   const [extendDate, setExtendDate] = useState("");
   const [loading, setLoading] = useState(true);
@@ -54,13 +55,13 @@ function HotelsPage() {
       const res = await createFn({ data: {
         hotel_name: String(fd.get("hotel_name")),
         contact_email: String(fd.get("contact_email")),
-        contact_mobile: String(fd.get("contact_mobile")),
-        contact_person: String(fd.get("contact_person") || "") || undefined,
+        contact_mobile: String(fd.get("contact_mobile") || "") || undefined,
+        contact_person: String(fd.get("contact_person")),
         subscription_plan: String(fd.get("subscription_plan")),
         notes: String(fd.get("notes") || "") || undefined,
       }});
       const url = `${window.location.origin}/activate?token=${res.inviteToken}`;
-      setInviteInfo({ url, email: String(fd.get("contact_email")) });
+      setInviteInfo({ url, email: String(fd.get("contact_email")), orgId: res.id });
       setShowCreate(false);
       toast.success("Hotel created. Invitation link generated.");
       refresh();
@@ -87,8 +88,22 @@ function HotelsPage() {
     try {
       const res = await resendFn({ data: { organization_id: row.id } });
       const url = `${window.location.origin}/activate?token=${res.token}`;
-      setInviteInfo({ url, email: res.email });
+      setInviteInfo({ url, email: res.email, orgId: row.id });
     } catch (err) { toast.error(err instanceof Error ? err.message : "Failed"); }
+  };
+
+  const regenerateInvite = async () => {
+    if (!inviteInfo) return;
+    setRegenBusy(true);
+    try {
+      const res = await resendFn({ data: { organization_id: inviteInfo.orgId } });
+      setInviteInfo({ url: `${window.location.origin}/activate?token=${res.token}`, email: res.email, orgId: inviteInfo.orgId });
+      toast.success("New invitation link generated");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed");
+    } finally {
+      setRegenBusy(false);
+    }
   };
 
   const handleExtend = async () => {
@@ -184,9 +199,9 @@ function HotelsPage() {
             </DialogHeader>
             <div className="grid gap-3 py-4">
               <Field label="Hotel name *" name="hotel_name" required />
-              <Field label="Contact person" name="contact_person" />
-              <Field label="Contact email *" name="contact_email" type="email" required />
-              <Field label="Contact mobile *" name="contact_mobile" required />
+              <Field label="Hotel owner name *" name="contact_person" required />
+              <Field label="Hotel owner email *" name="contact_email" type="email" required />
+              <Field label="Contact mobile" name="contact_mobile" />
               <div>
                 <Label>Subscription plan *</Label>
                 <select name="subscription_plan" required defaultValue="trial" className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm">
@@ -216,7 +231,11 @@ function HotelsPage() {
               <Copy className="h-4 w-4" />
             </Button>
           </div>
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:justify-between">
+            <Button type="button" variant="outline" onClick={regenerateInvite} disabled={regenBusy}>
+              {regenBusy ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : <RefreshCw className="me-2 h-4 w-4" />}
+              Regenerate link
+            </Button>
             <Button onClick={() => setInviteInfo(null)}>Done</Button>
           </DialogFooter>
         </DialogContent>

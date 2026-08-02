@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as NewPasswordRouteImport } from './routes/new-password'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -29,12 +30,18 @@ import { Route as AuthenticatedBookingsRouteImport } from './routes/_authenticat
 import { Route as ControlShellRouteRouteImport } from './routes/control/_shell/route'
 import { Route as ControlShellIndexRouteImport } from './routes/control/_shell/index'
 import { Route as ControlShellSecurityRouteImport } from './routes/control/_shell/security'
+import { Route as ControlShellResetsRouteImport } from './routes/control/_shell/resets'
 import { Route as ControlShellHotelsRouteImport } from './routes/control/_shell/hotels'
 import { Route as ApiPublicHooksSyncIcalRouteImport } from './routes/api/public/hooks/sync-ical'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NewPasswordRoute = NewPasswordRouteImport.update({
+  id: '/new-password',
+  path: '/new-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -130,6 +137,11 @@ const ControlShellSecurityRoute = ControlShellSecurityRouteImport.update({
   path: '/security',
   getParentRoute: () => ControlShellRouteRoute,
 } as any)
+const ControlShellResetsRoute = ControlShellResetsRouteImport.update({
+  id: '/resets',
+  path: '/resets',
+  getParentRoute: () => ControlShellRouteRoute,
+} as any)
 const ControlShellHotelsRoute = ControlShellHotelsRouteImport.update({
   id: '/hotels',
   path: '/hotels',
@@ -149,6 +161,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/new-password': typeof NewPasswordRoute
   '/reset-password': typeof ResetPasswordRoute
   '/bookings': typeof AuthenticatedBookingsRoute
   '/charts': typeof AuthenticatedChartsRoute
@@ -159,6 +172,7 @@ export interface FileRoutesByFullPath {
   '/control/login': typeof ControlLoginRoute
   '/control/set-password': typeof ControlSetPasswordRoute
   '/control/hotels': typeof ControlShellHotelsRoute
+  '/control/resets': typeof ControlShellResetsRoute
   '/control/security': typeof ControlShellSecurityRoute
   '/control/': typeof ControlShellIndexRoute
   '/api/public/hooks/sync-ical': typeof ApiPublicHooksSyncIcalRoute
@@ -170,6 +184,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/new-password': typeof NewPasswordRoute
   '/reset-password': typeof ResetPasswordRoute
   '/bookings': typeof AuthenticatedBookingsRoute
   '/charts': typeof AuthenticatedChartsRoute
@@ -181,6 +196,7 @@ export interface FileRoutesByTo {
   '/control/set-password': typeof ControlSetPasswordRoute
   '/': typeof AuthenticatedIndexRoute
   '/control/hotels': typeof ControlShellHotelsRoute
+  '/control/resets': typeof ControlShellResetsRoute
   '/control/security': typeof ControlShellSecurityRoute
   '/api/public/hooks/sync-ical': typeof ApiPublicHooksSyncIcalRoute
 }
@@ -193,6 +209,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/new-password': typeof NewPasswordRoute
   '/reset-password': typeof ResetPasswordRoute
   '/control/_shell': typeof ControlShellRouteRouteWithChildren
   '/_authenticated/bookings': typeof AuthenticatedBookingsRoute
@@ -205,6 +222,7 @@ export interface FileRoutesById {
   '/control/set-password': typeof ControlSetPasswordRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/control/_shell/hotels': typeof ControlShellHotelsRoute
+  '/control/_shell/resets': typeof ControlShellResetsRoute
   '/control/_shell/security': typeof ControlShellSecurityRoute
   '/control/_shell/': typeof ControlShellIndexRoute
   '/api/public/hooks/sync-ical': typeof ApiPublicHooksSyncIcalRoute
@@ -219,6 +237,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/forgot-password'
     | '/login'
+    | '/new-password'
     | '/reset-password'
     | '/bookings'
     | '/charts'
@@ -229,6 +248,7 @@ export interface FileRouteTypes {
     | '/control/login'
     | '/control/set-password'
     | '/control/hotels'
+    | '/control/resets'
     | '/control/security'
     | '/control/'
     | '/api/public/hooks/sync-ical'
@@ -240,6 +260,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/forgot-password'
     | '/login'
+    | '/new-password'
     | '/reset-password'
     | '/bookings'
     | '/charts'
@@ -251,6 +272,7 @@ export interface FileRouteTypes {
     | '/control/set-password'
     | '/'
     | '/control/hotels'
+    | '/control/resets'
     | '/control/security'
     | '/api/public/hooks/sync-ical'
   id:
@@ -262,6 +284,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/forgot-password'
     | '/login'
+    | '/new-password'
     | '/reset-password'
     | '/control/_shell'
     | '/_authenticated/bookings'
@@ -274,6 +297,7 @@ export interface FileRouteTypes {
     | '/control/set-password'
     | '/_authenticated/'
     | '/control/_shell/hotels'
+    | '/control/_shell/resets'
     | '/control/_shell/security'
     | '/control/_shell/'
     | '/api/public/hooks/sync-ical'
@@ -287,6 +311,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
+  NewPasswordRoute: typeof NewPasswordRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   ApiPublicHooksSyncIcalRoute: typeof ApiPublicHooksSyncIcalRoute
 }
@@ -298,6 +323,13 @@ declare module '@tanstack/react-router' {
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/new-password': {
+      id: '/new-password'
+      path: '/new-password'
+      fullPath: '/new-password'
+      preLoaderRoute: typeof NewPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -433,6 +465,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ControlShellSecurityRouteImport
       parentRoute: typeof ControlShellRouteRoute
     }
+    '/control/_shell/resets': {
+      id: '/control/_shell/resets'
+      path: '/resets'
+      fullPath: '/control/resets'
+      preLoaderRoute: typeof ControlShellResetsRouteImport
+      parentRoute: typeof ControlShellRouteRoute
+    }
     '/control/_shell/hotels': {
       id: '/control/_shell/hotels'
       path: '/hotels'
@@ -475,12 +514,14 @@ const AuthenticatedRouteRouteWithChildren =
 
 interface ControlShellRouteRouteChildren {
   ControlShellHotelsRoute: typeof ControlShellHotelsRoute
+  ControlShellResetsRoute: typeof ControlShellResetsRoute
   ControlShellSecurityRoute: typeof ControlShellSecurityRoute
   ControlShellIndexRoute: typeof ControlShellIndexRoute
 }
 
 const ControlShellRouteRouteChildren: ControlShellRouteRouteChildren = {
   ControlShellHotelsRoute: ControlShellHotelsRoute,
+  ControlShellResetsRoute: ControlShellResetsRoute,
   ControlShellSecurityRoute: ControlShellSecurityRoute,
   ControlShellIndexRoute: ControlShellIndexRoute,
 }
@@ -512,6 +553,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
+  NewPasswordRoute: NewPasswordRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   ApiPublicHooksSyncIcalRoute: ApiPublicHooksSyncIcalRoute,
 }

@@ -70,8 +70,8 @@ export const dashboardStats = createServerFn({ method: "GET" })
 const createSchema = z.object({
   hotel_name: z.string().trim().min(1).max(200),
   contact_email: z.string().trim().email().max(200),
-  contact_mobile: z.string().trim().min(3).max(50),
-  contact_person: z.string().trim().max(200).optional(),
+  contact_mobile: z.string().trim().max(50).optional(),
+  contact_person: z.string().trim().min(1).max(200),
   subscription_plan: z.string().trim().min(1).max(50),
   notes: z.string().max(2000).optional(),
 });
@@ -97,8 +97,8 @@ export const createOrganization = createServerFn({ method: "POST" })
     const { data: inserted, error } = await context.supabase.from("organizations").insert({
       hotel_name: data.hotel_name,
       contact_email: data.contact_email,
-      contact_mobile: data.contact_mobile,
-      contact_person: data.contact_person || null,
+      contact_mobile: data.contact_mobile || "",
+      contact_person: data.contact_person,
       subscription_plan: data.subscription_plan,
       subscription_status: isTrial ? "trial" : "active",
       account_status: "active",

@@ -317,8 +317,44 @@ function SourceEditor({
           )}
           <div className="space-y-1.5">
             <Label className="text-xs">{t("cal.icalUrl")}</Label>
-            <Input value={state.ical_url} onChange={(e) => setState((s) => ({ ...s, ical_url: e.target.value }))} placeholder="https://…/calendar.ics" />
+            <Input
+              value={state.ical_url}
+              onChange={(e) => { setState((s) => ({ ...s, ical_url: e.target.value })); setTest(null); }}
+              placeholder="https://www.airbnb.com/calendar/ical/…​.ics"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-full"
+              disabled={testing || !state.ical_url.trim()}
+              onClick={runTest}
+            >
+              <PlugZap className={`me-1 h-3.5 w-3.5 ${testing ? "animate-pulse" : ""}`} />
+              {testing ? t("cal.testing") : t("cal.test")}
+            </Button>
+            {test && !test.ok && (
+              <p className="rounded-md bg-destructive/10 p-1.5 text-[11px] text-destructive">{test.error}</p>
+            )}
+            {test?.ok && (
+              <div className="rounded-md border bg-muted/40 p-1.5 text-[11px]">
+                <p className="font-medium text-emerald-600 dark:text-emerald-400">
+                  {t("cal.testOk", { n: test.totalEvents ?? 0 })}
+                </p>
+                {(test.upcoming?.length ?? 0) > 0 && (
+                  <ul className="mt-1 max-h-28 space-y-0.5 overflow-y-auto">
+                    {test.upcoming!.map((e) => (
+                      <li key={e.uid} className="flex justify-between gap-2 text-muted-foreground">
+                        <span className="truncate">{e.summary || "Reserved"}</span>
+                        <span className="shrink-0 tabular-nums">{e.start} → {e.end}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
           </div>
+
           <div className="flex items-center justify-between rounded-md border p-2">
             <Label className="text-xs">Color</Label>
             <input

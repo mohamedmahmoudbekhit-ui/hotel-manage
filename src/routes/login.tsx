@@ -12,6 +12,7 @@ import { useI18n } from "@/lib/i18n";
 const searchSchema = z.object({ joined: z.string().optional(), reset: z.string().optional() });
 
 export const Route = createFileRoute("/login")({
+  ssr: false,
   validateSearch: (s) => searchSchema.parse(s),
   head: () => ({
     meta: [

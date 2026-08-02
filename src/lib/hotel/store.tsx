@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import type { Cell, Channel, ExpenseItem, MonthData, Settings } from "./types";
-import { DEFAULT_CHANNELS, emptyMonth, MONTH_NAMES, mergeImportedIntoMonth, newChannelId, nightsBetween, sumExpenses } from "./utils";
+import { DEFAULT_CHANNELS, emptyMonth, MONTH_NAMES, mergeImportedIntoMonth, newBookingId, newChannelId, nightsBetween, sumExpenses } from "./utils";
 import { loadHotelState, saveHotelState } from "./state.functions";
 import { listImportedForMonth, type ImportedReservationRow } from "./calendar.functions";
 import { supabase } from "@/integrations/supabase/client";
@@ -224,7 +224,13 @@ export function HotelProvider({ children }: { children: ReactNode }) {
     setState((s) => {
       const m = s.months[s.currentMonthKey];
       if (!m) return s;
-      const cells = { ...m.cells, [room]: { ...(m.cells[room] ?? {}), [day]: cell } };
+      const prev = m.cells[room]?.[day] ?? null;
+      // Single-cell edits are standalone reservations unless they already
+      // belong to a multi-night booking (editing keeps the existing group).
+      const nextCell: Cell | null = cell
+        ? { ...cell, bookingId: cell.bookingId ?? prev?.bookingId ?? newBookingId() }
+        : null;
+      const cells = { ...m.cells, [room]: { ...(m.cells[room] ?? {}), [day]: nextCell } };
       return { ...s, months: { ...s.months, [s.currentMonthKey]: { ...m, cells } } };
     });
   }, []);
@@ -244,6 +250,7 @@ export function HotelProvider({ children }: { children: ReactNode }) {
       cursor.setUTCDate(cursor.getUTCDate() + 1);
     }
     const perNight = Math.round((params.price / nights) * 100) / 100;
+    const bookingId = newBookingId();
     let written = 0;
     let skipped = 0;
     setState((s) => {
@@ -265,7 +272,7 @@ export function HotelProvider({ children }: { children: ReactNode }) {
         }
         const existing = rooms[params.room][day];
         if (existing) { skipped += 1; nextMonths[key] = { ...month, cells: rooms }; continue; }
-        const roomCells = { ...rooms[params.room], [day]: { price: perNight, channelId: params.channelId, ...(params.note ? { note: params.note } : {}) } as Cell };
+        const roomCells = { ...rooms[params.room], [day]: { price: perNight, channelId: params.channelId, bookingId, ...(params.note ? { note: params.note } : {}) } as Cell };
         rooms[params.room] = roomCells;
         nextMonths[key] = { ...month, cells: rooms };
         written += 1;

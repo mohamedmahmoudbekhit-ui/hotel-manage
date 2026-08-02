@@ -169,6 +169,11 @@ export function pickTextColor(hex: string): "#ffffff" | "#0b1220" {
   return lum > 0.6 ? "#0b1220" : "#ffffff";
 }
 
+export function newBookingId(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return `bk-${crypto.randomUUID()}`;
+  return `bk-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 export function newChannelId(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return `ch-${crypto.randomUUID().slice(0, 8)}`;
   return `ch-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;

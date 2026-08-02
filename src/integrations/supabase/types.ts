@@ -41,6 +41,47 @@ export type Database = {
         }
         Relationships: []
       }
+      auth_audit_log: {
+        Row: {
+          action: string
+          created_at: string
+          detail: Json
+          email: string | null
+          id: string
+          organization_id: string | null
+          success: boolean
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          detail?: Json
+          email?: string | null
+          id?: string
+          organization_id?: string | null
+          success?: boolean
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          detail?: Json
+          email?: string | null
+          id?: string
+          organization_id?: string | null
+          success?: boolean
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auth_audit_log_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       calendar_sources: {
         Row: {
           color: string

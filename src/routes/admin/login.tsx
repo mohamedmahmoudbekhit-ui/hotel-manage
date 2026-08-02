@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { ShieldCheck, Loader2, KeyRound, Copy, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/console/login")({
+export const Route = createFileRoute("/admin/login")({
   component: ConsoleLogin,
 });
 
@@ -36,7 +36,7 @@ function ConsoleLogin() {
   useEffect(() => {
     (async () => {
       const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-      if (data?.currentLevel === "aal2") navigate({ to: "/console", replace: true });
+      if (data?.currentLevel === "aal2") navigate({ to: "/admin", replace: true });
     })();
   }, [navigate]);
 
@@ -105,7 +105,7 @@ function ConsoleLogin() {
       setCodes(result.codes);
       setStep("codes");
     } else {
-      navigate({ to: "/console", replace: true });
+      navigate({ to: "/admin", replace: true });
     }
   };
 
@@ -141,7 +141,7 @@ function ConsoleLogin() {
     setBusy(true);
     try {
       await sendPasswordLink({
-        data: { email, redirectTo: `${window.location.origin}/console/set-password` },
+        data: { email, redirectTo: `${window.location.origin}/admin/set-password` },
       });
     } finally {
       setBusy(false);
@@ -280,7 +280,7 @@ function ConsoleLogin() {
               <Button variant="secondary" className="w-full gap-2" onClick={() => { navigator.clipboard.writeText(codes.join("\n")); toast.success("Copied"); }}>
                 <Copy className="h-4 w-4" /> Copy codes
               </Button>
-              <Button className="w-full" onClick={() => navigate({ to: "/console", replace: true })}>
+              <Button className="w-full" onClick={() => navigate({ to: "/admin", replace: true })}>
                 I saved them — enter console
               </Button>
             </div>

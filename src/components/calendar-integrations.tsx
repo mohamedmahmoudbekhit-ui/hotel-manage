@@ -43,10 +43,12 @@ interface EditorState {
   ical_url: string;
   is_active: boolean;
   color: string;
+  /** App channel this feed maps to — supplies color, currency and reporting category. */
+  channel_id: string;
 }
 
-function emptyEditor(roomId: string): EditorState {
-  return { room_id: roomId, source_name: "", platform_type: "airbnb", ical_url: "", is_active: true, color: "#64748b" };
+function emptyEditor(roomId: string, channelId: string, color: string): EditorState {
+  return { room_id: roomId, source_name: "", platform_type: "airbnb", ical_url: "", is_active: true, color, channel_id: channelId };
 }
 
 function relativeTime(iso: string | null): string {
@@ -93,6 +95,7 @@ export function CalendarIntegrations() {
   const doSave = async (payload: EditorState) => {
     if (!payload.source_name.trim()) { toast.error(t("cal.errName")); return false; }
     if (!isLikelyIcalUrl(payload.ical_url)) { toast.error(t("cal.errUrl")); return false; }
+    if (!payload.channel_id) { toast.error("Choose a channel for this calendar"); return false; }
     try {
       const { id } = await save({ data: payload });
       toast.success(t("cal.saved"));
@@ -175,7 +178,7 @@ export function CalendarIntegrations() {
               <div className="flex items-center justify-between gap-2">
                 <h3 className="text-sm font-semibold">{room.room_name}</h3>
                 <SourceEditor
-                  initial={emptyEditor(room.id)}
+                  initial={emptyEditor(room.id, settings.channels[0]?.id ?? "", settings.channels[0]?.color ?? "#64748b")}
                   onSubmit={doSave}
                   trigger={
                     <Button variant="ghost" size="sm">
@@ -200,6 +203,19 @@ export function CalendarIntegrations() {
                           {PLATFORMS.find((p) => p.value === s.platform_type)?.label ?? s.platform_type}
                         </span>
                         <span className="text-sm font-medium">{s.source_name}</span>
+                        {(() => {
+                          const ch = settings.channels.find((c) => c.id === s.channel_id);
+                          return ch ? (
+                            <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium">
+                              <span className="h-2 w-2 rounded-full" style={{ background: ch.color }} />
+                              {ch.name} · {ch.currency === "LOCAL" ? settings.currency : "USD"}
+                            </span>
+                          ) : (
+                            <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">
+                              No channel mapped
+                            </span>
+                          );
+                        })()}
                         {s.is_active ? (
                           <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400">
                             <CheckCircle2 className="h-3 w-3" /> {t("cal.active")}
@@ -220,6 +236,7 @@ export function CalendarIntegrations() {
                               ical_url: s.ical_url,
                               is_active: s.is_active,
                               color: s.color ?? "#64748b",
+                              channel_id: s.channel_id ?? settings.channels[0]?.id ?? "",
                             }}
                             onSubmit={doSave}
                             rooms={rooms}
@@ -279,6 +296,7 @@ function SourceEditor({
   rooms?: RoomRow[];
 }) {
   const { t } = useI18n();
+  const { settings } = useHotel();
   const [open, setOpen] = useState(false);
   const [state, setState] = useState<EditorState>(initial);
   const [test, setTest] = useState<IcalTestResult | null>(null);
@@ -314,6 +332,31 @@ function SourceEditor({
           <div className="space-y-1.5">
             <Label className="text-xs">{t("cal.sourceName")}</Label>
             <Input value={state.source_name} onChange={(e) => setState((s) => ({ ...s, source_name: e.target.value }))} placeholder="Airbnb" />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Channel (required)</Label>
+            <Select
+              value={state.channel_id}
+              onValueChange={(v) => {
+                const ch = settings.channels.find((c) => c.id === v);
+                setState((s) => ({ ...s, channel_id: v, color: ch?.color ?? s.color }));
+              }}
+            >
+              <SelectTrigger><SelectValue placeholder="Select channel" /></SelectTrigger>
+              <SelectContent>
+                {settings.channels.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    <span className="flex items-center gap-2">
+                      <span className="h-2 w-2 rounded-full" style={{ background: c.color }} />
+                      {c.name} · {c.currency === "LOCAL" ? settings.currency : "USD"}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-[10px] text-muted-foreground">
+              Imported reservations inherit this channel's color, currency and reporting category.
+            </p>
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs">{t("cal.platform")}</Label>

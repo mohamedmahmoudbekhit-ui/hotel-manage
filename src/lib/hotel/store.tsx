@@ -1,8 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import type { Cell, Channel, ExpenseItem, MonthData, Settings } from "./types";
-import { DEFAULT_CHANNELS, emptyMonth, MONTH_NAMES, newChannelId, sumExpenses } from "./utils";
+import { DEFAULT_CHANNELS, emptyMonth, MONTH_NAMES, mergeImportedIntoMonth, newChannelId, nightsBetween, sumExpenses } from "./utils";
 import { loadHotelState, saveHotelState } from "./state.functions";
+import { listImportedForMonth, type ImportedReservationRow } from "./calendar.functions";
 import { supabase } from "@/integrations/supabase/client";
 
 interface StateShape {
@@ -22,7 +23,17 @@ interface Ctx extends StateShape {
   isBookingAgent: boolean;
   subscriptionStatus: string | null;
   currentMonth: MonthData;
+  /** iCal reservations covering every month held in state. */
+  imported: ImportedReservationRow[];
+  reloadImported: () => void;
+  /** Current month with imported reservations merged in as nightly cells. */
+  analyticsMonth: MonthData;
+  /** Settings incl. synthetic channels for unmapped iCal sources. */
+  analyticsSettings: Settings;
+  /** Merge imported reservations into any month held in state. */
+  analyticsFor: (m: MonthData) => { month: MonthData; settings: Settings };
   setCurrentMonthKey: (k: string) => void;
+
   updateCell: (room: string, day: number, cell: Cell | null) => void;
   addBookingRange: (params: { room: string; from: string; to: string; channelId: string; price: number; note?: string }) => { written: number; skipped: number; nights: number };
   updateMonthMeta: (patch: Partial<Pick<MonthData, "expenses" | "usdRate" | "managementPct">>) => void;
@@ -194,12 +205,17 @@ export function HotelProvider({ children }: { children: ReactNode }) {
   const addBookingRange = useCallback((params: { room: string; from: string; to: string; channelId: string; price: number; note?: string }) => {
     const start = new Date(`${params.from}T00:00:00Z`);
     const end = new Date(`${params.to}T00:00:00Z`);
-    if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) {
+    // Nights = checkout - checkin. The checkout day is NOT a stayed night.
+    const nights = nightsBetween(params.from, params.to);
+    if (isNaN(start.getTime()) || isNaN(end.getTime()) || nights <= 0) {
       return { written: 0, skipped: 0, nights: 0 };
     }
     const dates: Date[] = [];
-    for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) dates.push(new Date(d));
-    const nights = dates.length;
+    const cursor = new Date(start);
+    for (let i = 0; i < nights; i++) {
+      dates.push(new Date(cursor));
+      cursor.setUTCDate(cursor.getUTCDate() + 1);
+    }
     const perNight = Math.round((params.price / nights) * 100) / 100;
     let written = 0;
     let skipped = 0;
@@ -231,6 +247,7 @@ export function HotelProvider({ children }: { children: ReactNode }) {
     });
     return { written, skipped, nights };
   }, []);
+
 
   const updateMonthMeta = useCallback((patch: Partial<Pick<MonthData, "expenses" | "usdRate" | "managementPct">>) => {
     setState((s) => {
@@ -350,6 +367,40 @@ export function HotelProvider({ children }: { children: ReactNode }) {
     [state.months, state.currentMonthKey],
   );
 
+  // ---- Imported (iCal) reservations across every month held in state ----
+  const [imported, setImported] = useState<ImportedReservationRow[]>([]);
+  const fetchImported = useServerFn(listImportedForMonth);
+  const monthKeysSig = Object.keys(state.months).sort().join("|");
+
+  const reloadImported = useCallback(() => {
+    const list = Object.values(state.months);
+    if (list.length === 0) return;
+    const sorted = [...list].sort((a, b) => (a.year !== b.year ? a.year - b.year : a.monthIndex - b.monthIndex));
+    const first = sorted[0];
+    const last = sorted[sorted.length - 1];
+    const from = `${first.year}-${String(first.monthIndex + 1).padStart(2, "0")}-01`;
+    const to = `${last.year}-${String(last.monthIndex + 1).padStart(2, "0")}-${String(last.daysInMonth).padStart(2, "0")}`;
+    fetchImported({ data: { from, to } })
+      .then(setImported)
+      .catch((e) => console.error("Failed to load imported reservations", e));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchImported, monthKeysSig]);
+
+  useEffect(() => {
+    if (loading || !onboarded) return;
+    reloadImported();
+  }, [loading, onboarded, reloadImported]);
+
+  const analyticsFor = useCallback(
+    (m: MonthData) => mergeImportedIntoMonth(m, state.settings, imported),
+    [state.settings, imported],
+  );
+
+  const analytics = useMemo(
+    () => mergeImportedIntoMonth(currentMonth, state.settings, imported),
+    [currentMonth, state.settings, imported],
+  );
+
   const value: Ctx = {
     ...state,
     hotelName,
@@ -361,6 +412,12 @@ export function HotelProvider({ children }: { children: ReactNode }) {
     isBookingAgent: memberRole === "hotel_staff",
     subscriptionStatus,
     currentMonth,
+    imported,
+    reloadImported,
+    analyticsMonth: analytics.month,
+    analyticsSettings: analytics.settings,
+    analyticsFor,
+
     setCurrentMonthKey,
     updateCell,
     addBookingRange,

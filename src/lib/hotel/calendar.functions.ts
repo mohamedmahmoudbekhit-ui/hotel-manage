@@ -16,6 +16,7 @@ export interface CalendarSourceRow {
   ical_url: string;
   is_active: boolean;
   color: string;
+  channel_id: string | null;
   last_sync_at: string | null;
   last_sync_error: string | null;
   created_at: string;
@@ -28,6 +29,7 @@ export interface ImportedReservationRow {
   source_id: string;
   source_name: string;
   source_color: string;
+  channel_id: string | null;
   platform_type: string;
   external_uid: string;
   summary: string | null;
@@ -48,7 +50,9 @@ const upsertSchema = z.object({
   ical_url: z.string().url().max(2000),
   is_active: z.boolean(),
   color: z.string().regex(HEX_COLOR).optional(),
+  channel_id: z.string().trim().min(1).max(80),
 });
+
 
 async function resolveOrg(supabase: any, userId: string): Promise<string> {
   const { data } = await supabase
@@ -98,7 +102,7 @@ export const listCalendarSources = createServerFn({ method: "GET" })
     const orgId = await resolveOrg(context.supabase, context.userId);
     const { data, error } = await context.supabase
       .from("calendar_sources")
-      .select("id, room_id, source_name, platform_type, ical_url, is_active, color, last_sync_at, last_sync_error, created_at")
+      .select("id, room_id, source_name, platform_type, ical_url, is_active, color, channel_id, last_sync_at, last_sync_error, created_at")
       .eq("organization_id", orgId)
       .order("created_at", { ascending: true });
     if (error) throw new Error(error.message);
@@ -113,13 +117,14 @@ export const saveCalendarSource = createServerFn({ method: "POST" })
     if (!isLikelyIcalUrl(data.ical_url)) throw new Error("Invalid iCal URL");
     if (data.id) {
       const patch: {
-        source_name: string; platform_type: string; ical_url: string; is_active: boolean; room_id: string; color?: string;
+        source_name: string; platform_type: string; ical_url: string; is_active: boolean; room_id: string; channel_id: string; color?: string;
       } = {
         source_name: data.source_name,
         platform_type: data.platform_type,
         ical_url: data.ical_url,
         is_active: data.is_active,
         room_id: data.room_id,
+        channel_id: data.channel_id,
       };
       if (data.color) patch.color = data.color;
       const { error } = await context.supabase
@@ -139,6 +144,7 @@ export const saveCalendarSource = createServerFn({ method: "POST" })
         platform_type: data.platform_type,
         ical_url: data.ical_url,
         is_active: data.is_active,
+        channel_id: data.channel_id,
         ...(data.color ? { color: data.color } : {}),
       })
       .select("id")
@@ -214,7 +220,7 @@ export const listImportedForMonth = createServerFn({ method: "POST" })
     const endExclusive = nextDay.toISOString().slice(0, 10);
     const { data: rows, error } = await context.supabase
       .from("ical_reservations")
-      .select("id, room_id, source_id, platform_type, external_uid, summary, start_date, end_date, rooms!inner(room_name), calendar_sources!inner(source_name, color), ical_reservation_overrides(price, notes, hidden)")
+      .select("id, room_id, source_id, platform_type, external_uid, summary, start_date, end_date, rooms!inner(room_name), calendar_sources!inner(source_name, color, channel_id), ical_reservation_overrides(price, notes, hidden)")
       .eq("organization_id", orgId)
       .lt("start_date", endExclusive)
       .gt("end_date", data.from);
@@ -230,6 +236,7 @@ export const listImportedForMonth = createServerFn({ method: "POST" })
         source_id: r.source_id,
         source_name: r.calendar_sources.source_name,
         source_color: r.calendar_sources.color ?? "#64748b",
+        channel_id: r.calendar_sources.channel_id ?? null,
         platform_type: r.platform_type,
         external_uid: r.external_uid,
         summary: r.summary,

@@ -16,12 +16,15 @@ export const Route = createFileRoute("/_authenticated/summary")({
 });
 
 function SummaryPage() {
-  const { months, settings } = useHotel();
+  const { months, settings, analyticsFor } = useHotel();
   const { t, formatMonthKey } = useI18n();
   const sorted = Object.values(months).sort((a, b) =>
     a.year !== b.year ? a.year - b.year : a.monthIndex - b.monthIndex,
   );
-  const rows = sorted.map((m) => ({ m, t: computeMonthTotals(m, settings.rooms, settings) }));
+  const rows = sorted.map((m) => {
+    const a = analyticsFor(m);
+    return { m, t: computeMonthTotals(a.month, settings.rooms, a.settings) };
+  });
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">

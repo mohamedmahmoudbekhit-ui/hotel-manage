@@ -18,6 +18,8 @@ interface Ctx extends StateShape {
   loading: boolean;
   organizationId: string | null;
   accountStatus: string | null;
+  memberRole: string | null;
+  isBookingAgent: boolean;
   subscriptionStatus: string | null;
   currentMonth: MonthData;
   setCurrentMonthKey: (k: string) => void;
@@ -119,6 +121,7 @@ export function HotelProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [accountStatus, setAccountStatus] = useState<string | null>(null);
+  const [memberRole, setMemberRole] = useState<string | null>(null);
   const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null);
   const hydratedRef = useRef(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -131,6 +134,7 @@ export function HotelProvider({ children }: { children: ReactNode }) {
         if (cancelled) return;
         setOrganizationId(res.organizationId ?? null);
         setAccountStatus(res.accountStatus ?? null);
+        setMemberRole(res.memberRole ?? null);
         setSubscriptionStatus(res.subscriptionStatus ?? null);
         if (res.exists) {
           setHotelName(res.hotelName);
@@ -341,6 +345,8 @@ export function HotelProvider({ children }: { children: ReactNode }) {
     loading,
     organizationId,
     accountStatus,
+    memberRole,
+    isBookingAgent: memberRole === "hotel_staff",
     subscriptionStatus,
     currentMonth,
     setCurrentMonthKey,

@@ -36,6 +36,8 @@ function HotelsPage() {
   const [regenBusy, setRegenBusy] = useState(false);
   const [extendFor, setExtendFor] = useState<OrgRow | null>(null);
   const [extendDate, setExtendDate] = useState("");
+  const [editRow, setEditRow] = useState<OrgRow | null>(null);
+  const [editBusy, setEditBusy] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const refresh = () => listFn().then((r) => { setRows(r); setLoading(false); }).catch(() => setLoading(false));

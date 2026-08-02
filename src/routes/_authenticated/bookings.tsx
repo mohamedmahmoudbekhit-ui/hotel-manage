@@ -327,20 +327,23 @@ function BookingsPage() {
           <thead className="sticky top-14 z-20 bg-muted/95 backdrop-blur supports-[backdrop-filter]:bg-muted/75">
             <tr>
               <th className="sticky start-0 z-20 bg-muted/80 px-3 py-3 text-start text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("bookings.day")}</th>
-              {settings.rooms.map((r) => (
+              {visibleRooms.map((r) => (
                 <th key={r} className="px-3 py-3 text-start text-xs font-semibold uppercase tracking-wider text-muted-foreground">{r}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {Array.from({ length: currentMonth.daysInMonth }, (_, i) => i + 1).map((day) => (
+            {visibleDays.map((day) => (
               <tr key={day} className="group">
                 <td className="sticky start-0 z-10 border-t bg-card px-3 py-2 text-xs font-semibold text-muted-foreground group-hover:bg-muted/40">{day}</td>
-                {settings.rooms.map((room) => {
+                {visibleRooms.map((room) => {
                   const cell = currentMonth.cells[room]?.[day] ?? null;
                   const importedHere = !cell ? importedByRoomDay.get(room)?.get(day) ?? null : null;
+                  const matchesSource =
+                    filters.sourceKey === "all" ||
+                    (importedHere ? importedHere.res.source_id === filters.sourceKey : cell ? cell.channelId === filters.sourceKey : true);
                   return (
-                    <td key={room} className="border-t p-1.5 align-top">
+                    <td key={room} className={`border-t p-1.5 align-top ${matchesSource ? "" : "opacity-25"}`}>
                       {importedHere ? (
                         <ImportedBlock res={importedHere.res} position={importedHere.position} onChanged={reloadImported} currency={settings.currency} />
                       ) : (
@@ -356,6 +359,7 @@ function BookingsPage() {
                     </td>
                   );
                 })}
+
               </tr>
 
             ))}

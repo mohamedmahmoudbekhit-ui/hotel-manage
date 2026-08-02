@@ -7,8 +7,12 @@ import {
   deleteCalendarSource,
   syncOneSource,
   syncAllForUser,
+  testIcalConnection,
+  listSyncLogs,
   type CalendarSourceRow,
   type RoomRow,
+  type IcalTestResult,
+  type SyncLogRow,
 } from "@/lib/hotel/calendar.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +20,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Plus, RefreshCw, Trash2, AlertCircle, CheckCircle2, Link as LinkIcon, Pencil } from "lucide-react";
+import { Plus, RefreshCw, Trash2, AlertCircle, CheckCircle2, Link as LinkIcon, Pencil, PlugZap, History } from "lucide-react";
 import { toast } from "sonner";
 import { useI18n } from "@/lib/i18n";
 import { isLikelyIcalUrl } from "@/lib/ical/parse";
@@ -29,6 +33,7 @@ const PLATFORMS = [
   { value: "direct", label: "Direct" },
   { value: "other", label: "Other" },
 ];
+
 
 interface EditorState {
   id?: string;

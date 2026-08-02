@@ -344,7 +344,7 @@ function BookingsPage() {
                   const position: "start" | "middle" | "end" | "single" =
                     !contPrev && !contNext ? "single" : !contPrev ? "start" : !contNext ? "end" : "middle";
                   return (
-                    <td key={room} className={`border-t p-1.5 align-top ${matchesSource ? "" : "opacity-25"}`}>
+                    <td key={room} className={`border-t px-1.5 py-0 align-top ${matchesSource ? "" : "opacity-25"}`}>
                       {importedHere ? (
                         <ImportedBlock res={importedHere.res} channel={resolveImportedChannel(analyticsSettings, importedHere.res)} position={importedHere.position} onChanged={reloadImported} currency={settings.currency} />
                       ) : (
@@ -511,10 +511,10 @@ function blockRounding(position: "start" | "middle" | "end" | "single") {
   return position === "single"
     ? "rounded-lg"
     : position === "start"
-      ? "rounded-s-lg rounded-e-none border-e-0"
+      ? "rounded-t-lg rounded-b-none border-b-0"
       : position === "end"
-        ? "rounded-e-lg rounded-s-none border-s-0"
-        : "rounded-none border-s-0 border-e-0";
+        ? "rounded-b-lg rounded-t-none border-t-0"
+        : "rounded-none border-y-0";
 }
 
 function CellEditor({
@@ -593,7 +593,7 @@ function CellEditor({
             )}
           </button>
         ) : (
-          <button className="flex h-11 w-full items-center justify-center rounded-lg border border-dashed border-border/60 text-muted-foreground/60 transition hover:border-primary/40 hover:bg-primary/5 hover:text-primary">
+          <button className="my-1 flex h-9 w-full items-center justify-center rounded-lg border border-dashed border-border/60 text-muted-foreground/60 transition hover:border-primary/40 hover:bg-primary/5 hover:text-primary">
             <Plus className="h-3.5 w-3.5" />
           </button>
         )}

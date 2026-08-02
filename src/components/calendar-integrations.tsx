@@ -243,12 +243,17 @@ export function CalendarIntegrations() {
                         <span>{t("cal.created")}: {new Date(s.created_at).toLocaleDateString()}</span>
                       </div>
                       {s.last_sync_error && (
-                        <div className="mt-1 inline-flex items-center gap-1 text-[11px] text-destructive">
-                          <AlertCircle className="h-3 w-3" />
-                          {s.last_sync_error}
+                        <div className="mt-1 flex items-start gap-1 rounded-md bg-destructive/10 p-1.5 text-[11px] text-destructive">
+                          <AlertCircle className="mt-0.5 h-3 w-3 shrink-0" />
+                          <span>
+                            <span className="font-semibold">{t("cal.errorDetails")}: </span>
+                            {s.last_sync_error}
+                          </span>
                         </div>
                       )}
+                      <SyncLogPanel sourceId={s.id} />
                     </li>
+
                   ))}
                 </ul>
               )}

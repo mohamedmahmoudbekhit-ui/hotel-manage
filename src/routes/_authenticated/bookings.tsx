@@ -226,7 +226,10 @@ function BookingsPage() {
           </tbody>
         </table>
       </div>
+      </>
+      )}
     </div>
+
   );
 }
 

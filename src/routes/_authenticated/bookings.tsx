@@ -498,9 +498,19 @@ function ImportedBlock({ res, channel, position, onChanged, currency }: { res: I
   );
 }
 
+function blockRounding(position: "start" | "middle" | "end" | "single") {
+  return position === "single"
+    ? "rounded-lg"
+    : position === "start"
+      ? "rounded-s-lg rounded-e-none border-e-0"
+      : position === "end"
+        ? "rounded-e-lg rounded-s-none border-s-0"
+        : "rounded-none border-s-0 border-e-0";
+}
+
 function CellEditor({
   cell,
-
+  position = "single",
   onSave,
   onDelete,
   usdRate,
@@ -508,6 +518,7 @@ function CellEditor({
   currency,
 }: {
   cell: Cell | null;
+  position?: "start" | "middle" | "end" | "single";
   onSave: (c: Cell) => void;
   onDelete: () => void;
   usdRate: number;
@@ -538,34 +549,39 @@ function CellEditor({
   const cellChannel = cell ? findChannel({ channels } as never, cell.channelId) : null;
   const editorChannel = findChannel({ channels } as never, channelId);
   const fg = cellChannel ? pickTextColor(cellChannel.color) : "#fff";
+  const showLabel = position === "start" || position === "single";
+  const nightly = cell && isFinite(cell.price) && cell.price > 0 ? cell.price : null;
 
   return (
     <Popover open={open} onOpenChange={(o) => { setOpen(o); if (o) reset(); }}>
       <PopoverTrigger asChild>
         {cell && cellChannel ? (
           <button
-            className="relative w-full rounded-lg border px-2 py-1.5 text-start text-xs font-medium shadow-sm transition hover:opacity-90"
+            className={`relative flex h-11 w-full flex-col justify-center border px-2 text-start shadow-sm transition hover:opacity-90 ${blockRounding(position)}`}
             style={{ background: cellChannel.color, color: fg, borderColor: cellChannel.color }}
           >
             {cell.note && (
               <span
                 aria-label="has note"
-                className="absolute end-1 top-1 h-2 w-2 rounded-full ring-2"
+                className="absolute end-1 top-1 h-2 w-2 rounded-full"
                 style={{ background: fg, boxShadow: `0 0 0 2px ${cellChannel.color}` }}
               />
             )}
-            <div className="flex items-center justify-between gap-1">
-              <span className="font-bold tabular-nums">{cell.price}</span>
-              <span
-                className="rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide"
-                style={{ background: `${fg}25` }}
-              >
-                {cellChannel.currency === "LOCAL" ? currency : "USD"}
+            <span className="truncate text-[10px] font-semibold uppercase tracking-wide opacity-90">
+              {showLabel
+                ? cellChannel.name
+                : position === "end"
+                  ? t("cal.checkOut") ?? "Last night"
+                  : "•"}
+            </span>
+            {nightly != null && (
+              <span className="truncate text-xs font-bold tabular-nums">
+                {nightly.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                <span className="ms-1 text-[9px] font-semibold opacity-80">
+                  {cellChannel.currency === "LOCAL" ? currency : "USD"}
+                </span>
               </span>
-            </div>
-            <div className="mt-0.5 truncate text-[10px] opacity-90">
-              {cellChannel.name}
-            </div>
+            )}
           </button>
         ) : (
           <button className="flex h-11 w-full items-center justify-center rounded-lg border border-dashed border-border/60 text-muted-foreground/60 transition hover:border-primary/40 hover:bg-primary/5 hover:text-primary">
@@ -573,6 +589,7 @@ function CellEditor({
           </button>
         )}
       </PopoverTrigger>
+
       <PopoverContent className="max-h-[75dvh] w-[min(20rem,calc(100vw-2rem))] overflow-y-auto" align="start" collisionPadding={12}>
         <div className="space-y-3">
           <div className="space-y-1.5">

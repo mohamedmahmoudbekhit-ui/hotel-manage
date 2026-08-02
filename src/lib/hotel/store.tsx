@@ -152,7 +152,7 @@ export function HotelProvider({ children }: { children: ReactNode }) {
           setHotelName(res.hotelName);
           setOnboarded(res.onboarded);
           const normalized = normalizeState(res.data);
-          if (normalized) setState(normalized);
+          if (normalized) setState(withDefaultMonth(normalized));
         } else {
           setOnboarded(false);
           setHotelName(res.hotelName || "");

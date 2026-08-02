@@ -23,6 +23,7 @@ import { Route as AuthenticatedChartsRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedBookingsRouteImport } from './routes/_authenticated/bookings'
 import { Route as ConsoleShellRouteRouteImport } from './routes/console/_shell/route'
 import { Route as ConsoleShellIndexRouteImport } from './routes/console/_shell/index'
+import { Route as ConsoleShellSecurityRouteImport } from './routes/console/_shell/security'
 import { Route as ConsoleShellHotelsRouteImport } from './routes/console/_shell/hotels'
 import { Route as ApiPublicHooksSyncIcalRouteImport } from './routes/api/public/hooks/sync-ical'
 
@@ -94,6 +95,11 @@ const ConsoleShellIndexRoute = ConsoleShellIndexRouteImport.update({
   path: '/',
   getParentRoute: () => ConsoleShellRouteRoute,
 } as any)
+const ConsoleShellSecurityRoute = ConsoleShellSecurityRouteImport.update({
+  id: '/security',
+  path: '/security',
+  getParentRoute: () => ConsoleShellRouteRoute,
+} as any)
 const ConsoleShellHotelsRoute = ConsoleShellHotelsRouteImport.update({
   id: '/hotels',
   path: '/hotels',
@@ -118,6 +124,7 @@ export interface FileRoutesByFullPath {
   '/summary': typeof AuthenticatedSummaryRoute
   '/console/login': typeof ConsoleLoginRoute
   '/console/hotels': typeof ConsoleShellHotelsRoute
+  '/console/security': typeof ConsoleShellSecurityRoute
   '/console/': typeof ConsoleShellIndexRoute
   '/api/public/hooks/sync-ical': typeof ApiPublicHooksSyncIcalRoute
 }
@@ -134,6 +141,7 @@ export interface FileRoutesByTo {
   '/console/login': typeof ConsoleLoginRoute
   '/': typeof AuthenticatedIndexRoute
   '/console/hotels': typeof ConsoleShellHotelsRoute
+  '/console/security': typeof ConsoleShellSecurityRoute
   '/api/public/hooks/sync-ical': typeof ApiPublicHooksSyncIcalRoute
 }
 export interface FileRoutesById {
@@ -152,6 +160,7 @@ export interface FileRoutesById {
   '/console/login': typeof ConsoleLoginRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/console/_shell/hotels': typeof ConsoleShellHotelsRoute
+  '/console/_shell/security': typeof ConsoleShellSecurityRoute
   '/console/_shell/': typeof ConsoleShellIndexRoute
   '/api/public/hooks/sync-ical': typeof ApiPublicHooksSyncIcalRoute
 }
@@ -170,6 +179,7 @@ export interface FileRouteTypes {
     | '/summary'
     | '/console/login'
     | '/console/hotels'
+    | '/console/security'
     | '/console/'
     | '/api/public/hooks/sync-ical'
   fileRoutesByTo: FileRoutesByTo
@@ -186,6 +196,7 @@ export interface FileRouteTypes {
     | '/console/login'
     | '/'
     | '/console/hotels'
+    | '/console/security'
     | '/api/public/hooks/sync-ical'
   id:
     | '__root__'
@@ -203,6 +214,7 @@ export interface FileRouteTypes {
     | '/console/login'
     | '/_authenticated/'
     | '/console/_shell/hotels'
+    | '/console/_shell/security'
     | '/console/_shell/'
     | '/api/public/hooks/sync-ical'
   fileRoutesById: FileRoutesById
@@ -315,6 +327,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConsoleShellIndexRouteImport
       parentRoute: typeof ConsoleShellRouteRoute
     }
+    '/console/_shell/security': {
+      id: '/console/_shell/security'
+      path: '/security'
+      fullPath: '/console/security'
+      preLoaderRoute: typeof ConsoleShellSecurityRouteImport
+      parentRoute: typeof ConsoleShellRouteRoute
+    }
     '/console/_shell/hotels': {
       id: '/console/_shell/hotels'
       path: '/hotels'
@@ -357,11 +376,13 @@ const AuthenticatedRouteRouteWithChildren =
 
 interface ConsoleShellRouteRouteChildren {
   ConsoleShellHotelsRoute: typeof ConsoleShellHotelsRoute
+  ConsoleShellSecurityRoute: typeof ConsoleShellSecurityRoute
   ConsoleShellIndexRoute: typeof ConsoleShellIndexRoute
 }
 
 const ConsoleShellRouteRouteChildren: ConsoleShellRouteRouteChildren = {
   ConsoleShellHotelsRoute: ConsoleShellHotelsRoute,
+  ConsoleShellSecurityRoute: ConsoleShellSecurityRoute,
   ConsoleShellIndexRoute: ConsoleShellIndexRoute,
 }
 

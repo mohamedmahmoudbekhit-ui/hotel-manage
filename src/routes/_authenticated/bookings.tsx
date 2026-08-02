@@ -38,7 +38,7 @@ function channelLabel(ch: Channel, currency: string): string {
 }
 
 function BookingsPage() {
-  const { currentMonth, settings, updateCell, addBookingRange } = useHotel();
+  const { currentMonth, settings, updateCell, addBookingRange, hotelName } = useHotel();
   const { t, formatMonthKey } = useI18n();
   const totals = computeMonthTotals(currentMonth, settings.rooms, settings);
   const fetchImported = useServerFn(listImportedForMonth);

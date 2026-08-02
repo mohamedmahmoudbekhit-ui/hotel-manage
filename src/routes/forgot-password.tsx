@@ -4,8 +4,9 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Hotel, Loader2, MailCheck, ArrowLeft } from "lucide-react";
+import { Loader2, MailCheck, ArrowLeft } from "lucide-react";
 import { requestPasswordReset } from "@/lib/auth/account.functions";
+import { AuthShell } from "@/components/auth-shell";
 
 export const Route = createFileRoute("/forgot-password")({
   head: () => ({
@@ -41,7 +42,7 @@ function ForgotPassword() {
   };
 
   return (
-    <Shell>
+    <AuthShell>
       {sent ? (
         <div className="text-center">
           <MailCheck className="mx-auto h-10 w-10 text-primary" />
@@ -74,25 +75,6 @@ function ForgotPassword() {
           </Link>
         </>
       )}
-    </Shell>
-  );
-}
-
-export function Shell({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-background to-muted/30 px-4 py-8">
-      <div className="w-full max-w-md">
-        <div className="mb-6 flex items-center gap-2">
-          <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary text-primary-foreground">
-            <Hotel className="h-5 w-5" />
-          </div>
-          <div>
-            <div className="text-lg font-bold">Hotel Management</div>
-            <div className="text-xs text-muted-foreground">Property management suite</div>
-          </div>
-        </div>
-        <div className="rounded-2xl border bg-card p-6 shadow-lg">{children}</div>
-      </div>
-    </div>
+    </AuthShell>
   );
 }

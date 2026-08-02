@@ -10,42 +10,24 @@ import { useI18n } from "@/lib/i18n";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
-  beforeLoad: async ({ location }) => {
+  beforeLoad: async () => {
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) throw redirect({ to: "/auth" });
 
-    console.log("[auth] authenticated email:", data.user.email);
-
-    // Resolve super_admin. If the email is on the seeded super-admin list this
-    // grants the role on first sign-in and bypasses hotel membership entirely.
-    let isSuperAdmin = false;
-    const { data: ensured, error: ensureError } = await supabase.rpc("ensure_super_admin_self");
-    if (ensureError) {
-      console.warn("[auth] super-admin check failed:", ensureError.message);
-      const { data: roleRow, error: roleError } = await supabase
-        .from("user_roles").select("role").eq("user_id", data.user.id).eq("role", "super_admin").maybeSingle();
-      if (roleError) console.warn("[auth] role lookup failed:", roleError.message);
-      isSuperAdmin = !!roleRow;
-    } else {
-      isSuperAdmin = ensured === true;
+    // Platform administrators live in the separate console portal and must
+    // never hold a session inside the customer application.
+    const { data: isSuperAdmin } = await supabase.rpc("ensure_super_admin_self");
+    if (isSuperAdmin === true) {
+      await supabase.auth.signOut();
+      throw redirect({ to: "/auth" });
     }
 
-    console.log("[auth] resolved role:", isSuperAdmin ? "super_admin" : "hotel user");
-
-    if (isSuperAdmin && !location.pathname.startsWith("/admin")) {
-      console.log("[auth] redirect destination: /admin");
-      throw redirect({ to: "/admin" });
-    }
-    console.log("[auth] redirect destination:", location.pathname);
-    return { user: data.user, isSuperAdmin };
+    return { user: data.user };
   },
   component: AuthedLayout,
 });
 
 function AuthedLayout() {
-  const pathname = useRouterState({ select: (r) => r.location.pathname });
-  // Admin section owns its own layout (no HotelProvider needed)
-  if (pathname.startsWith("/admin")) return <Outlet />;
   return (
     <HotelProvider>
       <OrgAccessGate>

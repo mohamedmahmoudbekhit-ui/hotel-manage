@@ -400,3 +400,69 @@ function SourceEditor({
     </Popover>
   );
 }
+
+function SyncLogPanel({ sourceId }: { sourceId: string }) {
+  const { t } = useI18n();
+  const fetchLogs = useServerFn(listSyncLogs);
+  const [open, setOpen] = useState(false);
+  const [logs, setLogs] = useState<SyncLogRow[] | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      setLogs(await fetchLogs({ data: { source_id: sourceId, limit: 10 } }));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="mt-1.5">
+      <button
+        type="button"
+        className="inline-flex items-center gap-1 text-[11px] text-muted-foreground underline-offset-2 hover:underline"
+        onClick={() => {
+          const next = !open;
+          setOpen(next);
+          if (next) void load();
+        }}
+      >
+        <History className="h-3 w-3" />
+        {open ? t("cal.hideLogs") : t("cal.logs")}
+      </button>
+      {open && (
+        <div className="mt-1 rounded-md border bg-muted/30 p-1.5 text-[11px]">
+          {loading && <p className="text-muted-foreground">…</p>}
+          {!loading && (logs?.length ?? 0) === 0 && (
+            <p className="text-muted-foreground">{t("cal.noLogs")}</p>
+          )}
+          {!loading && (logs?.length ?? 0) > 0 && (
+            <ul className="space-y-1">
+              {logs!.map((l) => (
+                <li key={l.id} className="flex flex-wrap items-center gap-x-2">
+                  <span
+                    className={
+                      l.status === "success"
+                        ? "font-medium text-emerald-600 dark:text-emerald-400"
+                        : "font-medium text-destructive"
+                    }
+                  >
+                    {l.status}
+                  </span>
+                  <span className="text-muted-foreground">{new Date(l.created_at).toLocaleString()}</span>
+                  <span className="text-muted-foreground">
+                    {l.events_found} found · {l.imported} imported · {l.removed} removed · {l.duration_ms}ms · {l.trigger_source}
+                  </span>
+                  {l.error_message && <span className="w-full text-destructive">{l.error_message}</span>}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}

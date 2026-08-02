@@ -109,7 +109,8 @@ function migrateCell(raw: unknown): Cell | null {
   // Drop cancelled legacy cells
   if (r.status === "Cancelled") return null;
   const note = typeof r.note === "string" ? r.note : undefined;
-  return { price, channelId, note };
+  const bookingId = typeof r.bookingId === "string" ? r.bookingId : undefined;
+  return { price, channelId, note, ...(bookingId ? { bookingId } : {}) };
 }
 
 function migrateSettings(s: Partial<Settings> | undefined): Settings {
@@ -130,7 +131,31 @@ function migrateMonth(m: MonthData): MonthData {
     for (const [d, c] of Object.entries(days ?? {})) {
       cells[room][Number(d)] = migrateCell(c);
     }
+    // Legacy backfill: nights saved before bookingId existed get grouped when
+    // they are contiguous and share channel + price + note.
+    const days2 = Object.keys(cells[room]).map(Number).sort((a, b) => a - b);
+    let runId: string | null = null;
+    let prevDay = -99;
+    let prevCell: Cell | null = null;
+    for (const d of days2) {
+      const cell = cells[room][d];
+      if (!cell) { runId = null; prevCell = null; prevDay = d; continue; }
+      if (cell.bookingId) { runId = null; prevCell = cell; prevDay = d; continue; }
+      const contiguous =
+        prevCell != null &&
+        !("__x" in prevCell) &&
+        d === prevDay + 1 &&
+        runId != null &&
+        prevCell.channelId === cell.channelId &&
+        prevCell.price === cell.price &&
+        (prevCell.note ?? "") === (cell.note ?? "");
+      if (!contiguous) runId = newBookingId();
+      cells[room][d] = { ...cell, bookingId: runId! };
+      prevCell = cells[room][d];
+      prevDay = d;
+    }
   }
+
   const items: ExpenseItem[] = Array.isArray(m.expenseItems)
     ? m.expenseItems
     : m.expenses > 0

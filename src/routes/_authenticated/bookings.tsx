@@ -240,7 +240,7 @@ function BookingsPage() {
                 <ChevronLeft className="h-4 w-4" />
               </Button>
               <Input type="date" value={dayIso} onChange={(e) => e.target.value && setDayIso(e.target.value)} className="min-w-0 flex-1 sm:w-[160px] sm:flex-none" />
-              <Button variant="outline" size="icon" onClick={() => shiftDay(1)} title="Next day">
+              <Button variant="outline" size="icon" className="shrink-0" onClick={() => shiftDay(1)} title="Next day">
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>

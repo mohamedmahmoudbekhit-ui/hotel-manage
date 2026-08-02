@@ -87,12 +87,14 @@ export function DailyView({
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <SummaryTile icon={<LogIn className="h-4 w-4" />} label="Check-in today" value={counts.checkin} tone="text-emerald-600 dark:text-emerald-400" />
-        <SummaryTile icon={<LogOut className="h-4 w-4" />} label="Check-out today" value={counts.checkout} tone="text-amber-600 dark:text-amber-400" />
-        <SummaryTile icon={<BedDouble className="h-4 w-4" />} label="Occupied" value={counts.occupied} tone="text-primary" />
-        <SummaryTile icon={<DoorOpen className="h-4 w-4" />} label="Vacant" value={counts.vacant} tone="text-muted-foreground" />
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+        <SummaryTile icon={<RefreshCw className="h-4 w-4 shrink-0" />} label="Turnover" value={counts.turnover} tone="text-fuchsia-600 dark:text-fuchsia-400" />
+        <SummaryTile icon={<LogIn className="h-4 w-4 shrink-0" />} label="Check-in today" value={counts.checkin} tone="text-emerald-600 dark:text-emerald-400" />
+        <SummaryTile icon={<LogOut className="h-4 w-4 shrink-0" />} label="Check-out today" value={counts.checkout} tone="text-amber-600 dark:text-amber-400" />
+        <SummaryTile icon={<BedDouble className="h-4 w-4 shrink-0" />} label="Occupied" value={counts.occupied} tone="text-primary" />
+        <SummaryTile icon={<DoorOpen className="h-4 w-4 shrink-0" />} label="Vacant" value={counts.vacant} tone="text-muted-foreground" />
       </div>
+
 
       <div className="overflow-x-auto rounded-2xl border bg-card shadow-soft">
         <table className="w-full min-w-[640px] text-sm">
@@ -145,11 +147,13 @@ function SummaryTile({ icon, label, value, tone }: { icon: React.ReactNode; labe
 
 function StatusBadge({ status }: { status: DayStatus }) {
   const map: Record<DayStatus, { text: string; cls: string; icon: React.ReactNode }> = {
-    checkin: { text: "Check-in today", cls: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400", icon: <LogIn className="h-3 w-3" /> },
-    checkout: { text: "Check-out today", cls: "bg-amber-500/15 text-amber-700 dark:text-amber-400", icon: <LogOut className="h-3 w-3" /> },
-    occupied: { text: "Occupied", cls: "bg-primary/15 text-primary", icon: <BedDouble className="h-3 w-3" /> },
-    vacant: { text: "Vacant", cls: "bg-muted text-muted-foreground", icon: <DoorOpen className="h-3 w-3" /> },
+    turnover: { text: "Turnover", cls: "bg-fuchsia-500/15 text-fuchsia-700 dark:text-fuchsia-400", icon: <RefreshCw className="h-3 w-3 shrink-0" /> },
+    checkin: { text: "Check-in today", cls: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400", icon: <LogIn className="h-3 w-3 shrink-0" /> },
+    checkout: { text: "Check-out today", cls: "bg-amber-500/15 text-amber-700 dark:text-amber-400", icon: <LogOut className="h-3 w-3 shrink-0" /> },
+    occupied: { text: "Occupied", cls: "bg-primary/15 text-primary", icon: <BedDouble className="h-3 w-3 shrink-0" /> },
+    vacant: { text: "Vacant", cls: "bg-muted text-muted-foreground", icon: <DoorOpen className="h-3 w-3 shrink-0" /> },
   };
+
   const s = map[status];
   return (
     <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ${s.cls}`}>

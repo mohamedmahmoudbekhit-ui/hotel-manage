@@ -16,15 +16,15 @@ export const Route = createFileRoute("/_authenticated/charts")({
 });
 
 function ChartsPage() {
-  const { currentMonth, settings, months } = useHotel();
+  const { currentMonth, settings, months, analyticsMonth, analyticsSettings, analyticsFor } = useHotel();
   const { t, formatMonthKey } = useI18n();
-  const totals = computeMonthTotals(currentMonth, settings.rooms, settings);
+  const totals = computeMonthTotals(analyticsMonth, settings.rooms, analyticsSettings);
 
-  const pieData = settings.channels
+  const pieData = analyticsSettings.channels
     .map((ch) => ({ name: ch.name, key: ch.id, color: ch.color, value: totals.bookingsByChannel[ch.id] ?? 0 }))
     .filter((d) => d.value > 0);
 
-  const barData = settings.channels.map((ch) => ({
+  const barData = analyticsSettings.channels.map((ch) => ({
     name: ch.name, key: ch.id, color: ch.color, revenue: Math.round(totals.revenueByChannel[ch.id] ?? 0),
   }));
 
@@ -36,7 +36,8 @@ function ChartsPage() {
     a.year !== b.year ? a.year - b.year : a.monthIndex - b.monthIndex,
   );
   const trendData = sortedMonths.map((m) => {
-    const tt = computeMonthTotals(m, settings.rooms, settings);
+    const a = analyticsFor(m);
+    const tt = computeMonthTotals(a.month, settings.rooms, a.settings);
     return { name: formatMonthKey(m.key), occupancy: +tt.occupancyRate.toFixed(1), revenue: Math.round(tt.totalRevenue) };
   });
 

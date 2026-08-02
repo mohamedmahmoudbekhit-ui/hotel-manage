@@ -19,9 +19,10 @@ export const Route = createFileRoute("/_authenticated/")({
 });
 
 function Dashboard() {
-  const { currentMonth, settings } = useHotel();
+  const { currentMonth, settings, analyticsMonth, analyticsSettings } = useHotel();
   const { t, formatMonthKey } = useI18n();
-  const totals = computeMonthTotals(currentMonth, settings.rooms, settings);
+  // Imported iCal bookings are merged in, so KPIs cover every booking source.
+  const totals = computeMonthTotals(analyticsMonth, settings.rooms, analyticsSettings);
   const cur = settings.currency;
 
   return (
@@ -42,7 +43,7 @@ function Dashboard() {
       </section>
 
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {settings.channels.map((ch) => {
+        {analyticsSettings.channels.map((ch) => {
           const fg = pickTextColor(ch.color);
           return (
             <div

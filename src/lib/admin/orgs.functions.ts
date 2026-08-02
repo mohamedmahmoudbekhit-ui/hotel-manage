@@ -87,7 +87,12 @@ export const createOrganization = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => createSchema.parse(input))
   .handler(async ({ context, data }): Promise<{ id: string; inviteToken: string }> => {
     await assertSuperAdmin(context.supabase, context.userId);
+    {
+      const { assertNotPlatformAdminEmail } = await import("@/lib/auth/platform-admin.server");
+      await assertNotPlatformAdminEmail(data.contact_email);
+    }
     const { data: plan } = await context.supabase.from("subscription_plans").select("code, trial_days").eq("code", data.subscription_plan).maybeSingle();
+
     const trialDays = plan?.trial_days ?? 14;
     const today = new Date();
     const expiry = new Date(today);

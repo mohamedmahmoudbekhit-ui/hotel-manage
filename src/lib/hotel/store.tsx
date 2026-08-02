@@ -142,9 +142,7 @@ function migrateMonth(m: MonthData): MonthData {
       if (!cell) { runId = null; prevCell = null; prevDay = d; continue; }
       if (cell.bookingId) { runId = null; prevCell = cell; prevDay = d; continue; }
       const contiguous =
-        prevCell != null &&
-        !("__x" in prevCell) &&
-        d === prevDay + 1 &&
+        prevCell != null &&        d === prevDay + 1 &&
         runId != null &&
         prevCell.channelId === cell.channelId &&
         prevCell.price === cell.price &&

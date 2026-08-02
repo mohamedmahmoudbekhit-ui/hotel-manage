@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Copy, Ban, PlayCircle, CalendarPlus, Trash2, Send, Loader2, RefreshCw } from "lucide-react";
+import { Plus, Search, Copy, Ban, PlayCircle, CalendarPlus, Trash2, Send, Loader2, RefreshCw, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/control/_shell/hotels")({

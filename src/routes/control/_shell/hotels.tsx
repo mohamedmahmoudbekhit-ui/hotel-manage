@@ -59,7 +59,7 @@ function HotelsPage() {
         subscription_plan: String(fd.get("subscription_plan")),
         notes: String(fd.get("notes") || "") || undefined,
       }});
-      const url = `${window.location.origin}/accept-invite?token=${res.inviteToken}`;
+      const url = `${window.location.origin}/activate?token=${res.inviteToken}`;
       setInviteInfo({ url, email: String(fd.get("contact_email")) });
       setShowCreate(false);
       toast.success("Hotel created. Invitation link generated.");
@@ -86,7 +86,7 @@ function HotelsPage() {
   const handleResend = async (row: OrgRow) => {
     try {
       const res = await resendFn({ data: { organization_id: row.id } });
-      const url = `${window.location.origin}/accept-invite?token=${res.token}`;
+      const url = `${window.location.origin}/activate?token=${res.token}`;
       setInviteInfo({ url, email: res.email });
     } catch (err) { toast.error(err instanceof Error ? err.message : "Failed"); }
   };

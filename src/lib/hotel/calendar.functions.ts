@@ -298,3 +298,78 @@ export const removeImportedReservation = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+export interface IcalTestResult {
+  ok: boolean;
+  error?: string;
+  finalUrl?: string;
+  contentType?: string | null;
+  bytes?: number;
+  totalEvents?: number;
+  upcoming?: { uid: string; summary: string; start: string; end: string }[];
+}
+
+/** Validate an iCal URL, fetch it, and preview the reservations it contains. */
+export const testIcalConnection = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ ical_url: z.string().trim().min(1).max(2000) }).parse(input),
+  )
+  .handler(async ({ data }): Promise<IcalTestResult> => {
+    if (!isLikelyIcalUrl(data.ical_url)) {
+      return { ok: false, error: "Enter a valid http(s) or webcal calendar URL" };
+    }
+    try {
+      const { fetchIcal } = await import("@/lib/ical/fetch.server");
+      const { parseIcal } = await import("@/lib/ical/parse");
+      const res = await fetchIcal(data.ical_url);
+      const events = parseIcal(res.body);
+      const today = new Date().toISOString().slice(0, 10);
+      const upcoming = events
+        .filter((e) => e.end >= today)
+        .sort((a, b) => a.start.localeCompare(b.start))
+        .slice(0, 8)
+        .map((e) => ({ uid: e.uid, summary: e.summary, start: e.start, end: e.end }));
+      return {
+        ok: true,
+        finalUrl: res.finalUrl,
+        contentType: res.contentType,
+        bytes: res.bytes,
+        totalEvents: events.length,
+        upcoming,
+      };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+export interface SyncLogRow {
+  id: string;
+  source_id: string;
+  status: string;
+  events_found: number;
+  imported: number;
+  removed: number;
+  duration_ms: number;
+  error_message: string | null;
+  trigger_source: string;
+  created_at: string;
+}
+
+export const listSyncLogs = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ source_id: z.string().uuid(), limit: z.number().int().min(1).max(50).optional() }).parse(input),
+  )
+  .handler(async ({ context, data }): Promise<SyncLogRow[]> => {
+    const orgId = await resolveOrg(context.supabase, context.userId);
+    const { data: rows, error } = await context.supabase
+      .from("calendar_sync_logs")
+      .select("id, source_id, status, events_found, imported, removed, duration_ms, error_message, trigger_source, created_at")
+      .eq("organization_id", orgId)
+      .eq("source_id", data.source_id)
+      .order("created_at", { ascending: false })
+      .limit(data.limit ?? 10);
+    if (error) throw new Error(error.message);
+    return (rows ?? []) as SyncLogRow[];
+  });

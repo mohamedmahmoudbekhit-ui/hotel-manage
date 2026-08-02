@@ -433,6 +433,56 @@ export type Database = {
           },
         ]
       }
+      password_reset_requests: {
+        Row: {
+          created_at: string
+          email: string
+          expires_at: string | null
+          id: string
+          issued_by: string | null
+          organization_id: string | null
+          status: string
+          token: string | null
+          updated_at: string
+          used_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          expires_at?: string | null
+          id?: string
+          issued_by?: string | null
+          organization_id?: string | null
+          status?: string
+          token?: string | null
+          updated_at?: string
+          used_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          expires_at?: string | null
+          id?: string
+          issued_by?: string | null
+          organization_id?: string | null
+          status?: string
+          token?: string | null
+          updated_at?: string
+          used_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "password_reset_requests_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rooms: {
         Row: {
           created_at: string

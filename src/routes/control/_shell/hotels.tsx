@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Copy, Ban, PlayCircle, CalendarPlus, Trash2, Send, Loader2, RefreshCw } from "lucide-react";
+import { Plus, Search, Copy, Ban, PlayCircle, CalendarPlus, Trash2, Send, Loader2, RefreshCw, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/control/_shell/hotels")({
@@ -36,6 +36,8 @@ function HotelsPage() {
   const [regenBusy, setRegenBusy] = useState(false);
   const [extendFor, setExtendFor] = useState<OrgRow | null>(null);
   const [extendDate, setExtendDate] = useState("");
+  const [editRow, setEditRow] = useState<OrgRow | null>(null);
+  const [editBusy, setEditBusy] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const refresh = () => listFn().then((r) => { setRows(r); setLoading(false); }).catch(() => setLoading(false));
@@ -115,6 +117,40 @@ function HotelsPage() {
     } catch (err) { toast.error(err instanceof Error ? err.message : "Failed"); }
   };
 
+  const handleEdit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!editRow) return;
+    const fd = new FormData(e.currentTarget);
+    const str = (k: string) => String(fd.get(k) ?? "").trim();
+    setEditBusy(true);
+    try {
+      await updateFn({ data: {
+        id: editRow.id,
+        patch: {
+          hotel_name: str("hotel_name"),
+          contact_person: str("contact_person") || null,
+          contact_email: str("contact_email"),
+          contact_mobile: str("contact_mobile"),
+          subscription_plan: str("subscription_plan"),
+          subscription_status: str("subscription_status") as "trial" | "active" | "expired" | "suspended" | "cancelled",
+          account_status: str("account_status") as "active" | "suspended",
+          renewal_date: str("renewal_date") || null,
+          expiry_date: str("expiry_date") || null,
+          notes: str("notes") || null,
+        },
+      }});
+      toast.success("Hotel details updated");
+      setEditRow(null);
+      refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed");
+    } finally {
+      setEditBusy(false);
+    }
+  };
+
+
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -172,6 +208,7 @@ function HotelsPage() {
                   <td className="px-3 py-2">{r.renewal_date ?? "—"}</td>
                   <td className="px-3 py-2">
                     <div className="flex justify-end gap-1">
+                      <Button size="sm" variant="ghost" title="Edit details" onClick={() => setEditRow(r)}><Pencil className="h-3.5 w-3.5" /></Button>
                       <Button size="sm" variant="ghost" title="Resend invitation" onClick={() => handleResend(r)}><Send className="h-3.5 w-3.5" /></Button>
                       <Button size="sm" variant="ghost" title="Extend" onClick={() => { setExtendFor(r); setExtendDate(r.expiry_date ?? ""); }}><CalendarPlus className="h-3.5 w-3.5" /></Button>
                       {r.account_status === "suspended" ? (
@@ -258,15 +295,64 @@ function HotelsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Edit hotel dialog */}
+      <Dialog open={!!editRow} onOpenChange={(o) => !o && setEditRow(null)}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+          {editRow ? (
+            <form onSubmit={handleEdit} key={editRow.id}>
+              <DialogHeader>
+                <DialogTitle>Edit hotel details</DialogTitle>
+                <DialogDescription>Update {editRow.hotel_name}'s profile and subscription. Changing the contact email does not change the owner's login email.</DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-3 py-4">
+                <Field label="Hotel name *" name="hotel_name" required defaultValue={editRow.hotel_name} />
+                <Field label="Hotel owner name" name="contact_person" defaultValue={editRow.contact_person ?? ""} />
+                <Field label="Contact email *" name="contact_email" type="email" required defaultValue={editRow.contact_email} />
+                <Field label="Contact mobile *" name="contact_mobile" required defaultValue={editRow.contact_mobile} />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <Label htmlFor="edit_plan">Subscription plan</Label>
+                    <select id="edit_plan" name="subscription_plan" defaultValue={editRow.subscription_plan} className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm">
+                      {plans.map((p) => (<option key={p.code} value={p.code}>{p.name}</option>))}
+                      {plans.some((p) => p.code === editRow.subscription_plan) ? null : <option value={editRow.subscription_plan}>{editRow.subscription_plan}</option>}
+                    </select>
+                  </div>
+                  <div>
+                    <Label htmlFor="edit_sub_status">Subscription status</Label>
+                    <select id="edit_sub_status" name="subscription_status" defaultValue={editRow.subscription_status} className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm capitalize">
+                      {["trial", "active", "expired", "suspended", "cancelled"].map((s) => (<option key={s} value={s}>{s}</option>))}
+                    </select>
+                  </div>
+                  <div>
+                    <Label htmlFor="edit_acct_status">Account status</Label>
+                    <select id="edit_acct_status" name="account_status" defaultValue={editRow.account_status} className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm capitalize">
+                      {["active", "suspended"].map((s) => (<option key={s} value={s}>{s}</option>))}
+                    </select>
+                  </div>
+                  <Field label="Renewal date" name="renewal_date" type="date" defaultValue={editRow.renewal_date ?? ""} />
+                  <Field label="Expiry date" name="expiry_date" type="date" defaultValue={editRow.expiry_date ?? ""} />
+                </div>
+                <Field label="Notes" name="notes" defaultValue={editRow.notes ?? ""} />
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="ghost" onClick={() => setEditRow(null)}>Cancel</Button>
+                <Button type="submit" disabled={editBusy}>{editBusy ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : null}Save changes</Button>
+              </DialogFooter>
+            </form>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
+
   );
 }
 
-function Field({ label, name, type = "text", required }: { label: string; name: string; type?: string; required?: boolean }) {
+function Field({ label, name, type = "text", required, defaultValue }: { label: string; name: string; type?: string; required?: boolean; defaultValue?: string }) {
   return (
     <div>
       <Label htmlFor={name}>{label}</Label>
-      <Input id={name} name={name} type={type} required={required} className="mt-1" />
+      <Input id={name} name={name} type={type} required={required} defaultValue={defaultValue} className="mt-1" />
     </div>
   );
 }

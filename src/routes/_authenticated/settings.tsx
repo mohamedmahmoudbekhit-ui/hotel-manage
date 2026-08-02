@@ -10,6 +10,7 @@ import { Plus, Trash2, Upload, Hotel as HotelIcon, X } from "lucide-react";
 import { toast } from "sonner";
 import { useI18n } from "@/lib/i18n";
 import { CalendarIntegrations } from "@/components/calendar-integrations";
+import { IcalExport } from "@/components/ical-export";
 
 
 
@@ -253,6 +254,7 @@ function SettingsPage() {
       </section>
 
       <CalendarIntegrations />
+      <IcalExport />
 
 
 

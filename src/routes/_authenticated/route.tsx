@@ -32,7 +32,9 @@ function AuthedLayout() {
     <HotelProvider>
       <OrgAccessGate>
         <OnboardingGate>
-          <AppShell />
+          <RoleGate>
+            <AppShell />
+          </RoleGate>
         </OnboardingGate>
       </OrgAccessGate>
     </HotelProvider>
@@ -87,6 +89,26 @@ function OnboardingGate({ children }: { children: ReactNode }) {
   }, [loading, onboarded, pathname, navigate]);
 
   if (loading) {
+    return <div className="flex min-h-screen items-center justify-center bg-background"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
+  }
+  return <>{children}</>;
+}
+
+const AGENT_ALLOWED = ["/bookings"];
+
+function RoleGate({ children }: { children: ReactNode }) {
+  const { loading, isBookingAgent } = useHotel();
+  const navigate = useNavigate();
+  const pathname = useRouterState({ select: (r) => r.location.pathname });
+
+  const blocked = isBookingAgent && !AGENT_ALLOWED.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+
+  useEffect(() => {
+    if (loading || !blocked) return;
+    navigate({ to: "/bookings", replace: true });
+  }, [loading, blocked, navigate]);
+
+  if (!loading && blocked) {
     return <div className="flex min-h-screen items-center justify-center bg-background"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
   }
   return <>{children}</>;

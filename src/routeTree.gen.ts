@@ -21,6 +21,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as ControlSetPasswordRouteImport } from './routes/control/set-password'
 import { Route as ControlLoginRouteImport } from './routes/control/login'
+import { Route as AuthenticatedUsersRouteImport } from './routes/_authenticated/users'
 import { Route as AuthenticatedSummaryRouteImport } from './routes/_authenticated/summary'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
@@ -92,6 +93,11 @@ const ControlLoginRoute = ControlLoginRouteImport.update({
   id: '/login',
   path: '/login',
   getParentRoute: () => ControlRouteRoute,
+} as any)
+const AuthenticatedUsersRoute = AuthenticatedUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedSummaryRoute = AuthenticatedSummaryRouteImport.update({
   id: '/summary',
@@ -169,6 +175,7 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/summary': typeof AuthenticatedSummaryRoute
+  '/users': typeof AuthenticatedUsersRoute
   '/control/login': typeof ControlLoginRoute
   '/control/set-password': typeof ControlSetPasswordRoute
   '/control/hotels': typeof ControlShellHotelsRoute
@@ -192,6 +199,7 @@ export interface FileRoutesByTo {
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/summary': typeof AuthenticatedSummaryRoute
+  '/users': typeof AuthenticatedUsersRoute
   '/control/login': typeof ControlLoginRoute
   '/control/set-password': typeof ControlSetPasswordRoute
   '/': typeof AuthenticatedIndexRoute
@@ -218,6 +226,7 @@ export interface FileRoutesById {
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/summary': typeof AuthenticatedSummaryRoute
+  '/_authenticated/users': typeof AuthenticatedUsersRoute
   '/control/login': typeof ControlLoginRoute
   '/control/set-password': typeof ControlSetPasswordRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
@@ -245,6 +254,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/settings'
     | '/summary'
+    | '/users'
     | '/control/login'
     | '/control/set-password'
     | '/control/hotels'
@@ -268,6 +278,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/settings'
     | '/summary'
+    | '/users'
     | '/control/login'
     | '/control/set-password'
     | '/'
@@ -293,6 +304,7 @@ export interface FileRouteTypes {
     | '/_authenticated/onboarding'
     | '/_authenticated/settings'
     | '/_authenticated/summary'
+    | '/_authenticated/users'
     | '/control/login'
     | '/control/set-password'
     | '/_authenticated/'
@@ -402,6 +414,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ControlLoginRouteImport
       parentRoute: typeof ControlRouteRoute
     }
+    '/_authenticated/users': {
+      id: '/_authenticated/users'
+      path: '/users'
+      fullPath: '/users'
+      preLoaderRoute: typeof AuthenticatedUsersRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/summary': {
       id: '/_authenticated/summary'
       path: '/summary'
@@ -496,6 +515,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedSummaryRoute: typeof AuthenticatedSummaryRoute
+  AuthenticatedUsersRoute: typeof AuthenticatedUsersRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
 
@@ -506,6 +526,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedOnboardingRoute: AuthenticatedOnboardingRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedSummaryRoute: AuthenticatedSummaryRoute,
+  AuthenticatedUsersRoute: AuthenticatedUsersRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }
 

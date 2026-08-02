@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, CalendarDays, LineChart, BarChart3, Settings as SettingsIcon, Hotel, Receipt } from "lucide-react";
+import { LayoutDashboard, CalendarDays, LineChart, BarChart3, Settings as SettingsIcon, Hotel, Receipt, Users } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -17,17 +17,20 @@ import { useHotel } from "@/lib/hotel/store";
 export function AppSidebar({ side = "left" }: { side?: "left" | "right" }) {
   const pathname = useRouterState({ select: (r) => r.location.pathname });
   const { t } = useI18n();
-  const { hotelName, logoUrl } = useHotel();
+  const { hotelName, logoUrl, isBookingAgent } = useHotel();
   const isActive = (p: string) => (p === "/" ? pathname === "/" : pathname.startsWith(p));
 
-  const items = [
-    { title: t("nav.dashboard"), url: "/", icon: LayoutDashboard },
-    { title: t("nav.bookings"), url: "/bookings", icon: CalendarDays },
-    { title: t("nav.expenses"), url: "/expenses", icon: Receipt },
-    { title: t("nav.charts"), url: "/charts", icon: BarChart3 },
-    { title: t("nav.summary"), url: "/summary", icon: LineChart },
-    { title: t("nav.settings"), url: "/settings", icon: SettingsIcon },
-  ];
+  const items = isBookingAgent
+    ? [{ title: t("nav.bookings"), url: "/bookings", icon: CalendarDays }]
+    : [
+        { title: t("nav.dashboard"), url: "/", icon: LayoutDashboard },
+        { title: t("nav.bookings"), url: "/bookings", icon: CalendarDays },
+        { title: t("nav.expenses"), url: "/expenses", icon: Receipt },
+        { title: t("nav.charts"), url: "/charts", icon: BarChart3 },
+        { title: t("nav.summary"), url: "/summary", icon: LineChart },
+        { title: "Users", url: "/users", icon: Users },
+        { title: t("nav.settings"), url: "/settings", icon: SettingsIcon },
+      ];
 
   return (
     <Sidebar collapsible="icon" side={side}>

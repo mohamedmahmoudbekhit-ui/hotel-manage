@@ -380,3 +380,43 @@ export const listSyncLogs = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return (rows ?? []) as SyncLogRow[];
   });
+
+// ---------------------------------------------------------------------------
+// Outbound iCal export feeds (one per room)
+// ---------------------------------------------------------------------------
+
+export interface RoomFeedRow {
+  id: string;
+  room_name: string;
+  token: string;
+}
+
+export const listRoomFeeds = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<RoomFeedRow[]> => {
+    const orgId = await resolveOrg(context.supabase, context.userId);
+    const { data, error } = await context.supabase
+      .from("rooms")
+      .select("id, room_name, ical_export_token")
+      .eq("organization_id", orgId)
+      .order("room_name", { ascending: true });
+    if (error) throw new Error(error.message);
+    return (data ?? []).map((r: any) => ({ id: r.id, room_name: r.room_name, token: r.ical_export_token }));
+  });
+
+export const regenerateRoomFeedToken = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ room_id: z.string().uuid() }).parse(input))
+  .handler(async ({ context, data }): Promise<{ token: string }> => {
+    const orgId = await resolveOrg(context.supabase, context.userId);
+    const bytes = new Uint8Array(24);
+    crypto.getRandomValues(bytes);
+    const token = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+    const { error } = await context.supabase
+      .from("rooms")
+      .update({ ical_export_token: token })
+      .eq("id", data.room_id)
+      .eq("organization_id", orgId);
+    if (error) throw new Error(error.message);
+    return { token };
+  });

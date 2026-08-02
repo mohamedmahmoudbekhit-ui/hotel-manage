@@ -1,0 +1,2 @@
+ALTER TABLE public.rooms ADD COLUMN IF NOT EXISTS ical_export_token text NOT NULL DEFAULT encode(gen_random_bytes(24), 'hex');
+CREATE UNIQUE INDEX IF NOT EXISTS rooms_ical_export_token_key ON public.rooms (ical_export_token);

@@ -44,9 +44,21 @@ const HotelContext = createContext<Ctx | null>(null);
 
 const DEFAULT_CURRENCY = "EGP";
 
-function bootstrapFromDefaults(settings: Settings, now = new Date()): StateShape {
-  const m = emptyMonth(now.getFullYear(), now.getMonth(), settings);
+// Initial default month shown on first load.
+const DEFAULT_YEAR = 2026;
+const DEFAULT_MONTH_INDEX = 6; // July
+
+function bootstrapFromDefaults(settings: Settings): StateShape {
+  const m = emptyMonth(DEFAULT_YEAR, DEFAULT_MONTH_INDEX, settings);
   return { settings, months: { [m.key]: m }, currentMonthKey: m.key };
+}
+
+/** Ensure the default month exists and is selected when the app first loads. */
+function withDefaultMonth(s: StateShape): StateShape {
+  const months = { ...s.months };
+  const key = `${MONTH_NAMES[DEFAULT_MONTH_INDEX]} ${DEFAULT_YEAR}`;
+  if (!months[key]) months[key] = emptyMonth(DEFAULT_YEAR, DEFAULT_MONTH_INDEX, s.settings);
+  return { ...s, months, currentMonthKey: key };
 }
 
 function migrateCell(raw: unknown): Cell | null {
@@ -140,7 +152,7 @@ export function HotelProvider({ children }: { children: ReactNode }) {
           setHotelName(res.hotelName);
           setOnboarded(res.onboarded);
           const normalized = normalizeState(res.data);
-          if (normalized) setState(normalized);
+          if (normalized) setState(withDefaultMonth(normalized));
         } else {
           setOnboarded(false);
           setHotelName(res.hotelName || "");

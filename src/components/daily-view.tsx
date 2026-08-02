@@ -2,9 +2,10 @@ import { useMemo } from "react";
 import { useHotel } from "@/lib/hotel/store";
 import { findChannel, monthKey, pickTextColor, resolveImportedChannel } from "@/lib/hotel/utils";
 import type { ImportedReservationRow } from "@/lib/hotel/calendar.functions";
-import { LogIn, LogOut, BedDouble, DoorOpen } from "lucide-react";
+import { LogIn, LogOut, BedDouble, DoorOpen, RefreshCw } from "lucide-react";
 
-export type DayStatus = "checkin" | "checkout" | "occupied" | "vacant";
+export type DayStatus = "turnover" | "checkin" | "checkout" | "occupied" | "vacant";
+
 
 interface RoomDay {
   room: string;
@@ -44,42 +45,45 @@ export function DailyView({
     }
 
     return settings.rooms.map((room): RoomDay => {
-      // Imported reservations take priority when they cover this date.
+      let arrival: { label: string; color: string; note: string | null } | null = null;
+      let departure: { label: string; color: string; note: string | null } | null = null;
+      let staying: { label: string; color: string; note: string | null } | null = null;
+
       for (const r of impByRoom.get(room) ?? []) {
         const start = (r.start_date ?? "").slice(0, 10);
         const end = (r.end_date ?? "").slice(0, 10); // checkout day (exclusive night)
         const ch = resolveImportedChannel(settings, r);
-        const color = ch.color || "#64748b";
-        const label = ch.name;
-        if (todayIso === start) return { room, status: "checkin", label, color, note: r.override_notes };
-        if (todayIso === end) return { room, status: "checkout", label, color, note: r.override_notes };
-        if (todayIso > start && todayIso < end) return { room, status: "occupied", label, color, note: r.override_notes };
+        const info = { label: ch.name, color: ch.color || "#64748b", note: r.override_notes ?? null };
+        if (todayIso === start) arrival = arrival ?? info;
+        else if (todayIso === end) departure = departure ?? info;
+        else if (todayIso > start && todayIso < end) staying = staying ?? info;
       }
 
       const today = cellAt(room, date);
       const yesterday = cellAt(room, prev);
       if (today) {
         const ch = findChannel(settings, today.channelId);
-        return {
-          room,
-          status: yesterday ? "occupied" : "checkin",
-          label: ch.name,
-          color: ch.color,
-          note: today.note ?? null,
-        };
-      }
-      if (yesterday) {
+        const info = { label: ch.name, color: ch.color, note: today.note ?? null };
+        if (yesterday) staying = staying ?? info;
+        else arrival = arrival ?? info;
+      } else if (yesterday) {
         const ch = findChannel(settings, yesterday.channelId);
-        return { room, status: "checkout", label: ch.name, color: ch.color, note: yesterday.note ?? null };
+        departure = departure ?? { label: ch.name, color: ch.color, note: yesterday.note ?? null };
       }
+
+      if (arrival && departure) return { room, status: "turnover", ...arrival };
+      if (arrival) return { room, status: "checkin", ...arrival };
+      if (departure) return { room, status: "checkout", ...departure };
+      if (staying) return { room, status: "occupied", ...staying };
       return { room, status: "vacant" };
     });
   }, [date, imported, months, settings]);
 
   const counts = rows.reduce<Record<DayStatus, number>>(
     (acc, r) => ({ ...acc, [r.status]: acc[r.status] + 1 }),
-    { checkin: 0, checkout: 0, occupied: 0, vacant: 0 },
+    { turnover: 0, checkin: 0, checkout: 0, occupied: 0, vacant: 0 },
   );
+
 
   return (
     <div className="space-y-4">

@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AcceptInviteRouteImport } from './routes/accept-invite'
 import { Route as ControlRouteRouteImport } from './routes/control/route'
@@ -28,6 +29,11 @@ import { Route as ControlShellSecurityRouteImport } from './routes/control/_shel
 import { Route as ControlShellHotelsRouteImport } from './routes/control/_shell/hotels'
 import { Route as ApiPublicHooksSyncIcalRouteImport } from './routes/api/public/hooks/sync-ical'
 
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -122,6 +128,7 @@ export interface FileRoutesByFullPath {
   '/control': typeof ControlRouteRouteWithChildren
   '/accept-invite': typeof AcceptInviteRoute
   '/auth': typeof AuthRoute
+  '/login': typeof LoginRoute
   '/bookings': typeof AuthenticatedBookingsRoute
   '/charts': typeof AuthenticatedChartsRoute
   '/expenses': typeof AuthenticatedExpensesRoute
@@ -139,6 +146,7 @@ export interface FileRoutesByTo {
   '/control': typeof ControlShellIndexRoute
   '/accept-invite': typeof AcceptInviteRoute
   '/auth': typeof AuthRoute
+  '/login': typeof LoginRoute
   '/bookings': typeof AuthenticatedBookingsRoute
   '/charts': typeof AuthenticatedChartsRoute
   '/expenses': typeof AuthenticatedExpensesRoute
@@ -158,6 +166,7 @@ export interface FileRoutesById {
   '/control': typeof ControlRouteRouteWithChildren
   '/accept-invite': typeof AcceptInviteRoute
   '/auth': typeof AuthRoute
+  '/login': typeof LoginRoute
   '/control/_shell': typeof ControlShellRouteRouteWithChildren
   '/_authenticated/bookings': typeof AuthenticatedBookingsRoute
   '/_authenticated/charts': typeof AuthenticatedChartsRoute
@@ -180,6 +189,7 @@ export interface FileRouteTypes {
     | '/control'
     | '/accept-invite'
     | '/auth'
+    | '/login'
     | '/bookings'
     | '/charts'
     | '/expenses'
@@ -197,6 +207,7 @@ export interface FileRouteTypes {
     | '/control'
     | '/accept-invite'
     | '/auth'
+    | '/login'
     | '/bookings'
     | '/charts'
     | '/expenses'
@@ -215,6 +226,7 @@ export interface FileRouteTypes {
     | '/control'
     | '/accept-invite'
     | '/auth'
+    | '/login'
     | '/control/_shell'
     | '/_authenticated/bookings'
     | '/_authenticated/charts'
@@ -236,11 +248,19 @@ export interface RootRouteChildren {
   ControlRouteRoute: typeof ControlRouteRouteWithChildren
   AcceptInviteRoute: typeof AcceptInviteRoute
   AuthRoute: typeof AuthRoute
+  LoginRoute: typeof LoginRoute
   ApiPublicHooksSyncIcalRoute: typeof ApiPublicHooksSyncIcalRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -429,6 +449,7 @@ const rootRouteChildren: RootRouteChildren = {
   ControlRouteRoute: ControlRouteRouteWithChildren,
   AcceptInviteRoute: AcceptInviteRoute,
   AuthRoute: AuthRoute,
+  LoginRoute: LoginRoute,
   ApiPublicHooksSyncIcalRoute: ApiPublicHooksSyncIcalRoute,
 }
 export const routeTree = rootRouteImport

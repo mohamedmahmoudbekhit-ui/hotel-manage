@@ -6,6 +6,7 @@ export type TeamRole = "hotel_admin" | "hotel_staff";
 
 export interface TeamMember {
   userId: string;
+  name: string;
   email: string;
   role: TeamRole;
   status: string;
@@ -59,9 +60,16 @@ export const listTeamMembers = createServerFn({ method: "GET" })
     for (const m of members ?? []) {
       const { data: u } = await supabaseAdmin.auth.admin.getUserById(m.user_id);
       const email = u?.user?.email ?? "";
+      const meta = (u?.user?.user_metadata ?? {}) as Record<string, unknown>;
+      const name =
+        (typeof meta['full_name'] === "string" && meta['full_name']) ||
+        (typeof meta['name'] === "string" && meta['name']) ||
+        (email ? email.split("@")[0] : "") ||
+        "";
       const invite = (invites ?? []).find((i) => i.email.toLowerCase() === email.toLowerCase());
       rows.push({
         userId: m.user_id,
+        name: name as string,
         email,
         role: (m.role === "hotel_admin" ? "hotel_admin" : "hotel_staff") as TeamRole,
         status: m.status,
@@ -207,6 +215,61 @@ export const setTeamMemberStatus = createServerFn({ method: "POST" })
       organization_id: orgId,
       user_id: context.userId,
       detail: { target_user_id: data.userId },
+    });
+
+    return { ok: true };
+  });
+
+/**
+ * Permanently deletes a staff account: membership, roles, invitations,
+ * reset requests and the authentication record (which invalidates sessions).
+ */
+export const deleteTeamMember = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ userId: z.string().uuid() }).parse(input))
+  .handler(async ({ context, data }): Promise<{ ok: true }> => {
+    const orgId = await requireOwner(context);
+    if (data.userId === context.userId) throw new Error("You cannot delete your own account.");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: target } = await supabaseAdmin
+      .from("organization_members")
+      .select("user_id, role, status")
+      .eq("organization_id", orgId)
+      .eq("user_id", data.userId)
+      .maybeSingle();
+    if (!target) throw new Error("Member not found");
+
+    if (target.role === "hotel_admin") {
+      const { data: owners } = await supabaseAdmin
+        .from("organization_members")
+        .select("user_id, status")
+        .eq("organization_id", orgId)
+        .eq("role", "hotel_admin")
+        .eq("status", "active");
+      const remaining = (owners ?? []).filter((o) => o.user_id !== data.userId);
+      if (remaining.length === 0) throw new Error("You cannot delete the last hotel owner account.");
+    }
+
+    const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(data.userId);
+    const email = authUser?.user?.email?.toLowerCase() ?? null;
+
+    await supabaseAdmin.from("organization_members").delete().eq("organization_id", orgId).eq("user_id", data.userId);
+    await supabaseAdmin.from("user_roles").delete().eq("user_id", data.userId);
+    if (email) {
+      await supabaseAdmin.from("organization_invitations").delete().eq("organization_id", orgId).eq("email", email);
+      await supabaseAdmin.from("password_reset_requests").delete().eq("email", email);
+    }
+
+    const { error: delErr } = await supabaseAdmin.auth.admin.deleteUser(data.userId);
+    if (delErr) throw new Error(delErr.message);
+
+    await supabaseAdmin.from("auth_audit_log").insert({
+      action: "user_deleted",
+      email,
+      organization_id: orgId,
+      user_id: context.userId,
+      detail: { target_user_id: data.userId, role: target.role },
     });
 
     return { ok: true };

@@ -16,6 +16,16 @@ export const Route = createFileRoute("/control/_shell/hotels")({
   component: HotelsPage,
 });
 
+function fmtDate(v: string | null) {
+  if (!v) return "—";
+  return new Date(v).toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function OwnerStatusBadge({ status }: { status: "pending" | "active" | "expired" }) {
+  const variant = status === "active" ? "default" : status === "pending" ? "secondary" : "destructive";
+  return <Badge variant={variant} className="capitalize">{status}</Badge>;
+}
+
 type Plan = { code: string; name: string; monthly_price_cents: number; trial_days: number };
 
 function HotelsPage() {
@@ -185,8 +195,9 @@ function HotelsPage() {
             <thead className="bg-muted/50 text-left text-xs uppercase text-muted-foreground">
               <tr>
                 <th className="px-3 py-2">Hotel</th>
-                <th className="px-3 py-2">Contact</th>
-                <th className="px-3 py-2">Mobile</th>
+                <th className="px-3 py-2">Owner</th>
+                <th className="px-3 py-2">Account</th>
+                <th className="px-3 py-2">Invited / Activated</th>
                 <th className="px-3 py-2">Plan</th>
                 <th className="px-3 py-2">Status</th>
                 <th className="px-3 py-2">Renewal</th>
@@ -195,21 +206,30 @@ function HotelsPage() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={7} className="px-3 py-6 text-center"><Loader2 className="mx-auto h-4 w-4 animate-spin text-muted-foreground" /></td></tr>
+                <tr><td colSpan={8} className="px-3 py-6 text-center"><Loader2 className="mx-auto h-4 w-4 animate-spin text-muted-foreground" /></td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={7} className="px-3 py-6 text-center text-muted-foreground">No hotels yet. Click "Add hotel" to create one.</td></tr>
+                <tr><td colSpan={8} className="px-3 py-6 text-center text-muted-foreground">No hotels yet. Click "Add hotel" to create one.</td></tr>
               ) : filtered.map((r) => (
                 <tr key={r.id} className="border-t">
                   <td className="px-3 py-2 font-medium">{r.hotel_name}<div className="text-xs text-muted-foreground">{r.contact_email}</div></td>
-                  <td className="px-3 py-2">{r.contact_person || "—"}</td>
-                  <td className="px-3 py-2">{r.contact_mobile}</td>
+                  <td className="px-3 py-2">{r.owner_name || "—"}<div className="text-xs text-muted-foreground">{r.owner_email}</div></td>
+                  <td className="px-3 py-2"><OwnerStatusBadge status={r.owner_status} /></td>
+                  <td className="px-3 py-2 text-xs text-muted-foreground">
+                    <div>Invited: {fmtDate(r.invitation_created_at)}</div>
+                    <div>Activated: {fmtDate(r.activated_at)}</div>
+                  </td>
                   <td className="px-3 py-2 capitalize">{r.subscription_plan}</td>
                   <td className="px-3 py-2"><StatusBadge status={r.subscription_status} account={r.account_status} /></td>
                   <td className="px-3 py-2">{r.renewal_date ?? "—"}</td>
                   <td className="px-3 py-2">
                     <div className="flex justify-end gap-1">
                       <Button size="sm" variant="ghost" title="Edit details" onClick={() => setEditRow(r)}><Pencil className="h-3.5 w-3.5" /></Button>
-                      <Button size="sm" variant="ghost" title="Resend invitation" onClick={() => handleResend(r)}><Send className="h-3.5 w-3.5" /></Button>
+                      {r.owner_status !== "active" && r.invitation_token ? (
+                        <Button size="sm" variant="ghost" title="Copy invitation link" onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/activate?token=${r.invitation_token}`); toast.success("Invitation link copied"); }}><Copy className="h-3.5 w-3.5" /></Button>
+                      ) : null}
+                      {r.owner_status !== "active" ? (
+                        <Button size="sm" variant="ghost" title="Regenerate invitation link" onClick={() => handleResend(r)}><Send className="h-3.5 w-3.5" /></Button>
+                      ) : null}
                       <Button size="sm" variant="ghost" title="Extend" onClick={() => { setExtendFor(r); setExtendDate(r.expiry_date ?? ""); }}><CalendarPlus className="h-3.5 w-3.5" /></Button>
                       {r.account_status === "suspended" ? (
                         <Button size="sm" variant="ghost" title="Reactivate" onClick={() => toggleStatus(r, "active")}><PlayCircle className="h-3.5 w-3.5 text-green-600" /></Button>

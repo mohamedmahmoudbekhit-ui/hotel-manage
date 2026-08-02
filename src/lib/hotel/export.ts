@@ -211,6 +211,9 @@ export async function exportPdf(opts: {
     footStyles: { fillColor: [241, 245, 249], textColor: 20, fontStyle: "bold", halign: "left" },
     alternateRowStyles: { fillColor: [248, 250, 252] },
     columnStyles: { 6: { halign: "right" } },
+    didParseCell: (data: { section: string; column: { index: number }; cell: { styles: { halign: string } } }) => {
+      if (data.section === "foot" && data.column.index === 6) data.cell.styles.halign = "right";
+    },
   });
 
   const pageCount = doc.getNumberOfPages();

@@ -214,7 +214,11 @@ export function HotelProvider({ children }: { children: ReactNode }) {
     return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
   }, [state, hotelName, onboarded, save]);
 
-  const setCurrentMonthKey = useCallback((k: string) => setState((s) => ({ ...s, currentMonthKey: k })), []);
+  const setCurrentMonthKey = useCallback((k: string) => {
+    persistMonthKey(k);
+    setState((s) => ({ ...s, currentMonthKey: k }));
+  }, []);
+
 
   const updateCell = useCallback((room: string, day: number, cell: Cell | null) => {
     setState((s) => {

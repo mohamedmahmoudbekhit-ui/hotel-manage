@@ -362,10 +362,6 @@ function BookingsPage() {
                   );
                 })}
 
-                    </td>
-                  );
-                })}
-
               </tr>
 
             ))}

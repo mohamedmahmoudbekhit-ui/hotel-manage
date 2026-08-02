@@ -1,7 +1,7 @@
 import { createFileRoute, Outlet, redirect, Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { LogOut, LayoutDashboard, Building2, ShieldCheck } from "lucide-react";
+import { LogOut, LayoutDashboard, Building2, ShieldCheck, KeyRound } from "lucide-react";
 
 /** Gate for every console page: super admin + a verified second factor (AAL2). */
 export const Route = createFileRoute("/control/_shell")({
@@ -44,6 +44,7 @@ function ConsoleShell() {
         <nav className="space-y-1 p-3">
           <NavItem to="/control" icon={<LayoutDashboard className="h-4 w-4" />} label="Dashboard" active={pathname === "/control"} />
           <NavItem to="/control/hotels" icon={<Building2 className="h-4 w-4" />} label="Hotels" active={pathname.startsWith("/control/hotels")} />
+          <NavItem to="/control/resets" icon={<KeyRound className="h-4 w-4" />} label="Password resets" active={pathname.startsWith("/control/resets")} />
           <NavItem to="/control/security" icon={<ShieldCheck className="h-4 w-4" />} label="Security" active={pathname.startsWith("/control/security")} />
         </nav>
       </aside>

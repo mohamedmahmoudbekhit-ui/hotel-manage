@@ -30,6 +30,7 @@ import { Route as AuthenticatedBookingsRouteImport } from './routes/_authenticat
 import { Route as ControlShellRouteRouteImport } from './routes/control/_shell/route'
 import { Route as ControlShellIndexRouteImport } from './routes/control/_shell/index'
 import { Route as ControlShellSecurityRouteImport } from './routes/control/_shell/security'
+import { Route as ControlShellResetsRouteImport } from './routes/control/_shell/resets'
 import { Route as ControlShellHotelsRouteImport } from './routes/control/_shell/hotels'
 import { Route as ApiPublicHooksSyncIcalRouteImport } from './routes/api/public/hooks/sync-ical'
 
@@ -136,6 +137,11 @@ const ControlShellSecurityRoute = ControlShellSecurityRouteImport.update({
   path: '/security',
   getParentRoute: () => ControlShellRouteRoute,
 } as any)
+const ControlShellResetsRoute = ControlShellResetsRouteImport.update({
+  id: '/resets',
+  path: '/resets',
+  getParentRoute: () => ControlShellRouteRoute,
+} as any)
 const ControlShellHotelsRoute = ControlShellHotelsRouteImport.update({
   id: '/hotels',
   path: '/hotels',
@@ -166,6 +172,7 @@ export interface FileRoutesByFullPath {
   '/control/login': typeof ControlLoginRoute
   '/control/set-password': typeof ControlSetPasswordRoute
   '/control/hotels': typeof ControlShellHotelsRoute
+  '/control/resets': typeof ControlShellResetsRoute
   '/control/security': typeof ControlShellSecurityRoute
   '/control/': typeof ControlShellIndexRoute
   '/api/public/hooks/sync-ical': typeof ApiPublicHooksSyncIcalRoute
@@ -189,6 +196,7 @@ export interface FileRoutesByTo {
   '/control/set-password': typeof ControlSetPasswordRoute
   '/': typeof AuthenticatedIndexRoute
   '/control/hotels': typeof ControlShellHotelsRoute
+  '/control/resets': typeof ControlShellResetsRoute
   '/control/security': typeof ControlShellSecurityRoute
   '/api/public/hooks/sync-ical': typeof ApiPublicHooksSyncIcalRoute
 }
@@ -214,6 +222,7 @@ export interface FileRoutesById {
   '/control/set-password': typeof ControlSetPasswordRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/control/_shell/hotels': typeof ControlShellHotelsRoute
+  '/control/_shell/resets': typeof ControlShellResetsRoute
   '/control/_shell/security': typeof ControlShellSecurityRoute
   '/control/_shell/': typeof ControlShellIndexRoute
   '/api/public/hooks/sync-ical': typeof ApiPublicHooksSyncIcalRoute
@@ -239,6 +248,7 @@ export interface FileRouteTypes {
     | '/control/login'
     | '/control/set-password'
     | '/control/hotels'
+    | '/control/resets'
     | '/control/security'
     | '/control/'
     | '/api/public/hooks/sync-ical'
@@ -262,6 +272,7 @@ export interface FileRouteTypes {
     | '/control/set-password'
     | '/'
     | '/control/hotels'
+    | '/control/resets'
     | '/control/security'
     | '/api/public/hooks/sync-ical'
   id:
@@ -286,6 +297,7 @@ export interface FileRouteTypes {
     | '/control/set-password'
     | '/_authenticated/'
     | '/control/_shell/hotels'
+    | '/control/_shell/resets'
     | '/control/_shell/security'
     | '/control/_shell/'
     | '/api/public/hooks/sync-ical'
@@ -453,6 +465,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ControlShellSecurityRouteImport
       parentRoute: typeof ControlShellRouteRoute
     }
+    '/control/_shell/resets': {
+      id: '/control/_shell/resets'
+      path: '/resets'
+      fullPath: '/control/resets'
+      preLoaderRoute: typeof ControlShellResetsRouteImport
+      parentRoute: typeof ControlShellRouteRoute
+    }
     '/control/_shell/hotels': {
       id: '/control/_shell/hotels'
       path: '/hotels'
@@ -495,12 +514,14 @@ const AuthenticatedRouteRouteWithChildren =
 
 interface ControlShellRouteRouteChildren {
   ControlShellHotelsRoute: typeof ControlShellHotelsRoute
+  ControlShellResetsRoute: typeof ControlShellResetsRoute
   ControlShellSecurityRoute: typeof ControlShellSecurityRoute
   ControlShellIndexRoute: typeof ControlShellIndexRoute
 }
 
 const ControlShellRouteRouteChildren: ControlShellRouteRouteChildren = {
   ControlShellHotelsRoute: ControlShellHotelsRoute,
+  ControlShellResetsRoute: ControlShellResetsRoute,
   ControlShellSecurityRoute: ControlShellSecurityRoute,
   ControlShellIndexRoute: ControlShellIndexRoute,
 }

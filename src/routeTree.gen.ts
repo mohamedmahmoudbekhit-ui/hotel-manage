@@ -22,9 +22,8 @@ import { Route as AuthenticatedExpensesRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedChartsRouteImport } from './routes/_authenticated/charts'
 import { Route as AuthenticatedBookingsRouteImport } from './routes/_authenticated/bookings'
 import { Route as ConsoleShellRouteRouteImport } from './routes/console/_shell/route'
-import { Route as AuthenticatedAdminRouteRouteImport } from './routes/_authenticated/admin/route'
-import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
-import { Route as AuthenticatedAdminHotelsRouteImport } from './routes/_authenticated/admin/hotels'
+import { Route as ConsoleShellIndexRouteImport } from './routes/console/_shell/index'
+import { Route as ConsoleShellHotelsRouteImport } from './routes/console/_shell/hotels'
 import { Route as ApiPublicHooksSyncIcalRouteImport } from './routes/api/public/hooks/sync-ical'
 
 const AuthRoute = AuthRouteImport.update({
@@ -90,22 +89,16 @@ const ConsoleShellRouteRoute = ConsoleShellRouteRouteImport.update({
   id: '/_shell',
   getParentRoute: () => ConsoleRouteRoute,
 } as any)
-const AuthenticatedAdminRouteRoute = AuthenticatedAdminRouteRouteImport.update({
-  id: '/admin',
-  path: '/admin',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
+const ConsoleShellIndexRoute = ConsoleShellIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => AuthenticatedAdminRouteRoute,
+  getParentRoute: () => ConsoleShellRouteRoute,
 } as any)
-const AuthenticatedAdminHotelsRoute =
-  AuthenticatedAdminHotelsRouteImport.update({
-    id: '/hotels',
-    path: '/hotels',
-    getParentRoute: () => AuthenticatedAdminRouteRoute,
-  } as any)
+const ConsoleShellHotelsRoute = ConsoleShellHotelsRouteImport.update({
+  id: '/hotels',
+  path: '/hotels',
+  getParentRoute: () => ConsoleShellRouteRoute,
+} as any)
 const ApiPublicHooksSyncIcalRoute = ApiPublicHooksSyncIcalRouteImport.update({
   id: '/api/public/hooks/sync-ical',
   path: '/api/public/hooks/sync-ical',
@@ -117,7 +110,6 @@ export interface FileRoutesByFullPath {
   '/console': typeof ConsoleRouteRouteWithChildren
   '/accept-invite': typeof AcceptInviteRoute
   '/auth': typeof AuthRoute
-  '/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/bookings': typeof AuthenticatedBookingsRoute
   '/charts': typeof AuthenticatedChartsRoute
   '/expenses': typeof AuthenticatedExpensesRoute
@@ -125,12 +117,12 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AuthenticatedSettingsRoute
   '/summary': typeof AuthenticatedSummaryRoute
   '/console/login': typeof ConsoleLoginRoute
-  '/admin/hotels': typeof AuthenticatedAdminHotelsRoute
-  '/admin/': typeof AuthenticatedAdminIndexRoute
+  '/console/hotels': typeof ConsoleShellHotelsRoute
+  '/console/': typeof ConsoleShellIndexRoute
   '/api/public/hooks/sync-ical': typeof ApiPublicHooksSyncIcalRoute
 }
 export interface FileRoutesByTo {
-  '/console': typeof ConsoleRouteRouteWithChildren
+  '/console': typeof ConsoleShellIndexRoute
   '/accept-invite': typeof AcceptInviteRoute
   '/auth': typeof AuthRoute
   '/bookings': typeof AuthenticatedBookingsRoute
@@ -141,8 +133,7 @@ export interface FileRoutesByTo {
   '/summary': typeof AuthenticatedSummaryRoute
   '/console/login': typeof ConsoleLoginRoute
   '/': typeof AuthenticatedIndexRoute
-  '/admin/hotels': typeof AuthenticatedAdminHotelsRoute
-  '/admin': typeof AuthenticatedAdminIndexRoute
+  '/console/hotels': typeof ConsoleShellHotelsRoute
   '/api/public/hooks/sync-ical': typeof ApiPublicHooksSyncIcalRoute
 }
 export interface FileRoutesById {
@@ -151,8 +142,7 @@ export interface FileRoutesById {
   '/console': typeof ConsoleRouteRouteWithChildren
   '/accept-invite': typeof AcceptInviteRoute
   '/auth': typeof AuthRoute
-  '/_authenticated/admin': typeof AuthenticatedAdminRouteRouteWithChildren
-  '/console/_shell': typeof ConsoleShellRouteRoute
+  '/console/_shell': typeof ConsoleShellRouteRouteWithChildren
   '/_authenticated/bookings': typeof AuthenticatedBookingsRoute
   '/_authenticated/charts': typeof AuthenticatedChartsRoute
   '/_authenticated/expenses': typeof AuthenticatedExpensesRoute
@@ -161,8 +151,8 @@ export interface FileRoutesById {
   '/_authenticated/summary': typeof AuthenticatedSummaryRoute
   '/console/login': typeof ConsoleLoginRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
-  '/_authenticated/admin/hotels': typeof AuthenticatedAdminHotelsRoute
-  '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
+  '/console/_shell/hotels': typeof ConsoleShellHotelsRoute
+  '/console/_shell/': typeof ConsoleShellIndexRoute
   '/api/public/hooks/sync-ical': typeof ApiPublicHooksSyncIcalRoute
 }
 export interface FileRouteTypes {
@@ -172,7 +162,6 @@ export interface FileRouteTypes {
     | '/console'
     | '/accept-invite'
     | '/auth'
-    | '/admin'
     | '/bookings'
     | '/charts'
     | '/expenses'
@@ -180,8 +169,8 @@ export interface FileRouteTypes {
     | '/settings'
     | '/summary'
     | '/console/login'
-    | '/admin/hotels'
-    | '/admin/'
+    | '/console/hotels'
+    | '/console/'
     | '/api/public/hooks/sync-ical'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -196,8 +185,7 @@ export interface FileRouteTypes {
     | '/summary'
     | '/console/login'
     | '/'
-    | '/admin/hotels'
-    | '/admin'
+    | '/console/hotels'
     | '/api/public/hooks/sync-ical'
   id:
     | '__root__'
@@ -205,7 +193,6 @@ export interface FileRouteTypes {
     | '/console'
     | '/accept-invite'
     | '/auth'
-    | '/_authenticated/admin'
     | '/console/_shell'
     | '/_authenticated/bookings'
     | '/_authenticated/charts'
@@ -215,8 +202,8 @@ export interface FileRouteTypes {
     | '/_authenticated/summary'
     | '/console/login'
     | '/_authenticated/'
-    | '/_authenticated/admin/hotels'
-    | '/_authenticated/admin/'
+    | '/console/_shell/hotels'
+    | '/console/_shell/'
     | '/api/public/hooks/sync-ical'
   fileRoutesById: FileRoutesById
 }
@@ -321,26 +308,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConsoleShellRouteRouteImport
       parentRoute: typeof ConsoleRouteRoute
     }
-    '/_authenticated/admin': {
-      id: '/_authenticated/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AuthenticatedAdminRouteRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/admin/': {
-      id: '/_authenticated/admin/'
+    '/console/_shell/': {
+      id: '/console/_shell/'
       path: '/'
-      fullPath: '/admin/'
-      preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
-      parentRoute: typeof AuthenticatedAdminRouteRoute
+      fullPath: '/console/'
+      preLoaderRoute: typeof ConsoleShellIndexRouteImport
+      parentRoute: typeof ConsoleShellRouteRoute
     }
-    '/_authenticated/admin/hotels': {
-      id: '/_authenticated/admin/hotels'
+    '/console/_shell/hotels': {
+      id: '/console/_shell/hotels'
       path: '/hotels'
-      fullPath: '/admin/hotels'
-      preLoaderRoute: typeof AuthenticatedAdminHotelsRouteImport
-      parentRoute: typeof AuthenticatedAdminRouteRoute
+      fullPath: '/console/hotels'
+      preLoaderRoute: typeof ConsoleShellHotelsRouteImport
+      parentRoute: typeof ConsoleShellRouteRoute
     }
     '/api/public/hooks/sync-ical': {
       id: '/api/public/hooks/sync-ical'
@@ -352,24 +332,7 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface AuthenticatedAdminRouteRouteChildren {
-  AuthenticatedAdminHotelsRoute: typeof AuthenticatedAdminHotelsRoute
-  AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
-}
-
-const AuthenticatedAdminRouteRouteChildren: AuthenticatedAdminRouteRouteChildren =
-  {
-    AuthenticatedAdminHotelsRoute: AuthenticatedAdminHotelsRoute,
-    AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
-  }
-
-const AuthenticatedAdminRouteRouteWithChildren =
-  AuthenticatedAdminRouteRoute._addFileChildren(
-    AuthenticatedAdminRouteRouteChildren,
-  )
-
 interface AuthenticatedRouteRouteChildren {
-  AuthenticatedAdminRouteRoute: typeof AuthenticatedAdminRouteRouteWithChildren
   AuthenticatedBookingsRoute: typeof AuthenticatedBookingsRoute
   AuthenticatedChartsRoute: typeof AuthenticatedChartsRoute
   AuthenticatedExpensesRoute: typeof AuthenticatedExpensesRoute
@@ -380,7 +343,6 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
-  AuthenticatedAdminRouteRoute: AuthenticatedAdminRouteRouteWithChildren,
   AuthenticatedBookingsRoute: AuthenticatedBookingsRoute,
   AuthenticatedChartsRoute: AuthenticatedChartsRoute,
   AuthenticatedExpensesRoute: AuthenticatedExpensesRoute,
@@ -393,13 +355,26 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface ConsoleShellRouteRouteChildren {
+  ConsoleShellHotelsRoute: typeof ConsoleShellHotelsRoute
+  ConsoleShellIndexRoute: typeof ConsoleShellIndexRoute
+}
+
+const ConsoleShellRouteRouteChildren: ConsoleShellRouteRouteChildren = {
+  ConsoleShellHotelsRoute: ConsoleShellHotelsRoute,
+  ConsoleShellIndexRoute: ConsoleShellIndexRoute,
+}
+
+const ConsoleShellRouteRouteWithChildren =
+  ConsoleShellRouteRoute._addFileChildren(ConsoleShellRouteRouteChildren)
+
 interface ConsoleRouteRouteChildren {
-  ConsoleShellRouteRoute: typeof ConsoleShellRouteRoute
+  ConsoleShellRouteRoute: typeof ConsoleShellRouteRouteWithChildren
   ConsoleLoginRoute: typeof ConsoleLoginRoute
 }
 
 const ConsoleRouteRouteChildren: ConsoleRouteRouteChildren = {
-  ConsoleShellRouteRoute: ConsoleShellRouteRoute,
+  ConsoleShellRouteRoute: ConsoleShellRouteRouteWithChildren,
   ConsoleLoginRoute: ConsoleLoginRoute,
 }
 

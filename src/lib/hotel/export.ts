@@ -205,19 +205,24 @@ export async function exportPdf(opts: {
       Math.round(r.amount).toLocaleString(),
     ]),
     foot: [["", "", "", "", "", "Total", Math.round(total).toLocaleString()]],
+    showFoot: "lastPage",
     styles: { fontSize: 9, cellPadding: 5, overflow: "linebreak" },
     headStyles: { fillColor: [30, 41, 59], textColor: 255, fontStyle: "bold" },
-    footStyles: { fillColor: [241, 245, 249], textColor: 20, fontStyle: "bold" },
+    footStyles: { fillColor: [241, 245, 249], textColor: 20, fontStyle: "bold", halign: "left" },
     alternateRowStyles: { fillColor: [248, 250, 252] },
     columnStyles: { 6: { halign: "right" } },
-    didDrawPage: () => {
-      const pageCount = doc.getNumberOfPages();
-      const current = (doc as unknown as { internal: { getCurrentPageInfo: () => { pageNumber: number } } }).internal.getCurrentPageInfo().pageNumber;
-      doc.setFontSize(8);
-      doc.setTextColor(130);
-      doc.text(`Page ${current} of ${pageCount}`, pageWidth - 40, doc.internal.pageSize.getHeight() - 20, { align: "right" });
-    },
   });
+
+  const pageCount = doc.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(130);
+    doc.text(`Page ${i} of ${pageCount}`, pageWidth - 40, doc.internal.pageSize.getHeight() - 20, { align: "right" });
+    doc.text(opts.hotelName || "Hotel Management", 40, doc.internal.pageSize.getHeight() - 20);
+  }
 
   doc.save(opts.filename);
 }
+

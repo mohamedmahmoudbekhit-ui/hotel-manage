@@ -47,8 +47,48 @@ export const listOrganizations = createServerFn({ method: "GET" })
       .select("id, hotel_name, logo_url, contact_person, contact_email, contact_mobile, subscription_plan, subscription_status, account_status, start_date, renewal_date, expiry_date, notes, created_at")
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
-    return (data ?? []) as OrgRow[];
+    const orgs = (data ?? []) as any[];
+    if (orgs.length === 0) return [];
+
+    const ids = orgs.map((o) => o.id);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const [{ data: invites }, { data: members }] = await Promise.all([
+      supabaseAdmin
+        .from("organization_invitations")
+        .select("organization_id, email, role, created_at, accepted_at, expires_at")
+        .in("organization_id", ids)
+        .eq("role", "hotel_admin")
+        .order("created_at", { ascending: false }),
+      supabaseAdmin
+        .from("organization_members")
+        .select("organization_id, role, status")
+        .in("organization_id", ids)
+        .eq("role", "hotel_admin"),
+    ]);
+
+    const now = Date.now();
+    return orgs.map((o) => {
+      const orgInvites = (invites ?? []).filter((i: any) => i.organization_id === o.id);
+      const accepted = orgInvites.filter((i: any) => i.accepted_at);
+      const isActive =
+        (members ?? []).some((m: any) => m.organization_id === o.id && m.status === "active") || accepted.length > 0;
+      const latest = orgInvites[0] ?? null;
+      const owner_status: OrgRow["owner_status"] = isActive
+        ? "active"
+        : latest && new Date(latest.expires_at).getTime() > now
+          ? "pending"
+          : "expired";
+      return {
+        ...o,
+        owner_name: o.contact_person ?? null,
+        owner_email: o.contact_email,
+        owner_status,
+        invitation_created_at: latest?.created_at ?? null,
+        activated_at: accepted.length ? accepted[0].accepted_at : null,
+      } as OrgRow;
+    });
   });
+
 
 export const dashboardStats = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])

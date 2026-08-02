@@ -34,6 +34,7 @@ import { Route as ControlShellSecurityRouteImport } from './routes/control/_shel
 import { Route as ControlShellResetsRouteImport } from './routes/control/_shell/resets'
 import { Route as ControlShellHotelsRouteImport } from './routes/control/_shell/hotels'
 import { Route as ApiPublicHooksSyncIcalRouteImport } from './routes/api/public/hooks/sync-ical'
+import { Route as ApiPublicIcalRoomIdChar123tokenChar125DoticsRouteImport } from './routes/api/public/ical/$roomId/{$token}[.]ics'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
@@ -158,6 +159,12 @@ const ApiPublicHooksSyncIcalRoute = ApiPublicHooksSyncIcalRouteImport.update({
   path: '/api/public/hooks/sync-ical',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicIcalRoomIdChar123tokenChar125DoticsRoute =
+  ApiPublicIcalRoomIdChar123tokenChar125DoticsRouteImport.update({
+    id: '/api/public/ical/$roomId/{$token}.ics',
+    path: '/api/public/ical/$roomId/{$token}.ics',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
@@ -183,6 +190,7 @@ export interface FileRoutesByFullPath {
   '/control/security': typeof ControlShellSecurityRoute
   '/control/': typeof ControlShellIndexRoute
   '/api/public/hooks/sync-ical': typeof ApiPublicHooksSyncIcalRoute
+  '/api/public/ical/$roomId/{$token}.ics': typeof ApiPublicIcalRoomIdChar123tokenChar125DoticsRoute
 }
 export interface FileRoutesByTo {
   '/control': typeof ControlShellIndexRoute
@@ -207,6 +215,7 @@ export interface FileRoutesByTo {
   '/control/resets': typeof ControlShellResetsRoute
   '/control/security': typeof ControlShellSecurityRoute
   '/api/public/hooks/sync-ical': typeof ApiPublicHooksSyncIcalRoute
+  '/api/public/ical/$roomId/{$token}.ics': typeof ApiPublicIcalRoomIdChar123tokenChar125DoticsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -235,6 +244,7 @@ export interface FileRoutesById {
   '/control/_shell/security': typeof ControlShellSecurityRoute
   '/control/_shell/': typeof ControlShellIndexRoute
   '/api/public/hooks/sync-ical': typeof ApiPublicHooksSyncIcalRoute
+  '/api/public/ical/$roomId/{$token}.ics': typeof ApiPublicIcalRoomIdChar123tokenChar125DoticsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -262,6 +272,7 @@ export interface FileRouteTypes {
     | '/control/security'
     | '/control/'
     | '/api/public/hooks/sync-ical'
+    | '/api/public/ical/$roomId/{$token}.ics'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/control'
@@ -286,6 +297,7 @@ export interface FileRouteTypes {
     | '/control/resets'
     | '/control/security'
     | '/api/public/hooks/sync-ical'
+    | '/api/public/ical/$roomId/{$token}.ics'
   id:
     | '__root__'
     | '/_authenticated'
@@ -313,6 +325,7 @@ export interface FileRouteTypes {
     | '/control/_shell/security'
     | '/control/_shell/'
     | '/api/public/hooks/sync-ical'
+    | '/api/public/ical/$roomId/{$token}.ics'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -326,6 +339,7 @@ export interface RootRouteChildren {
   NewPasswordRoute: typeof NewPasswordRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   ApiPublicHooksSyncIcalRoute: typeof ApiPublicHooksSyncIcalRoute
+  ApiPublicIcalRoomIdChar123tokenChar125DoticsRoute: typeof ApiPublicIcalRoomIdChar123tokenChar125DoticsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -505,6 +519,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksSyncIcalRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/ical/$roomId/{$token}.ics': {
+      id: '/api/public/ical/$roomId/{$token}.ics'
+      path: '/api/public/ical/$roomId/{$token}.ics'
+      fullPath: '/api/public/ical/$roomId/{$token}.ics'
+      preLoaderRoute: typeof ApiPublicIcalRoomIdChar123tokenChar125DoticsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -577,6 +598,8 @@ const rootRouteChildren: RootRouteChildren = {
   NewPasswordRoute: NewPasswordRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   ApiPublicHooksSyncIcalRoute: ApiPublicHooksSyncIcalRoute,
+  ApiPublicIcalRoomIdChar123tokenChar125DoticsRoute:
+    ApiPublicIcalRoomIdChar123tokenChar125DoticsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -12,14 +12,14 @@ export const Route = createFileRoute("/_authenticated")({
   ssr: false,
   beforeLoad: async () => {
     const { data, error } = await supabase.auth.getUser();
-    if (error || !data.user) throw redirect({ to: "/auth" });
+    if (error || !data.user) throw redirect({ to: "/login" });
 
     // Platform administrators live in the separate console portal and must
     // never hold a session inside the customer application.
     const { data: isSuperAdmin } = await supabase.rpc("ensure_super_admin_self");
     if (isSuperAdmin === true) {
       await supabase.auth.signOut();
-      throw redirect({ to: "/auth" });
+      throw redirect({ to: "/login" });
     }
 
     return { user: data.user };
@@ -43,7 +43,7 @@ function OrgAccessGate({ children }: { children: ReactNode }) {
   const { loading, organizationId, accountStatus, subscriptionStatus } = useHotel();
   const navigate = useNavigate();
 
-  const signOut = async () => { await supabase.auth.signOut(); navigate({ to: "/auth", replace: true }); };
+  const signOut = async () => { await supabase.auth.signOut(); navigate({ to: "/login", replace: true }); };
 
   if (loading) {
     return <div className="flex min-h-screen items-center justify-center bg-background"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
@@ -100,7 +100,7 @@ function AppShell() {
 
   const handleSignOut = async () => {
     await signOut();
-    navigate({ to: "/auth", replace: true });
+    navigate({ to: "/login", replace: true });
   };
 
   if (!onboarded || pathname === "/onboarding") {

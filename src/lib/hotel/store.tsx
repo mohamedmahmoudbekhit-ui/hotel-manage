@@ -194,12 +194,17 @@ export function HotelProvider({ children }: { children: ReactNode }) {
   const addBookingRange = useCallback((params: { room: string; from: string; to: string; channelId: string; price: number; note?: string }) => {
     const start = new Date(`${params.from}T00:00:00Z`);
     const end = new Date(`${params.to}T00:00:00Z`);
-    if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) {
+    // Nights = checkout - checkin. The checkout day is NOT a stayed night.
+    const nights = nightsBetween(params.from, params.to);
+    if (isNaN(start.getTime()) || isNaN(end.getTime()) || nights <= 0) {
       return { written: 0, skipped: 0, nights: 0 };
     }
     const dates: Date[] = [];
-    for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) dates.push(new Date(d));
-    const nights = dates.length;
+    const cursor = new Date(start);
+    for (let i = 0; i < nights; i++) {
+      dates.push(new Date(cursor));
+      cursor.setUTCDate(cursor.getUTCDate() + 1);
+    }
     const perNight = Math.round((params.price / nights) * 100) / 100;
     let written = 0;
     let skipped = 0;
@@ -231,6 +236,7 @@ export function HotelProvider({ children }: { children: ReactNode }) {
     });
     return { written, skipped, nights };
   }, []);
+
 
   const updateMonthMeta = useCallback((patch: Partial<Pick<MonthData, "expenses" | "usdRate" | "managementPct">>) => {
     setState((s) => {

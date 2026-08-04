@@ -295,17 +295,22 @@ export function mergeImportedIntoMonth(
           cells[res.room_name] = {};
           for (let dd = 1; dd <= month.daysInMonth; dd++) cells[res.room_name][dd] = null;
         }
-        if (!cells[res.room_name][day]) {
-          cells[res.room_name][day] = {
+        const existing = slotCells(cells[res.room_name][day]);
+        cells[res.room_name][day] = toSlot([
+          ...existing,
+          {
             price: perNight,
             channelId: ch.id,
+            bookingId: `ical:${res.id ?? `${res.source_id}:${start}`}`,
+            ...(res.status === "noshow" ? { status: "noshow" as const } : {}),
             ...(res.override_notes ? { note: res.override_notes } : {}),
-          };
-          touched = true;
-        }
+          },
+        ]);
+        touched = true;
       }
       d.setUTCDate(d.getUTCDate() + 1);
     }
+
   }
 
   if (!touched && extra.size === 0) return { month, settings };

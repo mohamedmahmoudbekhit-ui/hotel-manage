@@ -87,6 +87,8 @@ export function computeMonthTotals(m: MonthData, rooms: string[], settings: Sett
   let occupiedNights = 0;
   let usdTotal = 0;
   let localTotal = 0;
+  let noshowRevenue = 0;
+
 
   for (const room of rooms) {
     revenueByRoom[room] = 0;
@@ -145,6 +147,8 @@ export function computeMonthTotals(m: MonthData, rooms: string[], settings: Sett
     management,
     owner,
     usdTotal,
+    noshowRevenue,
+
     localTotal,
   };
 }

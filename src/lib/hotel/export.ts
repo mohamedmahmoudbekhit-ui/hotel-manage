@@ -1,5 +1,5 @@
 import type { MonthData, Settings } from "./types";
-import { cellRevenueLocal, findChannel, MONTH_NAMES, nightsBetween, resolveImportedChannel } from "./utils";
+import { cellRevenueLocal, findChannel, MONTH_NAMES, nightsBetween, resolveImportedChannel, slotCells } from "./utils";
 import type { ImportedReservationRow } from "./calendar.functions";
 
 export interface BookingExportRow {

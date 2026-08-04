@@ -332,36 +332,60 @@ function BookingsPage() {
               <tr key={day} className="group">
                 <td className="sticky start-0 z-10 border-t bg-card px-2 py-2 text-xs font-semibold text-muted-foreground group-hover:bg-muted/40 sm:px-3">{day}</td>
                 {visibleRooms.map((room) => {
-                  const cell = currentMonth.cells[room]?.[day] ?? null;
-                  const importedHere = !cell ? importedByRoomDay.get(room)?.get(day) ?? null : null;
+                  // A night can hold more than one booking (e.g. a replacement
+                  // after a no-show); each is rendered as its own block.
+                  const list = slotCells(currentMonth.cells[room]?.[day]);
+                  const importedHere = list.length === 0 ? importedByRoomDay.get(room)?.get(day) ?? null : null;
                   const matchesSource =
                     filters.sourceKey === "all" ||
-                    (importedHere ? importedHere.res.source_id === filters.sourceKey : cell ? cell.channelId === filters.sourceKey : true);
-                  const prev = currentMonth.cells[room]?.[day - 1] ?? null;
-                  const next = currentMonth.cells[room]?.[day + 1] ?? null;
-                  // Only nights of the SAME reservation (same bookingId) connect.
-                  const contPrev = !!cell?.bookingId && prev?.bookingId === cell.bookingId;
-                  const contNext = !!cell?.bookingId && next?.bookingId === cell.bookingId;
-                  const position: "start" | "middle" | "end" | "single" =
-                    !contPrev && !contNext ? "single" : !contPrev ? "start" : !contNext ? "end" : "middle";
+                    (importedHere
+                      ? importedHere.res.source_id === filters.sourceKey
+                      : list.length > 0
+                        ? list.some((c) => c.channelId === filters.sourceKey)
+                        : true);
+                  const prev = slotCells(currentMonth.cells[room]?.[day - 1]);
+                  const next = slotCells(currentMonth.cells[room]?.[day + 1]);
                   return (
                     <td key={room} className={`border-t px-1.5 py-0 align-top ${matchesSource ? "" : "opacity-25"}`}>
                       {importedHere ? (
                         <ImportedBlock res={importedHere.res} channel={resolveImportedChannel(analyticsSettings, importedHere.res)} position={importedHere.position} onChanged={reloadImported} currency={settings.currency} />
-                      ) : (
+                      ) : list.length === 0 ? (
                         <CellEditor
-                          cell={cell}
-                          position={position}
+                          cell={null}
+                          position="single"
                           onSave={(c) => updateCell(room, day, c)}
                           onDelete={() => updateCell(room, day, null)}
                           usdRate={currentMonth.usdRate}
                           channels={settings.channels}
                           currency={settings.currency}
                         />
+                      ) : (
+                        <div className="flex flex-col gap-0.5">
+                          {list.map((c, i) => {
+                            // Only nights of the SAME reservation connect vertically.
+                            const contPrev = !!c.bookingId && prev.some((p) => p.bookingId === c.bookingId);
+                            const contNext = !!c.bookingId && next.some((n) => n.bookingId === c.bookingId);
+                            const position: "start" | "middle" | "end" | "single" =
+                              !contPrev && !contNext ? "single" : !contPrev ? "start" : !contNext ? "end" : "middle";
+                            return (
+                              <CellEditor
+                                key={c.bookingId ?? i}
+                                cell={c}
+                                position={position}
+                                onSave={(nc) => updateCell(room, day, nc, c.bookingId)}
+                                onDelete={() => updateCell(room, day, null, c.bookingId)}
+                                usdRate={currentMonth.usdRate}
+                                channels={settings.channels}
+                                currency={settings.currency}
+                              />
+                            );
+                          })}
+                        </div>
                       )}
                     </td>
                   );
                 })}
+
 
               </tr>
 

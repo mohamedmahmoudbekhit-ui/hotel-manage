@@ -109,7 +109,7 @@ export function buildBookingRows(
       checkOut: end,
       source: ch.name,
       sourceKey: r.source_id,
-      status: "Confirmed",
+      status: r.status === "noshow" ? "No-show" : "Confirmed",
       guests: "—",
       amount: amountLocal,
       nights,

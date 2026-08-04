@@ -230,6 +230,9 @@ export interface ImportedLike {
   source_name: string;
   source_color: string;
   channel_id?: string | null;
+  /** Manual per-reservation channel override (wins over the source mapping). */
+  override_channel_id?: string | null;
+  status?: string | null;
   start_date: string;
   end_date: string;
   override_price: number | null;
@@ -237,11 +240,15 @@ export interface ImportedLike {
 }
 
 /**
- * Resolve the app channel an imported reservation belongs to. Mapped sources
- * inherit the channel's color/currency/name; unmapped sources fall back to a
+ * Resolve the app channel an imported reservation belongs to. A manual override
+ * wins, then the source's mapped channel; unmapped sources fall back to a
  * synthetic channel derived from the iCal source itself.
  */
 export function resolveImportedChannel(settings: Settings, res: ImportedLike): Channel {
+  const overridden = res.override_channel_id
+    ? settings.channels.find((c) => c.id === res.override_channel_id)
+    : undefined;
+  if (overridden) return overridden;
   const mapped = res.channel_id ? settings.channels.find((c) => c.id === res.channel_id) : undefined;
   if (mapped) return mapped;
   return {
@@ -251,6 +258,7 @@ export function resolveImportedChannel(settings: Settings, res: ImportedLike): C
     color: res.source_color || "#64748b",
   };
 }
+
 
 /**
  * Merge imported reservations into a month as nightly cells so that every

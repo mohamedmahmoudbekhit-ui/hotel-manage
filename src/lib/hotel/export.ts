@@ -1,5 +1,5 @@
 import type { MonthData, Settings } from "./types";
-import { cellRevenueLocal, findChannel, MONTH_NAMES, nightsBetween, resolveImportedChannel } from "./utils";
+import { cellRevenueLocal, findChannel, MONTH_NAMES, nightsBetween, resolveImportedChannel, slotCells } from "./utils";
 import type { ImportedReservationRow } from "./calendar.functions";
 
 export interface BookingExportRow {
@@ -47,9 +47,34 @@ export function buildBookingRows(
   const rows: BookingExportRow[] = [];
 
   for (const room of settings.rooms) {
-    let run: { startDay: number; endDay: number; channelId: string; note?: string; amount: number; nights: number } | null = null;
-    const flush = () => {
-      if (!run) return;
+    // Group nights by bookingId so overlapping / replacement bookings on the
+    // same night each export as their own row.
+    interface Run { startDay: number; endDay: number; channelId: string; note?: string; amount: number; nights: number; noshow: boolean }
+    const runs = new Map<string, Run>();
+    const order: string[] = [];
+
+    for (let d = 1; d <= month.daysInMonth; d++) {
+      const list = slotCells(month.cells[room]?.[d]);
+      for (const cell of list) {
+        const key = cell.bookingId ?? `${room}-${d}-${cell.channelId}`;
+        const revenue = cellRevenueLocal(cell, month.usdRate, settings);
+        const existing = runs.get(key);
+        if (existing) {
+          existing.endDay = d;
+          existing.amount += revenue;
+          existing.nights += 1;
+        } else {
+          runs.set(key, {
+            startDay: d, endDay: d, channelId: cell.channelId, note: cell.note,
+            amount: revenue, nights: 1, noshow: cell.status === "noshow",
+          });
+          order.push(key);
+        }
+      }
+    }
+
+    for (const key of order) {
+      const run = runs.get(key)!;
       const ch = findChannel(settings, run.channelId);
       rows.push({
         guestName: firstLine(run.note) || "—",
@@ -58,28 +83,13 @@ export function buildBookingRows(
         checkOut: addDays(iso(month.year, month.monthIndex, run.endDay), 1),
         source: ch.name,
         sourceKey: ch.id,
-        status: "Confirmed",
+        status: run.noshow ? "No-show" : "Confirmed",
         guests: "—",
         amount: run.amount,
         nights: run.nights,
         currency: ch.currency === "LOCAL" ? settings.currency : "USD",
       });
-      run = null;
-    };
-    for (let d = 1; d <= month.daysInMonth; d++) {
-      const cell = month.cells[room]?.[d] ?? null;
-      if (!cell) { flush(); continue; }
-      const revenue = cellRevenueLocal(cell, month.usdRate, settings);
-      if (run && run.channelId === cell.channelId && (run.note ?? "") === (cell.note ?? "") && run.endDay === d - 1) {
-        run.endDay = d;
-        run.amount += revenue;
-        run.nights += 1;
-      } else {
-        flush();
-        run = { startDay: d, endDay: d, channelId: cell.channelId, note: cell.note, amount: revenue, nights: 1 };
-      }
     }
-    flush();
   }
 
   for (const r of imported) {

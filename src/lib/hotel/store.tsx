@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import type { Cell, Channel, ExpenseItem, MonthData, Settings } from "./types";
-import { DEFAULT_CHANNELS, emptyMonth, MONTH_NAMES, mergeImportedIntoMonth, newBookingId, newChannelId, nightsBetween, sumExpenses } from "./utils";
+import type { Cell, CellSlot, Channel, ExpenseItem, MonthData, Settings } from "./types";
+import { DEFAULT_CHANNELS, emptyMonth, MONTH_NAMES, mergeImportedIntoMonth, newBookingId, newChannelId, nightsBetween, slotCells, sumExpenses, toSlot } from "./utils";
 import { loadHotelState, saveHotelState } from "./state.functions";
 import { listImportedForMonth, type ImportedReservationRow } from "./calendar.functions";
 import { supabase } from "@/integrations/supabase/client";
@@ -34,8 +34,8 @@ interface Ctx extends StateShape {
   analyticsFor: (m: MonthData) => { month: MonthData; settings: Settings };
   setCurrentMonthKey: (k: string) => void;
 
-  updateCell: (room: string, day: number, cell: Cell | null) => void;
-  addBookingRange: (params: { room: string; from: string; to: string; channelId: string; price: number; note?: string }) => { written: number; skipped: number; nights: number };
+  updateCell: (room: string, day: number, cell: Cell | null, targetBookingId?: string) => void;
+  addBookingRange: (params: { room: string; from: string; to: string; channelId: string; price: number; note?: string; allowOverlap?: boolean }) => { written: number; skipped: number; nights: number };
   updateMonthMeta: (patch: Partial<Pick<MonthData, "expenses" | "usdRate" | "managementPct">>) => void;
   updateSettings: (patch: Partial<Settings>) => void;
   addChannel: (channel: Omit<Channel, "id">) => void;
@@ -124,12 +124,20 @@ function migrateSettings(s: Partial<Settings> | undefined): Settings {
   return base;
 }
 
+function migrateSlot(raw: unknown): CellSlot {
+  if (Array.isArray(raw)) {
+    const list = raw.map((c) => migrateCell(c)).filter((c): c is Cell => c != null);
+    return toSlot(list);
+  }
+  return migrateCell(raw);
+}
+
 function migrateMonth(m: MonthData): MonthData {
   const cells: MonthData["cells"] = {};
   for (const [room, days] of Object.entries(m.cells ?? {})) {
     cells[room] = {};
     for (const [d, c] of Object.entries(days ?? {})) {
-      cells[room][Number(d)] = migrateCell(c);
+      cells[room][Number(d)] = migrateSlot(c);
     }
     // Legacy backfill: nights saved before bookingId existed get grouped when
     // they are contiguous and share channel + price + note.
@@ -138,21 +146,25 @@ function migrateMonth(m: MonthData): MonthData {
     let prevDay = -99;
     let prevCell: Cell | null = null;
     for (const d of days2) {
-      const cell = cells[room][d];
-      if (!cell) { runId = null; prevCell = null; prevDay = d; continue; }
+      const list = slotCells(cells[room][d]);
+      if (list.length !== 1) { runId = null; prevCell = null; prevDay = d; continue; }
+      const cell = list[0]!;
       if (cell.bookingId) { runId = null; prevCell = cell; prevDay = d; continue; }
       const contiguous =
-        prevCell != null &&        d === prevDay + 1 &&
+        prevCell != null &&
+        d === prevDay + 1 &&
         runId != null &&
         prevCell.channelId === cell.channelId &&
         prevCell.price === cell.price &&
         (prevCell.note ?? "") === (cell.note ?? "");
       if (!contiguous) runId = newBookingId();
-      cells[room][d] = { ...cell, bookingId: runId! };
-      prevCell = cells[room][d];
+      const next: Cell = { ...cell, bookingId: runId! };
+      cells[room][d] = next;
+      prevCell = next;
       prevDay = d;
     }
   }
+
 
   const items: ExpenseItem[] = Array.isArray(m.expenseItems)
     ? m.expenseItems
@@ -243,22 +255,30 @@ export function HotelProvider({ children }: { children: ReactNode }) {
   }, []);
 
 
-  const updateCell = useCallback((room: string, day: number, cell: Cell | null) => {
+  const updateCell = useCallback((room: string, day: number, cell: Cell | null, targetBookingId?: string) => {
     setState((s) => {
       const m = s.months[s.currentMonthKey];
       if (!m) return s;
-      const prev = m.cells[room]?.[day] ?? null;
-      // Single-cell edits are standalone reservations unless they already
-      // belong to a multi-night booking (editing keeps the existing group).
-      const nextCell: Cell | null = cell
-        ? { ...cell, bookingId: cell.bookingId ?? prev?.bookingId ?? newBookingId() }
-        : null;
-      const cells = { ...m.cells, [room]: { ...(m.cells[room] ?? {}), [day]: nextCell } };
+      const existing = slotCells(m.cells[room]?.[day]);
+      const targetId = targetBookingId ?? cell?.bookingId;
+      const idx = targetId ? existing.findIndex((c) => c.bookingId === targetId) : existing.length === 1 ? 0 : -1;
+
+      let next: Cell[];
+      if (!cell) {
+        next = idx >= 0 ? existing.filter((_, i) => i !== idx) : [];
+      } else {
+        const withId: Cell = {
+          ...cell,
+          bookingId: cell.bookingId ?? (idx >= 0 ? existing[idx]!.bookingId : undefined) ?? newBookingId(),
+        };
+        next = idx >= 0 ? existing.map((c, i) => (i === idx ? withId : c)) : [...existing, withId];
+      }
+      const cells = { ...m.cells, [room]: { ...(m.cells[room] ?? {}), [day]: toSlot(next) } };
       return { ...s, months: { ...s.months, [s.currentMonthKey]: { ...m, cells } } };
     });
   }, []);
 
-  const addBookingRange = useCallback((params: { room: string; from: string; to: string; channelId: string; price: number; note?: string }) => {
+  const addBookingRange = useCallback((params: { room: string; from: string; to: string; channelId: string; price: number; note?: string; allowOverlap?: boolean }) => {
     const start = new Date(`${params.from}T00:00:00Z`);
     const end = new Date(`${params.to}T00:00:00Z`);
     // Nights = checkout - checkin. The checkout day is NOT a stayed night.
@@ -293,9 +313,11 @@ export function HotelProvider({ children }: { children: ReactNode }) {
           rooms[params.room] = {};
           for (let dd = 1; dd <= month.daysInMonth; dd++) rooms[params.room][dd] = null;
         }
-        const existing = rooms[params.room][day];
-        if (existing) { skipped += 1; nextMonths[key] = { ...month, cells: rooms }; continue; }
-        const roomCells = { ...rooms[params.room], [day]: { price: perNight, channelId: params.channelId, bookingId, ...(params.note ? { note: params.note } : {}) } as Cell };
+        const existing = slotCells(rooms[params.room][day]);
+        if (existing.length > 0 && !params.allowOverlap) { skipped += 1; nextMonths[key] = { ...month, cells: rooms }; continue; }
+        const added: Cell = { price: perNight, channelId: params.channelId, bookingId, ...(params.note ? { note: params.note } : {}) };
+        const slot: CellSlot = toSlot([...existing, added]);
+        const roomCells = { ...rooms[params.room], [day]: slot };
         rooms[params.room] = roomCells;
         nextMonths[key] = { ...month, cells: rooms };
         written += 1;

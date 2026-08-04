@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useHotel } from "@/lib/hotel/store";
-import { findChannel, monthKey, pickTextColor, resolveImportedChannel } from "@/lib/hotel/utils";
+import { findChannel, monthKey, pickTextColor, resolveImportedChannel, slotCells } from "@/lib/hotel/utils";
 import type { ImportedReservationRow } from "@/lib/hotel/calendar.functions";
 import { LogIn, LogOut, BedDouble, DoorOpen, RefreshCw } from "lucide-react";
 
@@ -33,7 +33,10 @@ export function DailyView({
 
     const cellAt = (room: string, d: Date) => {
       const m = months[monthKey(d.getFullYear(), d.getMonth())];
-      return m?.cells?.[room]?.[d.getDate()] ?? null;
+      // A night may hold several bookings (e.g. a replacement); the first
+      // active one drives the operational status shown for the room.
+      const list = slotCells(m?.cells?.[room]?.[d.getDate()]);
+      return list.find((c) => c.status !== "noshow") ?? list[0] ?? null;
     };
 
     const todayIso = iso(date);

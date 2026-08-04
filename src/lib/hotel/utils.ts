@@ -1,4 +1,22 @@
-import type { Cell, Channel, MonthData, Settings } from "./types";
+import type { Cell, CellSlot, Channel, MonthData, Settings } from "./types";
+
+/** Normalise a room-night slot to a list of bookings (0, 1 or many). */
+export function slotCells(slot: CellSlot | undefined): Cell[] {
+  if (!slot) return [];
+  return Array.isArray(slot) ? slot.filter(Boolean) : [slot];
+}
+
+/** All bookings stored for a given room-night. */
+export function cellsAt(month: MonthData, room: string, day: number): Cell[] {
+  return slotCells(month.cells?.[room]?.[day]);
+}
+
+/** Collapse a list back into the compact storage shape. */
+export function toSlot(cells: Cell[]): CellSlot {
+  if (cells.length === 0) return null;
+  return cells.length === 1 ? cells[0]! : cells;
+}
+
 
 export const DEFAULT_CHANNELS: Channel[] = [
   { id: "airbnb", name: "Airbnb", currency: "USD", color: "#e11d48" },
@@ -50,6 +68,9 @@ export interface MonthTotals {
   owner: number;
   usdTotal: number;
   localTotal: number;
+  /** Revenue that belongs to no-show / early-departure bookings (already included in totalRevenue). */
+  noshowRevenue: number;
+
 }
 
 export function computeMonthTotals(m: MonthData, rooms: string[], settings: Settings): MonthTotals {
@@ -66,13 +87,21 @@ export function computeMonthTotals(m: MonthData, rooms: string[], settings: Sett
   let occupiedNights = 0;
   let usdTotal = 0;
   let localTotal = 0;
+  let noshowRevenue = 0;
+
 
   for (const room of rooms) {
     revenueByRoom[room] = 0;
     let occ = 0;
     for (let d = 1; d <= m.daysInMonth; d++) {
-      const c = m.cells[room]?.[d] ?? null;
-      if (c) {
+      const list = slotCells(m.cells[room]?.[d]);
+      if (list.length === 0) continue;
+      // A night counts once towards occupancy even when a replacement booking
+      // shares the same date; revenue is kept for every booking, including
+      // no-show / early-departure ones.
+      occupiedNights += 1;
+      occ += 1;
+      for (const c of list) {
         const ch = findChannel(settings, c.channelId);
         const rev = cellRevenueLocal(c, m.usdRate, settings);
         totalRevenue += rev;
@@ -80,14 +109,14 @@ export function computeMonthTotals(m: MonthData, rooms: string[], settings: Sett
         bookingsByChannel[c.channelId] = (bookingsByChannel[c.channelId] ?? 0) + 1;
         revenueByRoom[room] += rev;
         bookingsCount += 1;
-        occupiedNights += 1;
-        occ += 1;
+        if (c.status === "noshow") noshowRevenue += rev;
         if (ch.currency === "USD") usdTotal += c.price;
         else localTotal += c.price;
       }
     }
     emptyDaysByRoom[room] = m.daysInMonth - occ;
   }
+
 
   const totalNights = rooms.length * m.daysInMonth;
   const occupancyRate = totalNights ? (occupiedNights / totalNights) * 100 : 0;
@@ -118,6 +147,8 @@ export function computeMonthTotals(m: MonthData, rooms: string[], settings: Sett
     management,
     owner,
     usdTotal,
+    noshowRevenue,
+
     localTotal,
   };
 }
@@ -194,11 +225,16 @@ export function nightsBetween(fromIso: string, toIso: string): number {
 
 /** Minimal shape of an imported (iCal) reservation used by analytics. */
 export interface ImportedLike {
+  id?: string;
   room_name: string;
   source_id: string;
+
   source_name: string;
   source_color: string;
   channel_id?: string | null;
+  /** Manual per-reservation channel override (wins over the source mapping). */
+  override_channel_id?: string | null;
+  status?: string | null;
   start_date: string;
   end_date: string;
   override_price: number | null;
@@ -206,11 +242,15 @@ export interface ImportedLike {
 }
 
 /**
- * Resolve the app channel an imported reservation belongs to. Mapped sources
- * inherit the channel's color/currency/name; unmapped sources fall back to a
+ * Resolve the app channel an imported reservation belongs to. A manual override
+ * wins, then the source's mapped channel; unmapped sources fall back to a
  * synthetic channel derived from the iCal source itself.
  */
 export function resolveImportedChannel(settings: Settings, res: ImportedLike): Channel {
+  const overridden = res.override_channel_id
+    ? settings.channels.find((c) => c.id === res.override_channel_id)
+    : undefined;
+  if (overridden) return overridden;
   const mapped = res.channel_id ? settings.channels.find((c) => c.id === res.channel_id) : undefined;
   if (mapped) return mapped;
   return {
@@ -220,6 +260,7 @@ export function resolveImportedChannel(settings: Settings, res: ImportedLike): C
     color: res.source_color || "#64748b",
   };
 }
+
 
 /**
  * Merge imported reservations into a month as nightly cells so that every
@@ -256,17 +297,22 @@ export function mergeImportedIntoMonth(
           cells[res.room_name] = {};
           for (let dd = 1; dd <= month.daysInMonth; dd++) cells[res.room_name][dd] = null;
         }
-        if (!cells[res.room_name][day]) {
-          cells[res.room_name][day] = {
+        const existing = slotCells(cells[res.room_name][day]);
+        cells[res.room_name][day] = toSlot([
+          ...existing,
+          {
             price: perNight,
             channelId: ch.id,
+            bookingId: `ical:${res.id ?? `${res.source_id}:${start}`}`,
+            ...(res.status === "noshow" ? { status: "noshow" as const } : {}),
             ...(res.override_notes ? { note: res.override_notes } : {}),
-          };
-          touched = true;
-        }
+          },
+        ]);
+        touched = true;
       }
       d.setUTCDate(d.getUTCDate() + 1);
     }
+
   }
 
   if (!touched && extra.size === 0) return { month, settings };

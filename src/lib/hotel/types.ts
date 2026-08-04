@@ -6,6 +6,9 @@ export interface Channel {
   color: string; // hex e.g. "#e11d48"
 }
 
+/** Lifecycle of a reservation night. No-show keeps its revenue in all reports. */
+export type BookingStatus = "active" | "noshow";
+
 export interface Cell {
   price: number;
   channelId: string;
@@ -15,7 +18,12 @@ export interface Cell {
    * bookingId may be rendered as one connected block on the calendar.
    */
   bookingId?: string;
+  /** "noshow" = no-show / early departure. Kept for history and revenue. */
+  status?: BookingStatus;
 }
+
+/** A room-night may hold one booking, several (replacements), or none. */
+export type CellSlot = Cell | Cell[] | null;
 
 export interface ExpenseItem {
   id: string;
@@ -29,12 +37,13 @@ export interface MonthData {
   year: number;
   monthIndex: number;
   daysInMonth: number;
-  cells: Record<string, Record<number, Cell | null>>;
+  cells: Record<string, Record<number, CellSlot>>;
   expenses: number; // derived = sum(expenseItems)
   expenseItems: ExpenseItem[];
   usdRate: number;
   managementPct: number;
 }
+
 
 export interface Settings {
   rooms: string[];

@@ -87,9 +87,12 @@ export type Database = {
           channel_id: string | null
           color: string
           created_at: string
+          etag: string | null
           ical_url: string
           id: string
           is_active: boolean
+          last_modified: string | null
+          last_success_at: string | null
           last_sync_at: string | null
           last_sync_error: string | null
           organization_id: string
@@ -102,9 +105,12 @@ export type Database = {
           channel_id?: string | null
           color?: string
           created_at?: string
+          etag?: string | null
           ical_url: string
           id?: string
           is_active?: boolean
+          last_modified?: string | null
+          last_success_at?: string | null
           last_sync_at?: string | null
           last_sync_error?: string | null
           organization_id: string
@@ -117,9 +123,12 @@ export type Database = {
           channel_id?: string | null
           color?: string
           created_at?: string
+          etag?: string | null
           ical_url?: string
           id?: string
           is_active?: boolean
+          last_modified?: string | null
+          last_success_at?: string | null
           last_sync_at?: string | null
           last_sync_error?: string | null
           organization_id?: string
@@ -239,6 +248,7 @@ export type Database = {
       }
       ical_reservation_overrides: {
         Row: {
+          channel_id: string | null
           created_at: string
           hidden: boolean
           id: string
@@ -246,9 +256,11 @@ export type Database = {
           organization_id: string
           price: number | null
           reservation_id: string
+          status: string
           updated_at: string
         }
         Insert: {
+          channel_id?: string | null
           created_at?: string
           hidden?: boolean
           id?: string
@@ -256,9 +268,11 @@ export type Database = {
           organization_id: string
           price?: number | null
           reservation_id: string
+          status?: string
           updated_at?: string
         }
         Update: {
+          channel_id?: string | null
           created_at?: string
           hidden?: boolean
           id?: string
@@ -266,6 +280,7 @@ export type Database = {
           organization_id?: string
           price?: number | null
           reservation_id?: string
+          status?: string
           updated_at?: string
         }
         Relationships: [

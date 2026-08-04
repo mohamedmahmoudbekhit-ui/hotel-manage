@@ -68,6 +68,9 @@ export interface MonthTotals {
   owner: number;
   usdTotal: number;
   localTotal: number;
+  /** Revenue that belongs to no-show / early-departure bookings (already included in totalRevenue). */
+  noshowRevenue: number;
+
 }
 
 export function computeMonthTotals(m: MonthData, rooms: string[], settings: Settings): MonthTotals {

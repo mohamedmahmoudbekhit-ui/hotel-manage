@@ -39,7 +39,7 @@ function channelLabel(ch: Channel, currency: string): string {
 
 function BookingsPage() {
   const {
-    currentMonth, settings, updateCell, addBookingRange, hotelName,
+    currentMonth, settings, updateCell, updateBooking, addBookingRange, hotelName,
     imported: allImported, reloadImported, analyticsMonth, analyticsSettings,
   } = useHotel();
   const { t, formatMonthKey } = useI18n();
@@ -373,6 +373,7 @@ function BookingsPage() {
                                 cell={c}
                                 position={position}
                                 onSave={(nc) => updateCell(room, day, nc, c.bookingId)}
+                                onUpdateBooking={(patch) => c.bookingId && updateBooking(c.bookingId, patch)}
                                 onDelete={() => updateCell(room, day, null, c.bookingId)}
                                 usdRate={currentMonth.usdRate}
                                 channels={settings.channels}
@@ -409,6 +410,7 @@ const PLATFORM_LABEL: Record<string, string> = {
 };
 
 function ImportedBlock({ res, channel, position, onChanged, currency }: { res: ImportedReservationRow; channel: Channel; position: "start" | "middle" | "end" | "single"; onChanged: () => void; currency: string }) {
+  const { settings } = useHotel();
   const { t } = useI18n();
   const label = channel.name || PLATFORM_LABEL[res.platform_type] || res.source_name;
   const channelCurrency = channel.currency === "LOCAL" ? currency : "USD";
@@ -429,6 +431,8 @@ function ImportedBlock({ res, channel, position, onChanged, currency }: { res: I
   const [open, setOpen] = useState(false);
   const [price, setPrice] = useState<string>(res.override_price != null ? String(res.override_price) : "");
   const [notes, setNotes] = useState<string>(res.override_notes ?? "");
+  const [channelId, setChannelId] = useState(res.override_channel_id ?? res.channel_id ?? "");
+  const [status, setStatus] = useState<"active" | "noshow">(res.status ?? "active");
   const [saving, setSaving] = useState(false);
   const saveFn = useServerFn(saveImportedOverride);
   const removeFn = useServerFn(removeImportedReservation);
@@ -437,15 +441,17 @@ function ImportedBlock({ res, channel, position, onChanged, currency }: { res: I
     if (open) {
       setPrice(res.override_price != null ? String(res.override_price) : "");
       setNotes(res.override_notes ?? "");
+      setChannelId(res.override_channel_id ?? res.channel_id ?? "");
+      setStatus(res.status ?? "active");
     }
-  }, [open, res.override_price, res.override_notes]);
+  }, [open, res.override_price, res.override_notes, res.override_channel_id, res.channel_id, res.status]);
 
   const doSave = async () => {
     setSaving(true);
     try {
       const p = price.trim() === "" ? null : Number(price);
       if (p != null && (!isFinite(p) || p < 0)) { toast.error("Invalid price"); return; }
-      await saveFn({ data: { reservation_id: res.id, price: p, notes: notes.trim() ? notes : null } });
+      await saveFn({ data: { reservation_id: res.id, price: p, notes: notes.trim() ? notes : null, channel_id: channelId || null, status } });
       toast.success(t("common.saved") ?? "Saved");
       setOpen(false);
       onChanged();
@@ -507,6 +513,20 @@ function ImportedBlock({ res, channel, position, onChanged, currency }: { res: I
             {res.start_date} → {res.end_date} · {nightsBetween(res.start_date, res.end_date)} night(s)
           </div>
           <div className="space-y-1">
+            <Label className="text-xs">Booking source</Label>
+            <Select value={channelId} onValueChange={setChannelId}>
+              <SelectTrigger><SelectValue placeholder="Select channel" /></SelectTrigger>
+              <SelectContent>{settings.channels.map((ch) => <SelectItem key={ch.id} value={ch.id}>{channelLabel(ch, currency)}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Status</Label>
+            <Select value={status} onValueChange={(v) => setStatus(v as "active" | "noshow")}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent><SelectItem value="active">Confirmed</SelectItem><SelectItem value="noshow">No-show / early departure</SelectItem></SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
             <Label className="text-xs">Total price ({channelCurrency})</Label>
             <Input type="number" min={0} step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0" />
           </div>
@@ -546,6 +566,7 @@ function CellEditor({
   cell,
   position = "single",
   onSave,
+  onUpdateBooking,
   onDelete,
   usdRate,
   channels,
@@ -554,6 +575,7 @@ function CellEditor({
   cell: Cell | null;
   position?: "start" | "middle" | "end" | "single";
   onSave: (c: Cell) => void;
+  onUpdateBooking?: (patch: Partial<Pick<Cell, "channelId" | "note" | "guestName" | "status">>) => void;
   onDelete: () => void;
   usdRate: number;
   channels: Channel[];
@@ -565,18 +587,22 @@ function CellEditor({
   const [price, setPrice] = useState(cell?.price.toString() ?? "");
   const [channelId, setChannelId] = useState<string>(cell?.channelId ?? defaultChannel);
   const [note, setNote] = useState<string>(cell?.note ?? "");
+  const [guestName, setGuestName] = useState<string>(cell?.guestName ?? "");
 
   const reset = () => {
     setPrice(cell?.price.toString() ?? "");
     setChannelId(cell?.channelId ?? defaultChannel);
     setNote(cell?.note ?? "");
+    setGuestName(cell?.guestName ?? "");
   };
 
   const save = () => {
     const p = parseFloat(price);
     if (!isFinite(p) || p <= 0) return;
     const trimmedNote = note.trim();
-    onSave({ price: p, channelId, ...(trimmedNote ? { note: trimmedNote } : {}), ...(cell?.status ? { status: cell.status } : {}) });
+    const patch = { channelId, note: trimmedNote || undefined, guestName: guestName.trim() || undefined, status: cell?.status };
+    onSave({ price: p, ...patch });
+    if (cell?.bookingId && onUpdateBooking) onUpdateBooking(patch);
     setOpen(false);
   };
 
@@ -626,6 +652,10 @@ function CellEditor({
 
       <PopoverContent className="max-h-[75dvh] w-[min(20rem,calc(100vw-2rem))] overflow-y-auto" align="start" collisionPadding={12}>
         <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs">Guest name</Label>
+            <Input value={guestName} onChange={(e) => setGuestName(e.target.value)} placeholder="Optional" />
+          </div>
           <div className="space-y-1.5">
             <Label htmlFor="price" className="text-xs">{t("bookings.price")}</Label>
             <Input
@@ -691,6 +721,11 @@ function CellEditor({
               <Button size="sm" onClick={save}>{t("common.save")}</Button>
             </div>
           </div>
+          {cell && onUpdateBooking && (
+            <Button type="button" variant="outline" size="sm" className="w-full" onClick={() => { onUpdateBooking({ status: cell.status === "noshow" ? undefined : "noshow" }); setOpen(false); }}>
+              {cell.status === "noshow" ? "Restore confirmed status" : "Mark no-show / early departure"}
+            </Button>
+          )}
         </div>
       </PopoverContent>
     </Popover>
@@ -704,6 +739,8 @@ interface AddBookingParams {
   channelId: string;
   price: number;
   note?: string;
+  guestName?: string;
+  allowOverlap?: boolean;
 }
 
 function AddBookingDialog({
@@ -726,6 +763,8 @@ function AddBookingDialog({
   const [to, setTo] = useState<string>(tomorrow);
   const [price, setPrice] = useState<string>("");
   const [note, setNote] = useState<string>("");
+  const [guestName, setGuestName] = useState<string>("");
+  const [allowOverlap, setAllowOverlap] = useState(false);
 
   // Nights = check-out - check-in. The check-out day is not a stayed night.
   const nights = useMemo(() => nightsBetween(from, to), [from, to]);
@@ -748,6 +787,8 @@ function AddBookingDialog({
     setTo(tomorrow);
     setPrice("");
     setNote("");
+    setGuestName("");
+    setAllowOverlap(false);
   };
 
   const submit = () => {
@@ -761,6 +802,8 @@ function AddBookingDialog({
       channelId,
       price: priceNum,
       ...(note.trim() ? { note: note.trim() } : {}),
+      ...(guestName.trim() ? { guestName: guestName.trim() } : {}),
+      allowOverlap,
     });
     setOpen(false);
     reset();
@@ -778,6 +821,10 @@ function AddBookingDialog({
           <DialogTitle>Add booking</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs">Guest name</Label>
+            <Input value={guestName} onChange={(e) => setGuestName(e.target.value)} placeholder="Optional" />
+          </div>
           <div className="space-y-1.5">
             <Label className="text-xs">Room</Label>
             <Select value={room} onValueChange={setRoom}>
@@ -842,6 +889,10 @@ function AddBookingDialog({
             <Label className="text-xs">Note</Label>
             <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="Optional" />
           </div>
+          <label className="flex items-center gap-2 rounded-md border p-2 text-xs">
+            <input type="checkbox" checked={allowOverlap} onChange={(e) => setAllowOverlap(e.target.checked)} />
+            Create as a replacement over an existing/no-show booking
+          </label>
         </div>
         <DialogFooter>
           <Button variant="outline" size="sm" onClick={() => setOpen(false)}>Cancel</Button>

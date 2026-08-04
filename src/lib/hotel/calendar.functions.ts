@@ -37,6 +37,8 @@ export interface ImportedReservationRow {
   end_date: string;
   override_price: number | null;
   override_notes: string | null;
+  override_channel_id: string | null;
+  status: "active" | "noshow";
 }
 
 const platforms = ["airbnb", "booking", "vrbo", "direct", "other"] as const;
@@ -220,7 +222,7 @@ export const listImportedForMonth = createServerFn({ method: "POST" })
     const endExclusive = nextDay.toISOString().slice(0, 10);
     const { data: rows, error } = await context.supabase
       .from("ical_reservations")
-      .select("id, room_id, source_id, platform_type, external_uid, summary, start_date, end_date, rooms!inner(room_name), calendar_sources!inner(source_name, color, channel_id), ical_reservation_overrides(price, notes, hidden)")
+      .select("id, room_id, source_id, platform_type, external_uid, summary, start_date, end_date, rooms!inner(room_name), calendar_sources!inner(source_name, color, channel_id), ical_reservation_overrides(price, notes, hidden, channel_id, status)")
       .eq("organization_id", orgId)
       .lt("start_date", endExclusive)
       .gt("end_date", data.from);
@@ -244,6 +246,8 @@ export const listImportedForMonth = createServerFn({ method: "POST" })
         end_date: r.end_date,
         override_price: ov?.price != null ? Number(ov.price) : null,
         override_notes: ov?.notes ?? null,
+        override_channel_id: ov?.channel_id ?? null,
+        status: ov?.status === "noshow" ? "noshow" : "active",
       });
     }
     return list;
@@ -253,6 +257,8 @@ const overrideSchema = z.object({
   reservation_id: z.string().uuid(),
   price: z.number().nonnegative().nullable(),
   notes: z.string().max(2000).nullable(),
+  channel_id: z.string().trim().min(1).max(80).nullable(),
+  status: z.enum(["active", "noshow"]),
 });
 
 export const saveImportedOverride = createServerFn({ method: "POST" })
@@ -277,6 +283,8 @@ export const saveImportedOverride = createServerFn({ method: "POST" })
           organization_id: orgId,
           price: data.price,
           notes: data.notes,
+          channel_id: data.channel_id,
+          status: data.status,
         },
         { onConflict: "reservation_id" },
       );

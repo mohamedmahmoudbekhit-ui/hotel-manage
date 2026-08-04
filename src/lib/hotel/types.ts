@@ -13,6 +13,7 @@ export interface Cell {
   price: number;
   channelId: string;
   note?: string;
+  guestName?: string;
   /**
    * Groups nights that belong to the SAME reservation. Only cells sharing a
    * bookingId may be rendered as one connected block on the calendar.

@@ -1,16 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { timingSafeEqual } from "node:crypto";
 
-// Called by pg_cron every 15 minutes. Also callable manually with the shared secret.
-// Auth: the request must present the CRON_SYNC_SECRET (a private, server-only secret)
-// in the `x-cron-secret` header. The Supabase publishable/anon key is NOT accepted
-// because it ships in every client bundle.
+// Called by pg_cron every 5 minutes. The scheduler presents the project's
+// publishable key in the `apikey` header; this route performs no user-scoped work.
 export const Route = createFileRoute("/api/public/hooks/sync-ical")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const expected = process.env.CRON_SYNC_SECRET;
-        const provided = request.headers.get("x-cron-secret") ?? "";
+        const expected = process.env.SUPABASE_ANON_KEY ?? process.env.SUPABASE_PUBLISHABLE_KEY;
+        const provided = request.headers.get("apikey") ?? "";
         if (!expected) {
           return new Response(JSON.stringify({ error: "server_misconfigured" }), {
             status: 500,

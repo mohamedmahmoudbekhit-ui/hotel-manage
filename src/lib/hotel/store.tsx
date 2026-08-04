@@ -35,7 +35,8 @@ interface Ctx extends StateShape {
   setCurrentMonthKey: (k: string) => void;
 
   updateCell: (room: string, day: number, cell: Cell | null, targetBookingId?: string) => void;
-  addBookingRange: (params: { room: string; from: string; to: string; channelId: string; price: number; note?: string; allowOverlap?: boolean }) => { written: number; skipped: number; nights: number };
+  updateBooking: (bookingId: string, patch: Partial<Pick<Cell, "channelId" | "note" | "guestName" | "status">>) => void;
+  addBookingRange: (params: { room: string; from: string; to: string; channelId: string; price: number; note?: string; guestName?: string; allowOverlap?: boolean }) => { written: number; skipped: number; nights: number };
   updateMonthMeta: (patch: Partial<Pick<MonthData, "expenses" | "usdRate" | "managementPct">>) => void;
   updateSettings: (patch: Partial<Settings>) => void;
   addChannel: (channel: Omit<Channel, "id">) => void;
@@ -109,8 +110,10 @@ function migrateCell(raw: unknown): Cell | null {
   // Drop cancelled legacy cells
   if (r.status === "Cancelled") return null;
   const note = typeof r.note === "string" ? r.note : undefined;
+  const guestName = typeof r.guestName === "string" ? r.guestName : undefined;
   const bookingId = typeof r.bookingId === "string" ? r.bookingId : undefined;
-  return { price, channelId, note, ...(bookingId ? { bookingId } : {}) };
+  const status = r.status === "noshow" ? "noshow" as const : undefined;
+  return { price, channelId, ...(note ? { note } : {}), ...(guestName ? { guestName } : {}), ...(bookingId ? { bookingId } : {}), ...(status ? { status } : {}) };
 }
 
 function migrateSettings(s: Partial<Settings> | undefined): Settings {
@@ -278,7 +281,36 @@ export function HotelProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const addBookingRange = useCallback((params: { room: string; from: string; to: string; channelId: string; price: number; note?: string; allowOverlap?: boolean }) => {
+  const updateBooking = useCallback((bookingId: string, patch: Partial<Pick<Cell, "channelId" | "note" | "guestName" | "status">>) => {
+    setState((s) => {
+      let anyChanged = false;
+      const months: Record<string, MonthData> = {};
+      for (const [key, month] of Object.entries(s.months)) {
+        let monthChanged = false;
+        const cells: MonthData["cells"] = {};
+        for (const [room, days] of Object.entries(month.cells)) {
+          cells[room] = {};
+          for (const [day, slot] of Object.entries(days)) {
+            const next = slotCells(slot).map((cell) => {
+              if (cell.bookingId !== bookingId) return cell;
+              monthChanged = true;
+              anyChanged = true;
+              const merged: Cell = { ...cell, ...patch };
+              if (patch.note === undefined) delete merged.note;
+              if (patch.guestName === undefined) delete merged.guestName;
+              if (patch.status === undefined) delete merged.status;
+              return merged;
+            });
+            cells[room][Number(day)] = toSlot(next);
+          }
+        }
+        months[key] = monthChanged ? { ...month, cells } : month;
+      }
+      return anyChanged ? { ...s, months } : s;
+    });
+  }, []);
+
+  const addBookingRange = useCallback((params: { room: string; from: string; to: string; channelId: string; price: number; note?: string; guestName?: string; allowOverlap?: boolean }) => {
     const start = new Date(`${params.from}T00:00:00Z`);
     const end = new Date(`${params.to}T00:00:00Z`);
     // Nights = checkout - checkin. The checkout day is NOT a stayed night.
@@ -315,7 +347,7 @@ export function HotelProvider({ children }: { children: ReactNode }) {
         }
         const existing = slotCells(rooms[params.room][day]);
         if (existing.length > 0 && !params.allowOverlap) { skipped += 1; nextMonths[key] = { ...month, cells: rooms }; continue; }
-        const added: Cell = { price: perNight, channelId: params.channelId, bookingId, ...(params.note ? { note: params.note } : {}) };
+        const added: Cell = { price: perNight, channelId: params.channelId, bookingId, ...(params.note ? { note: params.note } : {}), ...(params.guestName ? { guestName: params.guestName } : {}) };
         const slot: CellSlot = toSlot([...existing, added]);
         const roomCells = { ...rooms[params.room], [day]: slot };
         rooms[params.room] = roomCells;
@@ -470,6 +502,13 @@ export function HotelProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (loading || !onboarded) return;
     reloadImported();
+    const timer = window.setInterval(reloadImported, 30_000);
+    const onVisible = () => { if (document.visibilityState === "visible") reloadImported(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [loading, onboarded, reloadImported]);
 
   const analyticsFor = useCallback(
@@ -501,6 +540,7 @@ export function HotelProvider({ children }: { children: ReactNode }) {
 
     setCurrentMonthKey,
     updateCell,
+    updateBooking,
     addBookingRange,
     updateMonthMeta,
     updateSettings,

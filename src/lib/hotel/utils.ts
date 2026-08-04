@@ -225,8 +225,10 @@ export function nightsBetween(fromIso: string, toIso: string): number {
 
 /** Minimal shape of an imported (iCal) reservation used by analytics. */
 export interface ImportedLike {
+  id?: string;
   room_name: string;
   source_id: string;
+
   source_name: string;
   source_color: string;
   channel_id?: string | null;

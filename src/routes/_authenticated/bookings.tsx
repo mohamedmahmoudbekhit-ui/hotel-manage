@@ -576,7 +576,7 @@ function CellEditor({
     const p = parseFloat(price);
     if (!isFinite(p) || p <= 0) return;
     const trimmedNote = note.trim();
-    onSave({ price: p, channelId, ...(trimmedNote ? { note: trimmedNote } : {}) });
+    onSave({ price: p, channelId, ...(trimmedNote ? { note: trimmedNote } : {}), ...(cell?.status ? { status: cell.status } : {}) });
     setOpen(false);
   };
 

@@ -1,4 +1,22 @@
-import type { Cell, Channel, MonthData, Settings } from "./types";
+import type { Cell, CellSlot, Channel, MonthData, Settings } from "./types";
+
+/** Normalise a room-night slot to a list of bookings (0, 1 or many). */
+export function slotCells(slot: CellSlot | undefined): Cell[] {
+  if (!slot) return [];
+  return Array.isArray(slot) ? slot.filter(Boolean) : [slot];
+}
+
+/** All bookings stored for a given room-night. */
+export function cellsAt(month: MonthData, room: string, day: number): Cell[] {
+  return slotCells(month.cells?.[room]?.[day]);
+}
+
+/** Collapse a list back into the compact storage shape. */
+export function toSlot(cells: Cell[]): CellSlot {
+  if (cells.length === 0) return null;
+  return cells.length === 1 ? cells[0]! : cells;
+}
+
 
 export const DEFAULT_CHANNELS: Channel[] = [
   { id: "airbnb", name: "Airbnb", currency: "USD", color: "#e11d48" },

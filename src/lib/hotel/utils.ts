@@ -89,8 +89,14 @@ export function computeMonthTotals(m: MonthData, rooms: string[], settings: Sett
     revenueByRoom[room] = 0;
     let occ = 0;
     for (let d = 1; d <= m.daysInMonth; d++) {
-      const c = m.cells[room]?.[d] ?? null;
-      if (c) {
+      const list = slotCells(m.cells[room]?.[d]);
+      if (list.length === 0) continue;
+      // A night counts once towards occupancy even when a replacement booking
+      // shares the same date; revenue is kept for every booking, including
+      // no-show / early-departure ones.
+      occupiedNights += 1;
+      occ += 1;
+      for (const c of list) {
         const ch = findChannel(settings, c.channelId);
         const rev = cellRevenueLocal(c, m.usdRate, settings);
         totalRevenue += rev;
@@ -98,14 +104,14 @@ export function computeMonthTotals(m: MonthData, rooms: string[], settings: Sett
         bookingsByChannel[c.channelId] = (bookingsByChannel[c.channelId] ?? 0) + 1;
         revenueByRoom[room] += rev;
         bookingsCount += 1;
-        occupiedNights += 1;
-        occ += 1;
+        if (c.status === "noshow") noshowRevenue += rev;
         if (ch.currency === "USD") usdTotal += c.price;
         else localTotal += c.price;
       }
     }
     emptyDaysByRoom[room] = m.daysInMonth - occ;
   }
+
 
   const totalNights = rooms.length * m.daysInMonth;
   const occupancyRate = totalNights ? (occupiedNights / totalNights) * 100 : 0;

@@ -396,6 +396,7 @@ export function HotelProvider({ children }: { children: ReactNode }) {
       cursor.setUTCDate(cursor.getUTCDate() + 1);
     }
     const perNight = Math.round((params.price / nights) * 100) / 100;
+    const refundPerNight = params.refund ? params.refund.amount / nights : 0;
     const bookingId = newBookingId();
     let written = 0;
     let skipped = 0;

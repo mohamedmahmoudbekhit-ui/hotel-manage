@@ -563,6 +563,16 @@ function ImportedBlock({ res, channel, position, onChanged, currency }: { res: I
             <Label className="text-xs">Internal notes</Label>
             <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />
           </div>
+          <RefundFields
+            canceled={canceled}
+            setCanceled={setCanceled}
+            direction={refundDirection}
+            setDirection={setRefundDirection}
+            amount={refundAmount}
+            setAmount={setRefundAmount}
+            currencyLabel={channelCurrency}
+          />
+
           <p className="text-[11px] text-muted-foreground">
             Color and currency are inherited from the “{channel.name}” channel in Settings. The total price is split evenly across the stayed nights (check-out day excluded).
           </p>

@@ -48,7 +48,19 @@ export function findChannel(settings: Settings, id: string): Channel {
 /** Local-currency revenue for a cell. USD channels are converted using monthly usdRate. */
 export function cellRevenueLocal(cell: Cell, usdRate: number, settings: Settings): number {
   const ch = findChannel(settings, cell.channelId);
-  return ch.currency === "USD" ? cell.price * usdRate : cell.price;
+  const rate = ch.currency === "USD" ? usdRate : 1;
+  if (cell.canceledWithRefund) {
+    // The original booking amount never counts once refunded; only the
+    // adjustment does (negative to the guest, positive to the host).
+    const refund = Number(cell.refundAmount) || 0;
+    return (cell.refundDirection === "to_host" ? refund : -refund) * rate;
+  }
+  return cell.price * rate;
+}
+
+/** A canceled-with-refund night is not a completed booking. */
+export function isCanceledCell(cell: Cell): boolean {
+  return cell.canceledWithRefund === true;
 }
 
 export interface MonthTotals {
@@ -70,8 +82,11 @@ export interface MonthTotals {
   localTotal: number;
   /** Revenue that belongs to no-show / early-departure bookings (already included in totalRevenue). */
   noshowRevenue: number;
+  /** Net refund adjustment (host refunds minus guest refunds), already in totalRevenue. */
+  refundAdjustment: number;
 
 }
+
 
 export function computeMonthTotals(m: MonthData, rooms: string[], settings: Settings): MonthTotals {
   const revenueByChannel: Record<string, number> = {};

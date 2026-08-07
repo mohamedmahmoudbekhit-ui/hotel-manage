@@ -260,13 +260,20 @@ export const listImportedForMonth = createServerFn({ method: "POST" })
     return list;
   });
 
-const overrideSchema = z.object({
-  reservation_id: z.string().uuid(),
-  price: z.number().nonnegative().nullable(),
-  notes: z.string().max(2000).nullable(),
-  channel_id: z.string().trim().min(1).max(80).nullable(),
-  status: z.enum(["active", "noshow"]),
-});
+const overrideSchema = z
+  .object({
+    reservation_id: z.string().uuid(),
+    price: z.number().nonnegative().nullable(),
+    notes: z.string().max(2000).nullable(),
+    channel_id: z.string().trim().min(1).max(80).nullable(),
+    status: z.enum(["active", "noshow"]),
+    canceled_with_refund: z.boolean().optional().default(false),
+    refund_direction: z.enum(["to_guest", "to_host"]).nullable().optional().default(null),
+    refund_amount: z.number().positive().nullable().optional().default(null),
+  })
+  .refine((v) => !v.canceled_with_refund || (v.refund_direction != null && v.refund_amount != null), {
+    message: "Refund direction and a positive refund amount are required",
+  });
 
 export const saveImportedOverride = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -292,9 +299,16 @@ export const saveImportedOverride = createServerFn({ method: "POST" })
           notes: data.notes,
           channel_id: data.channel_id,
           status: data.status,
+          canceled_with_refund: data.canceled_with_refund,
+          refund_direction: data.canceled_with_refund ? data.refund_direction : null,
+          refund_amount: data.canceled_with_refund ? data.refund_amount : null,
         },
         { onConflict: "reservation_id" },
       );
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
     if (error) throw new Error(error.message);
     return { ok: true };
   });

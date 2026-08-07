@@ -309,10 +309,6 @@ export const saveImportedOverride = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-    if (error) throw new Error(error.message);
-    return { ok: true };
-  });
-
 export const removeImportedReservation = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ reservation_id: z.string().uuid() }).parse(input))

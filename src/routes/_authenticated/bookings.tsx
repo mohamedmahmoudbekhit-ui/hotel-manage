@@ -561,6 +561,69 @@ function blockRounding(position: "start" | "middle" | "end" | "single") {
         ? "rounded-b-lg rounded-t-none border-t-0"
         : "rounded-none border-y-0";
 }
+/** Shared "Canceled with Refund" controls used by every booking editor. */
+function RefundFields({
+  canceled,
+  setCanceled,
+  direction,
+  setDirection,
+  amount,
+  setAmount,
+  currencyLabel,
+}: {
+  canceled: boolean;
+  setCanceled: (v: boolean) => void;
+  direction: RefundDirection | "";
+  setDirection: (v: RefundDirection) => void;
+  amount: string;
+  setAmount: (v: string) => void;
+  currencyLabel: string;
+}) {
+  return (
+    <div className="space-y-2 rounded-md border border-border/60 p-2">
+      <label className="flex items-center gap-2 text-xs font-medium">
+        <Checkbox checked={canceled} onCheckedChange={(v) => setCanceled(v === true)} />
+        Canceled with Refund
+      </label>
+      {canceled && (
+        <div className="space-y-2">
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">Refund direction</Label>
+            <div className="flex gap-2">
+              {(["to_guest", "to_host"] as const).map((d) => (
+                <Button
+                  key={d}
+                  type="button"
+                  size="sm"
+                  variant={direction === d ? "default" : "outline"}
+                  className="flex-1"
+                  onClick={() => setDirection(d)}
+                >
+                  {d === "to_guest" ? "To Guest" : "To Host"}
+                </Button>
+              ))}
+            </div>
+          </div>
+          {direction !== "" && (
+            <div className="space-y-1">
+              <Label className="text-[11px] text-muted-foreground">Refund amount ({currencyLabel})</Label>
+              <Input
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                min="0"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="0.00"
+              />
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 function CellEditor({
   cell,

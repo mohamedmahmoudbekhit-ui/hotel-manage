@@ -850,6 +850,7 @@ interface AddBookingParams {
   note?: string;
   guestName?: string;
   allowOverlap?: boolean;
+  refund?: { direction: RefundDirection; amount: number } | null;
 }
 
 function AddBookingDialog({

@@ -664,14 +664,16 @@ function CellEditor({
                   ? t("cal.checkOut") ?? "Last night"
                   : "•"}
             </span>
-            {nightly != null && (
+            {cell.canceledWithRefund ? (
+              <span className="truncate text-xs font-bold">Refunded</span>
+            ) : nightly != null ? (
               <span className="truncate text-xs font-bold tabular-nums">
                 {nightly.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                 <span className="ms-1 text-[9px] font-semibold opacity-80">
                   {cellChannel.currency === "LOCAL" ? currency : "USD"}
                 </span>
               </span>
-            )}
+            ) : null}
           </button>
         ) : (
           <button className="my-1 flex h-9 w-full items-center justify-center rounded-lg border border-dashed border-border/60 text-muted-foreground/60 transition hover:border-primary/40 hover:bg-primary/5 hover:text-primary">

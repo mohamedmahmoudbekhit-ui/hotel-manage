@@ -567,6 +567,8 @@ function CellEditor({
   position = "single",
   onSave,
   onUpdateBooking,
+  onSetRefund,
+  refund,
   onDelete,
   usdRate,
   channels,
@@ -576,6 +578,8 @@ function CellEditor({
   position?: "start" | "middle" | "end" | "single";
   onSave: (c: Cell) => void;
   onUpdateBooking?: (patch: Partial<Pick<Cell, "channelId" | "note" | "guestName" | "status">>) => void;
+  onSetRefund?: (r: { direction: RefundDirection; amount: number } | null) => void;
+  refund?: { direction: RefundDirection; amount: number } | null;
   onDelete: () => void;
   usdRate: number;
   channels: Channel[];
@@ -588,21 +592,45 @@ function CellEditor({
   const [channelId, setChannelId] = useState<string>(cell?.channelId ?? defaultChannel);
   const [note, setNote] = useState<string>(cell?.note ?? "");
   const [guestName, setGuestName] = useState<string>(cell?.guestName ?? "");
+  const [canceled, setCanceled] = useState<boolean>(!!cell?.canceledWithRefund);
+  const [refundDirection, setRefundDirection] = useState<RefundDirection | "">(refund?.direction ?? cell?.refundDirection ?? "");
+  const [refundAmount, setRefundAmount] = useState<string>(
+    refund?.amount != null ? String(refund.amount) : cell?.refundAmount != null ? String(cell.refundAmount) : "",
+  );
 
   const reset = () => {
     setPrice(cell?.price.toString() ?? "");
     setChannelId(cell?.channelId ?? defaultChannel);
     setNote(cell?.note ?? "");
     setGuestName(cell?.guestName ?? "");
+    setCanceled(!!cell?.canceledWithRefund);
+    setRefundDirection(refund?.direction ?? cell?.refundDirection ?? "");
+    setRefundAmount(refund?.amount != null ? String(refund.amount) : cell?.refundAmount != null ? String(cell.refundAmount) : "");
   };
+
+  const refundNum = parseFloat(refundAmount);
+  const refundValid = !canceled || (refundDirection !== "" && isFinite(refundNum) && refundNum > 0);
 
   const save = () => {
     const p = parseFloat(price);
     if (!isFinite(p) || p <= 0) return;
+    if (!refundValid) { toast.error("Enter a refund direction and a positive refund amount."); return; }
     const trimmedNote = note.trim();
     const patch = { channelId, note: trimmedNote || undefined, guestName: guestName.trim() || undefined, status: cell?.status };
-    onSave({ price: p, ...patch });
-    if (cell?.bookingId && onUpdateBooking) onUpdateBooking(patch);
+    const refundPayload = canceled && refundDirection !== "" ? { direction: refundDirection, amount: refundNum } : null;
+    if (cell?.bookingId && onSetRefund) {
+      onSave({ price: p, ...patch, ...(cell.canceledWithRefund ? { canceledWithRefund: true, refundDirection: cell.refundDirection, refundAmount: cell.refundAmount } : {}) });
+      if (onUpdateBooking) onUpdateBooking(patch);
+      onSetRefund(refundPayload);
+    } else {
+      onSave({
+        price: p,
+        ...patch,
+        ...(refundPayload
+          ? { canceledWithRefund: true, refundDirection: refundPayload.direction, refundAmount: refundPayload.amount }
+          : {}),
+      });
+    }
     setOpen(false);
   };
 
@@ -611,6 +639,8 @@ function CellEditor({
   const fg = cellChannel ? pickTextColor(cellChannel.color) : "#fff";
   const showLabel = position === "start" || position === "single";
   const nightly = cell && isFinite(cell.price) && cell.price > 0 ? cell.price : null;
+  const editorCurrency = editorChannel.currency === "LOCAL" ? currency : "USD";
+
 
   return (
     <Popover open={open} onOpenChange={(o) => { setOpen(o); if (o) reset(); }}>

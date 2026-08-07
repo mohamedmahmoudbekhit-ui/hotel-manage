@@ -172,6 +172,8 @@ export function computeMonthTotals(m: MonthData, rooms: string[], settings: Sett
     owner,
     usdTotal,
     noshowRevenue,
+    refundAdjustment,
+
 
     localTotal,
   };

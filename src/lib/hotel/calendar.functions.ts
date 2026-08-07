@@ -252,6 +252,9 @@ export const listImportedForMonth = createServerFn({ method: "POST" })
         override_notes: ov?.notes ?? null,
         override_channel_id: ov?.channel_id ?? null,
         status: ov?.status === "noshow" ? "noshow" : "active",
+        canceled_with_refund: ov?.canceled_with_refund === true,
+        refund_direction: ov?.refund_direction === "to_host" ? "to_host" : ov?.refund_direction === "to_guest" ? "to_guest" : null,
+        refund_amount: ov?.refund_amount != null ? Number(ov.refund_amount) : null,
       });
     }
     return list;

@@ -381,7 +381,7 @@ export function HotelProvider({ children }: { children: ReactNode }) {
   }, []);
 
 
-  const addBookingRange = useCallback((params: { room: string; from: string; to: string; channelId: string; price: number; note?: string; guestName?: string; allowOverlap?: boolean }) => {
+  const addBookingRange = useCallback((params: { room: string; from: string; to: string; channelId: string; price: number; note?: string; guestName?: string; allowOverlap?: boolean; refund?: { direction: RefundDirection; amount: number } | null }) => {
     const start = new Date(`${params.from}T00:00:00Z`);
     const end = new Date(`${params.to}T00:00:00Z`);
     // Nights = checkout - checkin. The checkout day is NOT a stayed night.

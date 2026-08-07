@@ -36,7 +36,12 @@ interface Ctx extends StateShape {
 
   updateCell: (room: string, day: number, cell: Cell | null, targetBookingId?: string) => void;
   updateBooking: (bookingId: string, patch: Partial<Pick<Cell, "channelId" | "note" | "guestName" | "status">>) => void;
-  addBookingRange: (params: { room: string; from: string; to: string; channelId: string; price: number; note?: string; guestName?: string; allowOverlap?: boolean }) => { written: number; skipped: number; nights: number };
+  /** Set or clear the "canceled with refund" adjustment for every night of a booking. */
+  setBookingRefund: (bookingId: string, refund: { direction: RefundDirection; amount: number } | null) => void;
+  /** Current refund of a booking, with the amount as the booking total. */
+  refundOf: (bookingId: string) => { direction: RefundDirection; amount: number } | null;
+  addBookingRange: (params: { room: string; from: string; to: string; channelId: string; price: number; note?: string; guestName?: string; allowOverlap?: boolean; refund?: { direction: RefundDirection; amount: number } | null }) => { written: number; skipped: number; nights: number };
+
   updateMonthMeta: (patch: Partial<Pick<MonthData, "expenses" | "usdRate" | "managementPct">>) => void;
   updateSettings: (patch: Partial<Settings>) => void;
   addChannel: (channel: Omit<Channel, "id">) => void;

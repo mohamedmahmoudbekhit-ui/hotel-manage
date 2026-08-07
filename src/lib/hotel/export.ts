@@ -49,7 +49,7 @@ export function buildBookingRows(
   for (const room of settings.rooms) {
     // Group nights by bookingId so overlapping / replacement bookings on the
     // same night each export as their own row.
-    interface Run { startDay: number; endDay: number; channelId: string; note?: string; amount: number; nights: number; noshow: boolean }
+    interface Run { startDay: number; endDay: number; channelId: string; note?: string; amount: number; nights: number; noshow: boolean; canceled: boolean }
     const runs = new Map<string, Run>();
     const order: string[] = [];
 
@@ -67,6 +67,7 @@ export function buildBookingRows(
           runs.set(key, {
             startDay: d, endDay: d, channelId: cell.channelId, note: cell.note,
             amount: revenue, nights: 1, noshow: cell.status === "noshow",
+            canceled: cell.canceledWithRefund === true,
           });
           order.push(key);
         }
@@ -83,7 +84,7 @@ export function buildBookingRows(
         checkOut: addDays(iso(month.year, month.monthIndex, run.endDay), 1),
         source: ch.name,
         sourceKey: ch.id,
-        status: run.noshow ? "No-show" : "Confirmed",
+        status: run.canceled ? "Canceled (refund)" : run.noshow ? "No-show" : "Confirmed",
         guests: "—",
         amount: run.amount,
         nights: run.nights,

@@ -1015,6 +1015,16 @@ function AddBookingDialog({
             <input type="checkbox" checked={allowOverlap} onChange={(e) => setAllowOverlap(e.target.checked)} />
             Create as a replacement over an existing/no-show booking
           </label>
+          <RefundFields
+            canceled={canceled}
+            setCanceled={setCanceled}
+            direction={refundDirection}
+            setDirection={setRefundDirection}
+            amount={refundAmount}
+            setAmount={setRefundAmount}
+            currencyLabel={channelCurrency}
+          />
+
         </div>
         <DialogFooter>
           <Button variant="outline" size="sm" onClick={() => setOpen(false)}>Cancel</Button>

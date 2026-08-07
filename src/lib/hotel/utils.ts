@@ -261,6 +261,11 @@ export interface ImportedLike {
   /** Manual per-reservation channel override (wins over the source mapping). */
   override_channel_id?: string | null;
   status?: string | null;
+  canceled_with_refund?: boolean | null;
+  refund_direction?: "to_guest" | "to_host" | null;
+  /** Total refund for the whole reservation, in the resolved channel currency. */
+  refund_amount?: number | null;
+
   start_date: string;
   end_date: string;
   override_price: number | null;

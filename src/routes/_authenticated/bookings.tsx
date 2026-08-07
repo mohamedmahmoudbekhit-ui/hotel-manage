@@ -875,6 +875,9 @@ function AddBookingDialog({
   const [note, setNote] = useState<string>("");
   const [guestName, setGuestName] = useState<string>("");
   const [allowOverlap, setAllowOverlap] = useState(false);
+  const [canceled, setCanceled] = useState(false);
+  const [refundDirection, setRefundDirection] = useState<RefundDirection | "">("");
+  const [refundAmount, setRefundAmount] = useState("");
 
   // Nights = check-out - check-in. The check-out day is not a stayed night.
   const nights = useMemo(() => nightsBetween(from, to), [from, to]);

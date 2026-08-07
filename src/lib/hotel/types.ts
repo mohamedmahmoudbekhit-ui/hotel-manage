@@ -9,6 +9,9 @@ export interface Channel {
 /** Lifecycle of a reservation night. No-show keeps its revenue in all reports. */
 export type BookingStatus = "active" | "noshow";
 
+/** Which side received the money back when a booking is canceled with a refund. */
+export type RefundDirection = "to_guest" | "to_host";
+
 export interface Cell {
   price: number;
   channelId: string;
@@ -21,7 +24,16 @@ export interface Cell {
   bookingId?: string;
   /** "noshow" = no-show / early departure. Kept for history and revenue. */
   status?: BookingStatus;
+  /**
+   * Canceled with refund. The original `price` is kept untouched but is fully
+   * excluded from revenue; only the refund adjustment counts.
+   */
+  canceledWithRefund?: boolean;
+  refundDirection?: RefundDirection;
+  /** Per-night share of the refund total, in the channel's currency. */
+  refundAmount?: number;
 }
+
 
 /** A room-night may hold one booking, several (replacements), or none. */
 export type CellSlot = Cell | Cell[] | null;

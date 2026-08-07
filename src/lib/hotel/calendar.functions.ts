@@ -226,7 +226,7 @@ export const listImportedForMonth = createServerFn({ method: "POST" })
     const endExclusive = nextDay.toISOString().slice(0, 10);
     const { data: rows, error } = await context.supabase
       .from("ical_reservations")
-      .select("id, room_id, source_id, platform_type, external_uid, summary, start_date, end_date, rooms!inner(room_name), calendar_sources!inner(source_name, color, channel_id), ical_reservation_overrides(price, notes, hidden, channel_id, status)")
+      .select("id, room_id, source_id, platform_type, external_uid, summary, start_date, end_date, rooms!inner(room_name), calendar_sources!inner(source_name, color, channel_id), ical_reservation_overrides(price, notes, hidden, channel_id, status, canceled_with_refund, refund_direction, refund_amount)")
       .eq("organization_id", orgId)
       .lt("start_date", endExclusive)
       .gt("end_date", data.from);

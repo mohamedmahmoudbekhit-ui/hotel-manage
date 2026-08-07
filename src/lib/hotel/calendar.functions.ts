@@ -39,7 +39,11 @@ export interface ImportedReservationRow {
   override_notes: string | null;
   override_channel_id: string | null;
   status: "active" | "noshow";
+  canceled_with_refund: boolean;
+  refund_direction: "to_guest" | "to_host" | null;
+  refund_amount: number | null;
 }
+
 
 const platforms = ["airbnb", "booking", "vrbo", "direct", "other"] as const;
 const HEX_COLOR = /^#([0-9a-fA-F]{6})$/;

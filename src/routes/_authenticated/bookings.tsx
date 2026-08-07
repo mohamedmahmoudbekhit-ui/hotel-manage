@@ -518,12 +518,14 @@ function ImportedBlock({ res, channel, position, onChanged, currency }: { res: I
               <span className="truncate">{positionBadge}</span>
             )}
           </span>
-          {nightly != null && (
+          {res.canceled_with_refund ? (
+            <span className="truncate text-xs font-bold">Refunded</span>
+          ) : nightly != null ? (
             <span className="truncate text-xs font-bold tabular-nums">
               {nightly.toLocaleString(undefined, { maximumFractionDigits: 2 })}
               <span className="ms-1 text-[9px] font-semibold opacity-80">{channelCurrency}</span>
             </span>
-          )}
+          ) : null}
           {hasNote && (
             <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-current opacity-90" />
           )}

@@ -437,6 +437,9 @@ function ImportedBlock({ res, channel, position, onChanged, currency }: { res: I
   const [notes, setNotes] = useState<string>(res.override_notes ?? "");
   const [channelId, setChannelId] = useState(res.override_channel_id ?? res.channel_id ?? "");
   const [status, setStatus] = useState<"active" | "noshow">(res.status ?? "active");
+  const [canceled, setCanceled] = useState<boolean>(!!res.canceled_with_refund);
+  const [refundDirection, setRefundDirection] = useState<RefundDirection | "">(res.refund_direction ?? "");
+  const [refundAmount, setRefundAmount] = useState<string>(res.refund_amount != null ? String(res.refund_amount) : "");
   const [saving, setSaving] = useState(false);
   const saveFn = useServerFn(saveImportedOverride);
   const removeFn = useServerFn(removeImportedReservation);
@@ -447,15 +450,34 @@ function ImportedBlock({ res, channel, position, onChanged, currency }: { res: I
       setNotes(res.override_notes ?? "");
       setChannelId(res.override_channel_id ?? res.channel_id ?? "");
       setStatus(res.status ?? "active");
+      setCanceled(!!res.canceled_with_refund);
+      setRefundDirection(res.refund_direction ?? "");
+      setRefundAmount(res.refund_amount != null ? String(res.refund_amount) : "");
     }
-  }, [open, res.override_price, res.override_notes, res.override_channel_id, res.channel_id, res.status]);
+  }, [open, res.override_price, res.override_notes, res.override_channel_id, res.channel_id, res.status, res.canceled_with_refund, res.refund_direction, res.refund_amount]);
 
   const doSave = async () => {
     setSaving(true);
     try {
       const p = price.trim() === "" ? null : Number(price);
       if (p != null && (!isFinite(p) || p < 0)) { toast.error("Invalid price"); return; }
-      await saveFn({ data: { reservation_id: res.id, price: p, notes: notes.trim() ? notes : null, channel_id: channelId || null, status } });
+      const refundNum = parseFloat(refundAmount);
+      if (canceled && (refundDirection === "" || !isFinite(refundNum) || refundNum <= 0)) {
+        toast.error("Enter a refund direction and a positive refund amount.");
+        return;
+      }
+      await saveFn({
+        data: {
+          reservation_id: res.id,
+          price: p,
+          notes: notes.trim() ? notes : null,
+          channel_id: channelId || null,
+          status,
+          canceled_with_refund: canceled,
+          refund_direction: canceled && refundDirection !== "" ? refundDirection : null,
+          refund_amount: canceled ? refundNum : null,
+        },
+      });
       toast.success(t("common.saved") ?? "Saved");
       setOpen(false);
       onChanged();
@@ -463,6 +485,7 @@ function ImportedBlock({ res, channel, position, onChanged, currency }: { res: I
       toast.error(e instanceof Error ? e.message : "Failed to save");
     } finally { setSaving(false); }
   };
+
 
   const doRemove = async () => {
     setSaving(true);

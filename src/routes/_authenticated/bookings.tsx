@@ -41,6 +41,7 @@ function channelLabel(ch: Channel, currency: string): string {
 function BookingsPage() {
   const {
     currentMonth, settings, updateCell, updateBooking, addBookingRange, hotelName,
+    refundOf, setBookingRefund,
     imported: allImported, reloadImported, analyticsMonth, analyticsSettings,
   } = useHotel();
   const { t, formatMonthKey } = useI18n();

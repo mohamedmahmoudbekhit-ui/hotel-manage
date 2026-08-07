@@ -320,6 +320,7 @@ export function mergeImportedIntoMonth(
     const ch = resolveImportedChannel(settings, res);
     if (!settings.channels.some((c) => c.id === ch.id)) extra.set(ch.id, ch);
     const perNight = (res.override_price ?? 0) / nights;
+    const refundPerNight = res.canceled_with_refund ? (Number(res.refund_amount) || 0) / nights : 0;
     const d = new Date(`${start}T00:00:00Z`);
     for (let i = 0; i < nights; i++) {
       if (d.getUTCFullYear() === month.year && d.getUTCMonth() === month.monthIndex) {
@@ -337,10 +338,18 @@ export function mergeImportedIntoMonth(
             bookingId: `ical:${res.id ?? `${res.source_id}:${start}`}`,
             ...(res.status === "noshow" ? { status: "noshow" as const } : {}),
             ...(res.override_notes ? { note: res.override_notes } : {}),
+            ...(res.canceled_with_refund
+              ? {
+                  canceledWithRefund: true,
+                  refundDirection: (res.refund_direction ?? "to_guest") as "to_guest" | "to_host",
+                  refundAmount: refundPerNight,
+                }
+              : {}),
           },
         ]);
         touched = true;
       }
+
       d.setUTCDate(d.getUTCDate() + 1);
     }
 

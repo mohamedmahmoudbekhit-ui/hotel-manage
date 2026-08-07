@@ -732,7 +732,16 @@ function CellEditor({
               rows={3}
             />
           </div>
-          {parseFloat(price) > 0 && (
+          <RefundFields
+            canceled={canceled}
+            setCanceled={setCanceled}
+            direction={refundDirection}
+            setDirection={setRefundDirection}
+            amount={refundAmount}
+            setAmount={setRefundAmount}
+            currencyLabel={editorCurrency}
+          />
+          {parseFloat(price) > 0 && !canceled && (
             <div className="rounded-md bg-muted p-2 text-xs">
               {t("bookings.revenue")}: <span className="font-semibold">
                 {formatCurrency(
@@ -742,6 +751,7 @@ function CellEditor({
               </span>
             </div>
           )}
+
           <div className="flex items-center justify-between gap-2 pt-1">
             {cell ? (
               <Button variant="ghost" size="sm" onClick={() => { onDelete(); setOpen(false); }} className="text-destructive hover:text-destructive">

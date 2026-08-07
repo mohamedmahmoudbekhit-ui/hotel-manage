@@ -902,12 +902,19 @@ function AddBookingDialog({
     setNote("");
     setGuestName("");
     setAllowOverlap(false);
+    setCanceled(false);
+    setRefundDirection("");
+    setRefundAmount("");
   };
+
+  const refundNum = parseFloat(refundAmount);
+  const refundValid = !canceled || (refundDirection !== "" && isFinite(refundNum) && refundNum > 0);
 
   const submit = () => {
     if (!room || !channelId) return;
     if (nights <= 0) return;
     if (!(priceNum > 0)) return;
+    if (!refundValid) { toast.error("Enter a refund direction and a positive refund amount."); return; }
     onAdd({
       room,
       from,
@@ -917,10 +924,12 @@ function AddBookingDialog({
       ...(note.trim() ? { note: note.trim() } : {}),
       ...(guestName.trim() ? { guestName: guestName.trim() } : {}),
       allowOverlap,
+      refund: canceled && refundDirection !== "" ? { direction: refundDirection, amount: refundNum } : null,
     });
     setOpen(false);
     reset();
   };
+
 
   return (
     <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (o) reset(); }}>

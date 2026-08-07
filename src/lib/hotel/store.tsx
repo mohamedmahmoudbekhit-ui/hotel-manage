@@ -315,6 +315,72 @@ export function HotelProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  /** Total refund of a booking (sum of the per-night shares) plus its direction. */
+  const refundOf = useCallback(
+    (bookingId: string): { direction: RefundDirection; amount: number } | null => {
+      let direction: RefundDirection | null = null;
+      let amount = 0;
+      for (const month of Object.values(state.months)) {
+        for (const days of Object.values(month.cells)) {
+          for (const slot of Object.values(days)) {
+            for (const cell of slotCells(slot)) {
+              if (cell.bookingId !== bookingId || !cell.canceledWithRefund) continue;
+              direction = cell.refundDirection ?? "to_guest";
+              amount += Number(cell.refundAmount) || 0;
+            }
+          }
+        }
+      }
+      return direction ? { direction, amount: Math.round(amount * 100) / 100 } : null;
+    },
+    [state.months],
+  );
+
+  /** Apply (or clear) the refund across every night of a booking, split evenly. */
+  const setBookingRefund = useCallback((bookingId: string, refund: { direction: RefundDirection; amount: number } | null) => {
+    setState((s) => {
+      let nights = 0;
+      for (const month of Object.values(s.months)) {
+        for (const days of Object.values(month.cells)) {
+          for (const slot of Object.values(days)) {
+            for (const cell of slotCells(slot)) if (cell.bookingId === bookingId) nights += 1;
+          }
+        }
+      }
+      if (nights === 0) return s;
+      const perNight = refund ? refund.amount / nights : 0;
+      const months: Record<string, MonthData> = {};
+      for (const [key, month] of Object.entries(s.months)) {
+        let monthChanged = false;
+        const cells: MonthData["cells"] = {};
+        for (const [room, days] of Object.entries(month.cells)) {
+          cells[room] = {};
+          for (const [day, slot] of Object.entries(days)) {
+            const next = slotCells(slot).map((cell) => {
+              if (cell.bookingId !== bookingId) return cell;
+              monthChanged = true;
+              const merged: Cell = { ...cell };
+              if (refund) {
+                merged.canceledWithRefund = true;
+                merged.refundDirection = refund.direction;
+                merged.refundAmount = perNight;
+              } else {
+                delete merged.canceledWithRefund;
+                delete merged.refundDirection;
+                delete merged.refundAmount;
+              }
+              return merged;
+            });
+            cells[room][Number(day)] = toSlot(next);
+          }
+        }
+        months[key] = monthChanged ? { ...month, cells } : month;
+      }
+      return { ...s, months };
+    });
+  }, []);
+
+
   const addBookingRange = useCallback((params: { room: string; from: string; to: string; channelId: string; price: number; note?: string; guestName?: string; allowOverlap?: boolean }) => {
     const start = new Date(`${params.from}T00:00:00Z`);
     const end = new Date(`${params.to}T00:00:00Z`);

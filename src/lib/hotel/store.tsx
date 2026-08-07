@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import type { Cell, CellSlot, Channel, ExpenseItem, MonthData, Settings } from "./types";
+import type { Cell, CellSlot, Channel, ExpenseItem, MonthData, RefundDirection, Settings } from "./types";
 import { DEFAULT_CHANNELS, emptyMonth, MONTH_NAMES, mergeImportedIntoMonth, newBookingId, newChannelId, nightsBetween, slotCells, sumExpenses, toSlot } from "./utils";
 import { loadHotelState, saveHotelState } from "./state.functions";
 import { listImportedForMonth, type ImportedReservationRow } from "./calendar.functions";

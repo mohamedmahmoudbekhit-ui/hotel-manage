@@ -103,6 +103,7 @@ export function computeMonthTotals(m: MonthData, rooms: string[], settings: Sett
   let usdTotal = 0;
   let localTotal = 0;
   let noshowRevenue = 0;
+  let refundAdjustment = 0;
 
 
   for (const room of rooms) {
@@ -113,16 +114,23 @@ export function computeMonthTotals(m: MonthData, rooms: string[], settings: Sett
       if (list.length === 0) continue;
       // A night counts once towards occupancy even when a replacement booking
       // shares the same date; revenue is kept for every booking, including
-      // no-show / early-departure ones.
-      occupiedNights += 1;
-      occ += 1;
+      // no-show / early-departure ones. Canceled-with-refund nights never
+      // count as occupied or as bookings.
+      if (list.some((c) => !isCanceledCell(c))) {
+        occupiedNights += 1;
+        occ += 1;
+      }
       for (const c of list) {
         const ch = findChannel(settings, c.channelId);
         const rev = cellRevenueLocal(c, m.usdRate, settings);
         totalRevenue += rev;
         revenueByChannel[c.channelId] = (revenueByChannel[c.channelId] ?? 0) + rev;
-        bookingsByChannel[c.channelId] = (bookingsByChannel[c.channelId] ?? 0) + 1;
         revenueByRoom[room] += rev;
+        if (isCanceledCell(c)) {
+          refundAdjustment += rev;
+          continue;
+        }
+        bookingsByChannel[c.channelId] = (bookingsByChannel[c.channelId] ?? 0) + 1;
         bookingsCount += 1;
         if (c.status === "noshow") noshowRevenue += rev;
         if (ch.currency === "USD") usdTotal += c.price;
@@ -131,6 +139,7 @@ export function computeMonthTotals(m: MonthData, rooms: string[], settings: Sett
     }
     emptyDaysByRoom[room] = m.daysInMonth - occ;
   }
+
 
 
   const totalNights = rooms.length * m.daysInMonth;

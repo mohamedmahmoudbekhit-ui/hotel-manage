@@ -48,7 +48,19 @@ export function findChannel(settings: Settings, id: string): Channel {
 /** Local-currency revenue for a cell. USD channels are converted using monthly usdRate. */
 export function cellRevenueLocal(cell: Cell, usdRate: number, settings: Settings): number {
   const ch = findChannel(settings, cell.channelId);
-  return ch.currency === "USD" ? cell.price * usdRate : cell.price;
+  const rate = ch.currency === "USD" ? usdRate : 1;
+  if (cell.canceledWithRefund) {
+    // The original booking amount never counts once refunded; only the
+    // adjustment does (negative to the guest, positive to the host).
+    const refund = Number(cell.refundAmount) || 0;
+    return (cell.refundDirection === "to_host" ? refund : -refund) * rate;
+  }
+  return cell.price * rate;
+}
+
+/** A canceled-with-refund night is not a completed booking. */
+export function isCanceledCell(cell: Cell): boolean {
+  return cell.canceledWithRefund === true;
 }
 
 export interface MonthTotals {
@@ -70,8 +82,11 @@ export interface MonthTotals {
   localTotal: number;
   /** Revenue that belongs to no-show / early-departure bookings (already included in totalRevenue). */
   noshowRevenue: number;
+  /** Net refund adjustment (host refunds minus guest refunds), already in totalRevenue. */
+  refundAdjustment: number;
 
 }
+
 
 export function computeMonthTotals(m: MonthData, rooms: string[], settings: Settings): MonthTotals {
   const revenueByChannel: Record<string, number> = {};
@@ -88,6 +103,7 @@ export function computeMonthTotals(m: MonthData, rooms: string[], settings: Sett
   let usdTotal = 0;
   let localTotal = 0;
   let noshowRevenue = 0;
+  let refundAdjustment = 0;
 
 
   for (const room of rooms) {
@@ -98,16 +114,23 @@ export function computeMonthTotals(m: MonthData, rooms: string[], settings: Sett
       if (list.length === 0) continue;
       // A night counts once towards occupancy even when a replacement booking
       // shares the same date; revenue is kept for every booking, including
-      // no-show / early-departure ones.
-      occupiedNights += 1;
-      occ += 1;
+      // no-show / early-departure ones. Canceled-with-refund nights never
+      // count as occupied or as bookings.
+      if (list.some((c) => !isCanceledCell(c))) {
+        occupiedNights += 1;
+        occ += 1;
+      }
       for (const c of list) {
         const ch = findChannel(settings, c.channelId);
         const rev = cellRevenueLocal(c, m.usdRate, settings);
         totalRevenue += rev;
         revenueByChannel[c.channelId] = (revenueByChannel[c.channelId] ?? 0) + rev;
-        bookingsByChannel[c.channelId] = (bookingsByChannel[c.channelId] ?? 0) + 1;
         revenueByRoom[room] += rev;
+        if (isCanceledCell(c)) {
+          refundAdjustment += rev;
+          continue;
+        }
+        bookingsByChannel[c.channelId] = (bookingsByChannel[c.channelId] ?? 0) + 1;
         bookingsCount += 1;
         if (c.status === "noshow") noshowRevenue += rev;
         if (ch.currency === "USD") usdTotal += c.price;
@@ -116,6 +139,7 @@ export function computeMonthTotals(m: MonthData, rooms: string[], settings: Sett
     }
     emptyDaysByRoom[room] = m.daysInMonth - occ;
   }
+
 
 
   const totalNights = rooms.length * m.daysInMonth;
@@ -148,6 +172,8 @@ export function computeMonthTotals(m: MonthData, rooms: string[], settings: Sett
     owner,
     usdTotal,
     noshowRevenue,
+    refundAdjustment,
+
 
     localTotal,
   };
@@ -235,6 +261,11 @@ export interface ImportedLike {
   /** Manual per-reservation channel override (wins over the source mapping). */
   override_channel_id?: string | null;
   status?: string | null;
+  canceled_with_refund?: boolean | null;
+  refund_direction?: "to_guest" | "to_host" | null;
+  /** Total refund for the whole reservation, in the resolved channel currency. */
+  refund_amount?: number | null;
+
   start_date: string;
   end_date: string;
   override_price: number | null;
@@ -289,6 +320,7 @@ export function mergeImportedIntoMonth(
     const ch = resolveImportedChannel(settings, res);
     if (!settings.channels.some((c) => c.id === ch.id)) extra.set(ch.id, ch);
     const perNight = (res.override_price ?? 0) / nights;
+    const refundPerNight = res.canceled_with_refund ? (Number(res.refund_amount) || 0) / nights : 0;
     const d = new Date(`${start}T00:00:00Z`);
     for (let i = 0; i < nights; i++) {
       if (d.getUTCFullYear() === month.year && d.getUTCMonth() === month.monthIndex) {
@@ -306,10 +338,18 @@ export function mergeImportedIntoMonth(
             bookingId: `ical:${res.id ?? `${res.source_id}:${start}`}`,
             ...(res.status === "noshow" ? { status: "noshow" as const } : {}),
             ...(res.override_notes ? { note: res.override_notes } : {}),
+            ...(res.canceled_with_refund
+              ? {
+                  canceledWithRefund: true,
+                  refundDirection: (res.refund_direction ?? "to_guest") as "to_guest" | "to_host",
+                  refundAmount: refundPerNight,
+                }
+              : {}),
           },
         ]);
         touched = true;
       }
+
       d.setUTCDate(d.getUTCDate() + 1);
     }
 

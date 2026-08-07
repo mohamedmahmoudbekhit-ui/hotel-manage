@@ -39,7 +39,11 @@ export interface ImportedReservationRow {
   override_notes: string | null;
   override_channel_id: string | null;
   status: "active" | "noshow";
+  canceled_with_refund: boolean;
+  refund_direction: "to_guest" | "to_host" | null;
+  refund_amount: number | null;
 }
+
 
 const platforms = ["airbnb", "booking", "vrbo", "direct", "other"] as const;
 const HEX_COLOR = /^#([0-9a-fA-F]{6})$/;
@@ -222,7 +226,7 @@ export const listImportedForMonth = createServerFn({ method: "POST" })
     const endExclusive = nextDay.toISOString().slice(0, 10);
     const { data: rows, error } = await context.supabase
       .from("ical_reservations")
-      .select("id, room_id, source_id, platform_type, external_uid, summary, start_date, end_date, rooms!inner(room_name), calendar_sources!inner(source_name, color, channel_id), ical_reservation_overrides(price, notes, hidden, channel_id, status)")
+      .select("id, room_id, source_id, platform_type, external_uid, summary, start_date, end_date, rooms!inner(room_name), calendar_sources!inner(source_name, color, channel_id), ical_reservation_overrides(price, notes, hidden, channel_id, status, canceled_with_refund, refund_direction, refund_amount)")
       .eq("organization_id", orgId)
       .lt("start_date", endExclusive)
       .gt("end_date", data.from);
@@ -248,18 +252,28 @@ export const listImportedForMonth = createServerFn({ method: "POST" })
         override_notes: ov?.notes ?? null,
         override_channel_id: ov?.channel_id ?? null,
         status: ov?.status === "noshow" ? "noshow" : "active",
+        canceled_with_refund: ov?.canceled_with_refund === true,
+        refund_direction: ov?.refund_direction === "to_host" ? "to_host" : ov?.refund_direction === "to_guest" ? "to_guest" : null,
+        refund_amount: ov?.refund_amount != null ? Number(ov.refund_amount) : null,
       });
     }
     return list;
   });
 
-const overrideSchema = z.object({
-  reservation_id: z.string().uuid(),
-  price: z.number().nonnegative().nullable(),
-  notes: z.string().max(2000).nullable(),
-  channel_id: z.string().trim().min(1).max(80).nullable(),
-  status: z.enum(["active", "noshow"]),
-});
+const overrideSchema = z
+  .object({
+    reservation_id: z.string().uuid(),
+    price: z.number().nonnegative().nullable(),
+    notes: z.string().max(2000).nullable(),
+    channel_id: z.string().trim().min(1).max(80).nullable(),
+    status: z.enum(["active", "noshow"]),
+    canceled_with_refund: z.boolean().optional().default(false),
+    refund_direction: z.enum(["to_guest", "to_host"]).nullable().optional().default(null),
+    refund_amount: z.number().positive().nullable().optional().default(null),
+  })
+  .refine((v) => !v.canceled_with_refund || (v.refund_direction != null && v.refund_amount != null), {
+    message: "Refund direction and a positive refund amount are required",
+  });
 
 export const saveImportedOverride = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -285,6 +299,9 @@ export const saveImportedOverride = createServerFn({ method: "POST" })
           notes: data.notes,
           channel_id: data.channel_id,
           status: data.status,
+          canceled_with_refund: data.canceled_with_refund,
+          refund_direction: data.canceled_with_refund ? data.refund_direction : null,
+          refund_amount: data.canceled_with_refund ? data.refund_amount : null,
         },
         { onConflict: "reservation_id" },
       );

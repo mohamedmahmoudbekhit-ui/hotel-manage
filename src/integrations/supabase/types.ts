@@ -248,6 +248,7 @@ export type Database = {
       }
       ical_reservation_overrides: {
         Row: {
+          canceled_with_refund: boolean
           channel_id: string | null
           created_at: string
           hidden: boolean
@@ -255,11 +256,14 @@ export type Database = {
           notes: string | null
           organization_id: string
           price: number | null
+          refund_amount: number | null
+          refund_direction: string | null
           reservation_id: string
           status: string
           updated_at: string
         }
         Insert: {
+          canceled_with_refund?: boolean
           channel_id?: string | null
           created_at?: string
           hidden?: boolean
@@ -267,11 +271,14 @@ export type Database = {
           notes?: string | null
           organization_id: string
           price?: number | null
+          refund_amount?: number | null
+          refund_direction?: string | null
           reservation_id: string
           status?: string
           updated_at?: string
         }
         Update: {
+          canceled_with_refund?: boolean
           channel_id?: string | null
           created_at?: string
           hidden?: boolean
@@ -279,6 +286,8 @@ export type Database = {
           notes?: string | null
           organization_id?: string
           price?: number | null
+          refund_amount?: number | null
+          refund_direction?: string | null
           reservation_id?: string
           status?: string
           updated_at?: string

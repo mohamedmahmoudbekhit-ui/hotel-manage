@@ -4,13 +4,14 @@ import { useServerFn } from "@tanstack/react-start";
 import { useHotel } from "@/lib/hotel/store";
 import { MonthSelector } from "@/components/month-selector";
 import { cellRevenueLocal, computeMonthTotals, findChannel, formatCurrency, nightsBetween, pickTextColor, resolveImportedChannel, slotCells } from "@/lib/hotel/utils";
-import type { Cell, Channel } from "@/lib/hotel/types";
+import type { Cell, Channel, RefundDirection } from "@/lib/hotel/types";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Trash2, CalendarClock, CalendarPlus, ChevronLeft, ChevronRight, Download, FileSpreadsheet, FileText, X } from "lucide-react";
 import { DailyView } from "@/components/daily-view";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -40,6 +41,7 @@ function channelLabel(ch: Channel, currency: string): string {
 function BookingsPage() {
   const {
     currentMonth, settings, updateCell, updateBooking, addBookingRange, hotelName,
+    refundOf, setBookingRefund,
     imported: allImported, reloadImported, analyticsMonth, analyticsSettings,
   } = useHotel();
   const { t, formatMonthKey } = useI18n();
@@ -374,6 +376,8 @@ function BookingsPage() {
                                 position={position}
                                 onSave={(nc) => updateCell(room, day, nc, c.bookingId)}
                                 onUpdateBooking={(patch) => c.bookingId && updateBooking(c.bookingId, patch)}
+                                refund={c.bookingId ? refundOf(c.bookingId) : null}
+                                onSetRefund={(r) => c.bookingId && setBookingRefund(c.bookingId, r)}
                                 onDelete={() => updateCell(room, day, null, c.bookingId)}
                                 usdRate={currentMonth.usdRate}
                                 channels={settings.channels}
@@ -433,6 +437,9 @@ function ImportedBlock({ res, channel, position, onChanged, currency }: { res: I
   const [notes, setNotes] = useState<string>(res.override_notes ?? "");
   const [channelId, setChannelId] = useState(res.override_channel_id ?? res.channel_id ?? "");
   const [status, setStatus] = useState<"active" | "noshow">(res.status ?? "active");
+  const [canceled, setCanceled] = useState<boolean>(!!res.canceled_with_refund);
+  const [refundDirection, setRefundDirection] = useState<RefundDirection | "">(res.refund_direction ?? "");
+  const [refundAmount, setRefundAmount] = useState<string>(res.refund_amount != null ? String(res.refund_amount) : "");
   const [saving, setSaving] = useState(false);
   const saveFn = useServerFn(saveImportedOverride);
   const removeFn = useServerFn(removeImportedReservation);
@@ -443,15 +450,34 @@ function ImportedBlock({ res, channel, position, onChanged, currency }: { res: I
       setNotes(res.override_notes ?? "");
       setChannelId(res.override_channel_id ?? res.channel_id ?? "");
       setStatus(res.status ?? "active");
+      setCanceled(!!res.canceled_with_refund);
+      setRefundDirection(res.refund_direction ?? "");
+      setRefundAmount(res.refund_amount != null ? String(res.refund_amount) : "");
     }
-  }, [open, res.override_price, res.override_notes, res.override_channel_id, res.channel_id, res.status]);
+  }, [open, res.override_price, res.override_notes, res.override_channel_id, res.channel_id, res.status, res.canceled_with_refund, res.refund_direction, res.refund_amount]);
 
   const doSave = async () => {
     setSaving(true);
     try {
       const p = price.trim() === "" ? null : Number(price);
       if (p != null && (!isFinite(p) || p < 0)) { toast.error("Invalid price"); return; }
-      await saveFn({ data: { reservation_id: res.id, price: p, notes: notes.trim() ? notes : null, channel_id: channelId || null, status } });
+      const refundNum = parseFloat(refundAmount);
+      if (canceled && (refundDirection === "" || !isFinite(refundNum) || refundNum <= 0)) {
+        toast.error("Enter a refund direction and a positive refund amount.");
+        return;
+      }
+      await saveFn({
+        data: {
+          reservation_id: res.id,
+          price: p,
+          notes: notes.trim() ? notes : null,
+          channel_id: channelId || null,
+          status,
+          canceled_with_refund: canceled,
+          refund_direction: canceled && refundDirection !== "" ? refundDirection : null,
+          refund_amount: canceled ? refundNum : null,
+        },
+      });
       toast.success(t("common.saved") ?? "Saved");
       setOpen(false);
       onChanged();
@@ -459,6 +485,7 @@ function ImportedBlock({ res, channel, position, onChanged, currency }: { res: I
       toast.error(e instanceof Error ? e.message : "Failed to save");
     } finally { setSaving(false); }
   };
+
 
   const doRemove = async () => {
     setSaving(true);
@@ -491,12 +518,14 @@ function ImportedBlock({ res, channel, position, onChanged, currency }: { res: I
               <span className="truncate">{positionBadge}</span>
             )}
           </span>
-          {nightly != null && (
+          {res.canceled_with_refund ? (
+            <span className="truncate text-xs font-bold">Refunded</span>
+          ) : nightly != null ? (
             <span className="truncate text-xs font-bold tabular-nums">
               {nightly.toLocaleString(undefined, { maximumFractionDigits: 2 })}
               <span className="ms-1 text-[9px] font-semibold opacity-80">{channelCurrency}</span>
             </span>
-          )}
+          ) : null}
           {hasNote && (
             <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-current opacity-90" />
           )}
@@ -534,6 +563,16 @@ function ImportedBlock({ res, channel, position, onChanged, currency }: { res: I
             <Label className="text-xs">Internal notes</Label>
             <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />
           </div>
+          <RefundFields
+            canceled={canceled}
+            setCanceled={setCanceled}
+            direction={refundDirection}
+            setDirection={setRefundDirection}
+            amount={refundAmount}
+            setAmount={setRefundAmount}
+            currencyLabel={channelCurrency}
+          />
+
           <p className="text-[11px] text-muted-foreground">
             Color and currency are inherited from the “{channel.name}” channel in Settings. The total price is split evenly across the stayed nights (check-out day excluded).
           </p>
@@ -561,12 +600,77 @@ function blockRounding(position: "start" | "middle" | "end" | "single") {
         ? "rounded-b-lg rounded-t-none border-t-0"
         : "rounded-none border-y-0";
 }
+/** Shared "Canceled with Refund" controls used by every booking editor. */
+function RefundFields({
+  canceled,
+  setCanceled,
+  direction,
+  setDirection,
+  amount,
+  setAmount,
+  currencyLabel,
+}: {
+  canceled: boolean;
+  setCanceled: (v: boolean) => void;
+  direction: RefundDirection | "";
+  setDirection: (v: RefundDirection) => void;
+  amount: string;
+  setAmount: (v: string) => void;
+  currencyLabel: string;
+}) {
+  return (
+    <div className="space-y-2 rounded-md border border-border/60 p-2">
+      <label className="flex items-center gap-2 text-xs font-medium">
+        <Checkbox checked={canceled} onCheckedChange={(v) => setCanceled(v === true)} />
+        Canceled with Refund
+      </label>
+      {canceled && (
+        <div className="space-y-2">
+          <div className="space-y-1">
+            <Label className="text-[11px] text-muted-foreground">Refund direction</Label>
+            <div className="flex gap-2">
+              {(["to_guest", "to_host"] as const).map((d) => (
+                <Button
+                  key={d}
+                  type="button"
+                  size="sm"
+                  variant={direction === d ? "default" : "outline"}
+                  className="flex-1"
+                  onClick={() => setDirection(d)}
+                >
+                  {d === "to_guest" ? "To Guest" : "To Host"}
+                </Button>
+              ))}
+            </div>
+          </div>
+          {direction !== "" && (
+            <div className="space-y-1">
+              <Label className="text-[11px] text-muted-foreground">Refund amount ({currencyLabel})</Label>
+              <Input
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                min="0"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="0.00"
+              />
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 function CellEditor({
   cell,
   position = "single",
   onSave,
   onUpdateBooking,
+  onSetRefund,
+  refund,
   onDelete,
   usdRate,
   channels,
@@ -576,6 +680,8 @@ function CellEditor({
   position?: "start" | "middle" | "end" | "single";
   onSave: (c: Cell) => void;
   onUpdateBooking?: (patch: Partial<Pick<Cell, "channelId" | "note" | "guestName" | "status">>) => void;
+  onSetRefund?: (r: { direction: RefundDirection; amount: number } | null) => void;
+  refund?: { direction: RefundDirection; amount: number } | null;
   onDelete: () => void;
   usdRate: number;
   channels: Channel[];
@@ -588,21 +694,45 @@ function CellEditor({
   const [channelId, setChannelId] = useState<string>(cell?.channelId ?? defaultChannel);
   const [note, setNote] = useState<string>(cell?.note ?? "");
   const [guestName, setGuestName] = useState<string>(cell?.guestName ?? "");
+  const [canceled, setCanceled] = useState<boolean>(!!cell?.canceledWithRefund);
+  const [refundDirection, setRefundDirection] = useState<RefundDirection | "">(refund?.direction ?? cell?.refundDirection ?? "");
+  const [refundAmount, setRefundAmount] = useState<string>(
+    refund?.amount != null ? String(refund.amount) : cell?.refundAmount != null ? String(cell.refundAmount) : "",
+  );
 
   const reset = () => {
     setPrice(cell?.price.toString() ?? "");
     setChannelId(cell?.channelId ?? defaultChannel);
     setNote(cell?.note ?? "");
     setGuestName(cell?.guestName ?? "");
+    setCanceled(!!cell?.canceledWithRefund);
+    setRefundDirection(refund?.direction ?? cell?.refundDirection ?? "");
+    setRefundAmount(refund?.amount != null ? String(refund.amount) : cell?.refundAmount != null ? String(cell.refundAmount) : "");
   };
+
+  const refundNum = parseFloat(refundAmount);
+  const refundValid = !canceled || (refundDirection !== "" && isFinite(refundNum) && refundNum > 0);
 
   const save = () => {
     const p = parseFloat(price);
     if (!isFinite(p) || p <= 0) return;
+    if (!refundValid) { toast.error("Enter a refund direction and a positive refund amount."); return; }
     const trimmedNote = note.trim();
     const patch = { channelId, note: trimmedNote || undefined, guestName: guestName.trim() || undefined, status: cell?.status };
-    onSave({ price: p, ...patch });
-    if (cell?.bookingId && onUpdateBooking) onUpdateBooking(patch);
+    const refundPayload = canceled && refundDirection !== "" ? { direction: refundDirection, amount: refundNum } : null;
+    if (cell?.bookingId && onSetRefund) {
+      onSave({ price: p, ...patch, ...(cell.canceledWithRefund ? { canceledWithRefund: true, refundDirection: cell.refundDirection, refundAmount: cell.refundAmount } : {}) });
+      if (onUpdateBooking) onUpdateBooking(patch);
+      onSetRefund(refundPayload);
+    } else {
+      onSave({
+        price: p,
+        ...patch,
+        ...(refundPayload
+          ? { canceledWithRefund: true, refundDirection: refundPayload.direction, refundAmount: refundPayload.amount }
+          : {}),
+      });
+    }
     setOpen(false);
   };
 
@@ -611,6 +741,8 @@ function CellEditor({
   const fg = cellChannel ? pickTextColor(cellChannel.color) : "#fff";
   const showLabel = position === "start" || position === "single";
   const nightly = cell && isFinite(cell.price) && cell.price > 0 ? cell.price : null;
+  const editorCurrency = editorChannel.currency === "LOCAL" ? currency : "USD";
+
 
   return (
     <Popover open={open} onOpenChange={(o) => { setOpen(o); if (o) reset(); }}>
@@ -634,14 +766,16 @@ function CellEditor({
                   ? t("cal.checkOut") ?? "Last night"
                   : "•"}
             </span>
-            {nightly != null && (
+            {cell.canceledWithRefund ? (
+              <span className="truncate text-xs font-bold">Refunded</span>
+            ) : nightly != null ? (
               <span className="truncate text-xs font-bold tabular-nums">
                 {nightly.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                 <span className="ms-1 text-[9px] font-semibold opacity-80">
                   {cellChannel.currency === "LOCAL" ? currency : "USD"}
                 </span>
               </span>
-            )}
+            ) : null}
           </button>
         ) : (
           <button className="my-1 flex h-9 w-full items-center justify-center rounded-lg border border-dashed border-border/60 text-muted-foreground/60 transition hover:border-primary/40 hover:bg-primary/5 hover:text-primary">
@@ -700,7 +834,16 @@ function CellEditor({
               rows={3}
             />
           </div>
-          {parseFloat(price) > 0 && (
+          <RefundFields
+            canceled={canceled}
+            setCanceled={setCanceled}
+            direction={refundDirection}
+            setDirection={setRefundDirection}
+            amount={refundAmount}
+            setAmount={setRefundAmount}
+            currencyLabel={editorCurrency}
+          />
+          {parseFloat(price) > 0 && !canceled && (
             <div className="rounded-md bg-muted p-2 text-xs">
               {t("bookings.revenue")}: <span className="font-semibold">
                 {formatCurrency(
@@ -710,6 +853,7 @@ function CellEditor({
               </span>
             </div>
           )}
+
           <div className="flex items-center justify-between gap-2 pt-1">
             {cell ? (
               <Button variant="ghost" size="sm" onClick={() => { onDelete(); setOpen(false); }} className="text-destructive hover:text-destructive">
@@ -741,6 +885,7 @@ interface AddBookingParams {
   note?: string;
   guestName?: string;
   allowOverlap?: boolean;
+  refund?: { direction: RefundDirection; amount: number } | null;
 }
 
 function AddBookingDialog({
@@ -765,6 +910,9 @@ function AddBookingDialog({
   const [note, setNote] = useState<string>("");
   const [guestName, setGuestName] = useState<string>("");
   const [allowOverlap, setAllowOverlap] = useState(false);
+  const [canceled, setCanceled] = useState(false);
+  const [refundDirection, setRefundDirection] = useState<RefundDirection | "">("");
+  const [refundAmount, setRefundAmount] = useState("");
 
   // Nights = check-out - check-in. The check-out day is not a stayed night.
   const nights = useMemo(() => nightsBetween(from, to), [from, to]);
@@ -789,12 +937,19 @@ function AddBookingDialog({
     setNote("");
     setGuestName("");
     setAllowOverlap(false);
+    setCanceled(false);
+    setRefundDirection("");
+    setRefundAmount("");
   };
+
+  const refundNum = parseFloat(refundAmount);
+  const refundValid = !canceled || (refundDirection !== "" && isFinite(refundNum) && refundNum > 0);
 
   const submit = () => {
     if (!room || !channelId) return;
     if (nights <= 0) return;
     if (!(priceNum > 0)) return;
+    if (!refundValid) { toast.error("Enter a refund direction and a positive refund amount."); return; }
     onAdd({
       room,
       from,
@@ -804,10 +959,12 @@ function AddBookingDialog({
       ...(note.trim() ? { note: note.trim() } : {}),
       ...(guestName.trim() ? { guestName: guestName.trim() } : {}),
       allowOverlap,
+      refund: canceled && refundDirection !== "" ? { direction: refundDirection, amount: refundNum } : null,
     });
     setOpen(false);
     reset();
   };
+
 
   return (
     <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (o) reset(); }}>
@@ -893,6 +1050,16 @@ function AddBookingDialog({
             <input type="checkbox" checked={allowOverlap} onChange={(e) => setAllowOverlap(e.target.checked)} />
             Create as a replacement over an existing/no-show booking
           </label>
+          <RefundFields
+            canceled={canceled}
+            setCanceled={setCanceled}
+            direction={refundDirection}
+            setDirection={setRefundDirection}
+            amount={refundAmount}
+            setAmount={setRefundAmount}
+            currencyLabel={channelCurrency}
+          />
+
         </div>
         <DialogFooter>
           <Button variant="outline" size="sm" onClick={() => setOpen(false)}>Cancel</Button>

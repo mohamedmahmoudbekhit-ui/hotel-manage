@@ -35,7 +35,8 @@ export function DailyView({
       const m = months[monthKey(d.getFullYear(), d.getMonth())];
       // A night may hold several bookings (e.g. a replacement); the first
       // active one drives the operational status shown for the room.
-      const list = slotCells(m?.cells?.[room]?.[d.getDate()]);
+      // Canceled-with-refund nights never happened, so they are not occupancy.
+      const list = slotCells(m?.cells?.[room]?.[d.getDate()]).filter((c) => !c.canceledWithRefund);
       return list.find((c) => c.status !== "noshow") ?? list[0] ?? null;
     };
 

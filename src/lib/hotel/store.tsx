@@ -419,7 +419,16 @@ export function HotelProvider({ children }: { children: ReactNode }) {
         }
         const existing = slotCells(rooms[params.room][day]);
         if (existing.length > 0 && !params.allowOverlap) { skipped += 1; nextMonths[key] = { ...month, cells: rooms }; continue; }
-        const added: Cell = { price: perNight, channelId: params.channelId, bookingId, ...(params.note ? { note: params.note } : {}), ...(params.guestName ? { guestName: params.guestName } : {}) };
+        const added: Cell = {
+          price: perNight,
+          channelId: params.channelId,
+          bookingId,
+          ...(params.note ? { note: params.note } : {}),
+          ...(params.guestName ? { guestName: params.guestName } : {}),
+          ...(params.refund
+            ? { canceledWithRefund: true, refundDirection: params.refund.direction, refundAmount: refundPerNight }
+            : {}),
+        };
         const slot: CellSlot = toSlot([...existing, added]);
         const roomCells = { ...rooms[params.room], [day]: slot };
         rooms[params.room] = roomCells;

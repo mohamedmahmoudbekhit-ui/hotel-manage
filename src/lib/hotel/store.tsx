@@ -622,6 +622,9 @@ export function HotelProvider({ children }: { children: ReactNode }) {
     setCurrentMonthKey,
     updateCell,
     updateBooking,
+    setBookingRefund,
+    refundOf,
+
     addBookingRange,
     updateMonthMeta,
     updateSettings,

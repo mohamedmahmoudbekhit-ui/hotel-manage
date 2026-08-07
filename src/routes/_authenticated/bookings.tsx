@@ -375,6 +375,8 @@ function BookingsPage() {
                                 position={position}
                                 onSave={(nc) => updateCell(room, day, nc, c.bookingId)}
                                 onUpdateBooking={(patch) => c.bookingId && updateBooking(c.bookingId, patch)}
+                                refund={c.bookingId ? refundOf(c.bookingId) : null}
+                                onSetRefund={(r) => c.bookingId && setBookingRefund(c.bookingId, r)}
                                 onDelete={() => updateCell(room, day, null, c.bookingId)}
                                 usdRate={currentMonth.usdRate}
                                 channels={settings.channels}

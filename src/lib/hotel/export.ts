@@ -99,7 +99,10 @@ export function buildBookingRows(
     const nights = nightsBetween(start, end);
     if (nights <= 0) continue;
     const ch = resolveImportedChannel(settings, r);
-    const total = r.override_price ?? 0;
+    const canceled = r.canceled_with_refund === true;
+    const refund = Number(r.refund_amount) || 0;
+    // Canceled bookings drop their original amount; only the signed refund counts.
+    const total = canceled ? (r.refund_direction === "to_host" ? refund : -refund) : (r.override_price ?? 0);
     // Imported prices are entered in the mapped channel's currency.
     const amountLocal = ch.currency === "USD" ? total * month.usdRate : total;
     rows.push({
@@ -109,7 +112,7 @@ export function buildBookingRows(
       checkOut: end,
       source: ch.name,
       sourceKey: r.source_id,
-      status: r.status === "noshow" ? "No-show" : "Confirmed",
+      status: canceled ? "Canceled (refund)" : r.status === "noshow" ? "No-show" : "Confirmed",
       guests: "—",
       amount: amountLocal,
       nights,

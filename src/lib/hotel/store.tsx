@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import type { Cell, CellSlot, Channel, ExpenseItem, MonthData, RefundDirection, Settings } from "./types";
-import { DEFAULT_CHANNELS, emptyMonth, MONTH_NAMES, mergeImportedIntoMonth, newBookingId, newChannelId, nightsBetween, slotCells, sumExpenses, toSlot } from "./utils";
+import type { BookingStatus, Cell, CellSlot, Channel, ExpenseItem, MonthData, RefundDirection, Settings } from "./types";
+import { DEFAULT_CHANNELS, cellStatus, emptyMonth, MONTH_NAMES, mergeImportedIntoMonth, newBookingId, newChannelId, nightsBetween, slotCells, sumExpenses, toSlot } from "./utils";
 import { loadHotelState, saveHotelState } from "./state.functions";
 import { listImportedForMonth, type ImportedReservationRow } from "./calendar.functions";
 import { supabase } from "@/integrations/supabase/client";
@@ -36,11 +36,13 @@ interface Ctx extends StateShape {
 
   updateCell: (room: string, day: number, cell: Cell | null, targetBookingId?: string) => void;
   updateBooking: (bookingId: string, patch: Partial<Pick<Cell, "channelId" | "note" | "guestName" | "status">>) => void;
-  /** Set or clear the "canceled with refund" adjustment for every night of a booking. */
-  setBookingRefund: (bookingId: string, refund: { direction: RefundDirection; amount: number } | null) => void;
+  /** Set the status of every night of a booking (refund data only for "refunded"). */
+  setBookingStatus: (bookingId: string, status: BookingStatus, refund?: { direction: RefundDirection; amount: number } | null) => void;
+  /** Persisted status of a booking. */
+  statusOf: (bookingId: string) => BookingStatus;
   /** Current refund of a booking, with the amount as the booking total. */
   refundOf: (bookingId: string) => { direction: RefundDirection; amount: number } | null;
-  addBookingRange: (params: { room: string; from: string; to: string; channelId: string; price: number; note?: string; guestName?: string; allowOverlap?: boolean; refund?: { direction: RefundDirection; amount: number } | null }) => { written: number; skipped: number; nights: number };
+  addBookingRange: (params: { room: string; from: string; to: string; channelId: string; price: number; note?: string; guestName?: string; allowOverlap?: boolean; status?: BookingStatus; refund?: { direction: RefundDirection; amount: number } | null }) => { written: number; skipped: number; nights: number };
 
   updateMonthMeta: (patch: Partial<Pick<MonthData, "expenses" | "usdRate" | "managementPct">>) => void;
   updateSettings: (patch: Partial<Settings>) => void;
@@ -112,13 +114,30 @@ function migrateCell(raw: unknown): Cell | null {
     channelId = String(r.type).toLowerCase();
   }
   if (!channelId) return null;
-  // Drop cancelled legacy cells
-  if (r.status === "Cancelled") return null;
   const note = typeof r.note === "string" ? r.note : undefined;
   const guestName = typeof r.guestName === "string" ? r.guestName : undefined;
   const bookingId = typeof r.bookingId === "string" ? r.bookingId : undefined;
-  const status = r.status === "noshow" ? "noshow" as const : undefined;
-  return { price, channelId, ...(note ? { note } : {}), ...(guestName ? { guestName } : {}), ...(bookingId ? { bookingId } : {}), ...(status ? { status } : {}) };
+  // Status is the single source of truth; legacy shapes are mapped onto it so
+  // refunds/cancellations survive a reload.
+  const rawStatus = typeof r.status === "string" ? r.status : undefined;
+  let status: BookingStatus | undefined;
+  if (rawStatus === "noshow" || rawStatus === "canceled" || rawStatus === "refunded") status = rawStatus;
+  else if (rawStatus === "Cancelled") status = "canceled";
+  if (!status && r.canceledWithRefund === true) status = "refunded";
+  const refundDirection = r.refundDirection === "to_host" || r.refundDirection === "to_guest" ? r.refundDirection : undefined;
+  const refundAmountRaw = Number(r.refundAmount);
+  const refundAmount = isFinite(refundAmountRaw) ? refundAmountRaw : undefined;
+  return {
+    price,
+    channelId,
+    ...(note ? { note } : {}),
+    ...(guestName ? { guestName } : {}),
+    ...(bookingId ? { bookingId } : {}),
+    ...(status ? { status } : {}),
+    ...(status === "refunded"
+      ? { refundDirection: refundDirection ?? "to_guest", refundAmount: refundAmount ?? 0 }
+      : {}),
+  };
 }
 
 function migrateSettings(s: Partial<Settings> | undefined): Settings {
@@ -315,6 +334,23 @@ export function HotelProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  /** Persisted status of a booking (all its nights share one status). */
+  const statusOf = useCallback(
+    (bookingId: string): BookingStatus => {
+      for (const month of Object.values(state.months)) {
+        for (const days of Object.values(month.cells)) {
+          for (const slot of Object.values(days)) {
+            for (const cell of slotCells(slot)) {
+              if (cell.bookingId === bookingId) return cellStatus(cell);
+            }
+          }
+        }
+      }
+      return "confirmed";
+    },
+    [state.months],
+  );
+
   /** Total refund of a booking (sum of the per-night shares) plus its direction. */
   const refundOf = useCallback(
     (bookingId: string): { direction: RefundDirection; amount: number } | null => {
@@ -324,7 +360,7 @@ export function HotelProvider({ children }: { children: ReactNode }) {
         for (const days of Object.values(month.cells)) {
           for (const slot of Object.values(days)) {
             for (const cell of slotCells(slot)) {
-              if (cell.bookingId !== bookingId || !cell.canceledWithRefund) continue;
+              if (cell.bookingId !== bookingId || cellStatus(cell) !== "refunded") continue;
               direction = cell.refundDirection ?? "to_guest";
               amount += Number(cell.refundAmount) || 0;
             }
@@ -336,52 +372,59 @@ export function HotelProvider({ children }: { children: ReactNode }) {
     [state.months],
   );
 
-  /** Apply (or clear) the refund across every night of a booking, split evenly. */
-  const setBookingRefund = useCallback((bookingId: string, refund: { direction: RefundDirection; amount: number } | null) => {
-    setState((s) => {
-      let nights = 0;
-      for (const month of Object.values(s.months)) {
-        for (const days of Object.values(month.cells)) {
-          for (const slot of Object.values(days)) {
-            for (const cell of slotCells(slot)) if (cell.bookingId === bookingId) nights += 1;
+  /**
+   * Set the status of every night of a booking. Refund data is only kept for
+   * the "refunded" status and is split evenly across the nights, so switching
+   * status never leaves a stale adjustment behind.
+   */
+  const setBookingStatus = useCallback(
+    (bookingId: string, status: BookingStatus, refund?: { direction: RefundDirection; amount: number } | null) => {
+      setState((s) => {
+        let nights = 0;
+        for (const month of Object.values(s.months)) {
+          for (const days of Object.values(month.cells)) {
+            for (const slot of Object.values(days)) {
+              for (const cell of slotCells(slot)) if (cell.bookingId === bookingId) nights += 1;
+            }
           }
         }
-      }
-      if (nights === 0) return s;
-      const perNight = refund ? refund.amount / nights : 0;
-      const months: Record<string, MonthData> = {};
-      for (const [key, month] of Object.entries(s.months)) {
-        let monthChanged = false;
-        const cells: MonthData["cells"] = {};
-        for (const [room, days] of Object.entries(month.cells)) {
-          cells[room] = {};
-          for (const [day, slot] of Object.entries(days)) {
-            const next = slotCells(slot).map((cell) => {
-              if (cell.bookingId !== bookingId) return cell;
-              monthChanged = true;
-              const merged: Cell = { ...cell };
-              if (refund) {
-                merged.canceledWithRefund = true;
-                merged.refundDirection = refund.direction;
-                merged.refundAmount = perNight;
-              } else {
-                delete merged.canceledWithRefund;
+        if (nights === 0) return s;
+        const perNight = status === "refunded" && refund ? refund.amount / nights : 0;
+        const months: Record<string, MonthData> = {};
+        for (const [key, month] of Object.entries(s.months)) {
+          let monthChanged = false;
+          const cells: MonthData["cells"] = {};
+          for (const [room, days] of Object.entries(month.cells)) {
+            cells[room] = {};
+            for (const [day, slot] of Object.entries(days)) {
+              const next = slotCells(slot).map((cell) => {
+                if (cell.bookingId !== bookingId) return cell;
+                monthChanged = true;
+                const merged: Cell = { ...cell };
+                delete merged.canceledWithRefund; // legacy flag is never written again
                 delete merged.refundDirection;
                 delete merged.refundAmount;
-              }
-              return merged;
-            });
-            cells[room][Number(day)] = toSlot(next);
+                if (status === "confirmed") delete merged.status;
+                else merged.status = status;
+                if (status === "refunded" && refund) {
+                  merged.refundDirection = refund.direction;
+                  merged.refundAmount = perNight;
+                }
+                return merged;
+              });
+              cells[room][Number(day)] = toSlot(next);
+            }
           }
+          months[key] = monthChanged ? { ...month, cells } : month;
         }
-        months[key] = monthChanged ? { ...month, cells } : month;
-      }
-      return { ...s, months };
-    });
-  }, []);
+        return { ...s, months };
+      });
+    },
+    [],
+  );
 
 
-  const addBookingRange = useCallback((params: { room: string; from: string; to: string; channelId: string; price: number; note?: string; guestName?: string; allowOverlap?: boolean; refund?: { direction: RefundDirection; amount: number } | null }) => {
+  const addBookingRange = useCallback((params: { room: string; from: string; to: string; channelId: string; price: number; note?: string; guestName?: string; allowOverlap?: boolean; status?: BookingStatus; refund?: { direction: RefundDirection; amount: number } | null }) => {
     const start = new Date(`${params.from}T00:00:00Z`);
     const end = new Date(`${params.to}T00:00:00Z`);
     // Nights = checkout - checkin. The checkout day is NOT a stayed night.
@@ -396,7 +439,8 @@ export function HotelProvider({ children }: { children: ReactNode }) {
       cursor.setUTCDate(cursor.getUTCDate() + 1);
     }
     const perNight = Math.round((params.price / nights) * 100) / 100;
-    const refundPerNight = params.refund ? params.refund.amount / nights : 0;
+    const status: BookingStatus = params.status ?? "confirmed";
+    const refundPerNight = status === "refunded" && params.refund ? params.refund.amount / nights : 0;
     const bookingId = newBookingId();
     let written = 0;
     let skipped = 0;
@@ -425,8 +469,9 @@ export function HotelProvider({ children }: { children: ReactNode }) {
           bookingId,
           ...(params.note ? { note: params.note } : {}),
           ...(params.guestName ? { guestName: params.guestName } : {}),
-          ...(params.refund
-            ? { canceledWithRefund: true, refundDirection: params.refund.direction, refundAmount: refundPerNight }
+          ...(status !== "confirmed" ? { status } : {}),
+          ...(status === "refunded" && params.refund
+            ? { refundDirection: params.refund.direction, refundAmount: refundPerNight }
             : {}),
         };
         const slot: CellSlot = toSlot([...existing, added]);
@@ -622,7 +667,8 @@ export function HotelProvider({ children }: { children: ReactNode }) {
     setCurrentMonthKey,
     updateCell,
     updateBooking,
-    setBookingRefund,
+    setBookingStatus,
+    statusOf,
     refundOf,
 
     addBookingRange,

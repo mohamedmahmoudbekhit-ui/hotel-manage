@@ -1,4 +1,4 @@
-import type { Cell, CellSlot, Channel, MonthData, Settings } from "./types";
+import type { BookingStatus, Cell, CellSlot, Channel, MonthData, Settings } from "./types";
 
 /** Normalise a room-night slot to a list of bookings (0, 1 or many). */
 export function slotCells(slot: CellSlot | undefined): Cell[] {
@@ -45,11 +45,22 @@ export function findChannel(settings: Settings, id: string): Channel {
   );
 }
 
+/** Normalised status of a night. Legacy cells map onto the new statuses. */
+export function cellStatus(cell: Cell): BookingStatus {
+  if (cell.status === "canceled" || cell.status === "refunded" || cell.status === "noshow") return cell.status;
+  // Legacy state written before the single Status field existed.
+  if (cell.canceledWithRefund === true) return "refunded";
+  return "confirmed";
+}
+
 /** Local-currency revenue for a cell. USD channels are converted using monthly usdRate. */
 export function cellRevenueLocal(cell: Cell, usdRate: number, settings: Settings): number {
   const ch = findChannel(settings, cell.channelId);
   const rate = ch.currency === "USD" ? usdRate : 1;
-  if (cell.canceledWithRefund) {
+  const status = cellStatus(cell);
+  // A plain cancellation keeps its stored price for reference but earns nothing.
+  if (status === "canceled") return 0;
+  if (status === "refunded") {
     // The original booking amount never counts once refunded; only the
     // adjustment does (negative to the guest, positive to the host).
     const refund = Number(cell.refundAmount) || 0;
@@ -58,9 +69,10 @@ export function cellRevenueLocal(cell: Cell, usdRate: number, settings: Settings
   return cell.price * rate;
 }
 
-/** A canceled-with-refund night is not a completed booking. */
+/** Canceled and canceled-with-refund nights are bookings that never happened. */
 export function isCanceledCell(cell: Cell): boolean {
-  return cell.canceledWithRefund === true;
+  const s = cellStatus(cell);
+  return s === "canceled" || s === "refunded";
 }
 
 export interface MonthTotals {
@@ -114,8 +126,8 @@ export function computeMonthTotals(m: MonthData, rooms: string[], settings: Sett
       if (list.length === 0) continue;
       // A night counts once towards occupancy even when a replacement booking
       // shares the same date; revenue is kept for every booking, including
-      // no-show / early-departure ones. Canceled-with-refund nights never
-      // count as occupied or as bookings.
+      // no-show / early-departure ones. Canceled and canceled-with-refund
+      // nights never count as occupied or as bookings.
       if (list.some((c) => !isCanceledCell(c))) {
         occupiedNights += 1;
         occ += 1;
@@ -127,12 +139,12 @@ export function computeMonthTotals(m: MonthData, rooms: string[], settings: Sett
         revenueByChannel[c.channelId] = (revenueByChannel[c.channelId] ?? 0) + rev;
         revenueByRoom[room] += rev;
         if (isCanceledCell(c)) {
-          refundAdjustment += rev;
+          if (cellStatus(c) === "refunded") refundAdjustment += rev;
           continue;
         }
         bookingsByChannel[c.channelId] = (bookingsByChannel[c.channelId] ?? 0) + 1;
         bookingsCount += 1;
-        if (c.status === "noshow") noshowRevenue += rev;
+        if (cellStatus(c) === "noshow") noshowRevenue += rev;
         if (ch.currency === "USD") usdTotal += c.price;
         else localTotal += c.price;
       }
@@ -272,6 +284,13 @@ export interface ImportedLike {
   override_notes: string | null;
 }
 
+/** Normalised status of an imported reservation (legacy flag included). */
+export function importedStatus(res: ImportedLike): BookingStatus {
+  if (res.status === "noshow" || res.status === "canceled" || res.status === "refunded") return res.status;
+  if (res.canceled_with_refund === true) return "refunded";
+  return "confirmed";
+}
+
 /**
  * Resolve the app channel an imported reservation belongs to. A manual override
  * wins, then the source's mapped channel; unmapped sources fall back to a
@@ -320,7 +339,8 @@ export function mergeImportedIntoMonth(
     const ch = resolveImportedChannel(settings, res);
     if (!settings.channels.some((c) => c.id === ch.id)) extra.set(ch.id, ch);
     const perNight = (res.override_price ?? 0) / nights;
-    const refundPerNight = res.canceled_with_refund ? (Number(res.refund_amount) || 0) / nights : 0;
+    const status = importedStatus(res);
+    const refundPerNight = status === "refunded" ? (Number(res.refund_amount) || 0) / nights : 0;
     const d = new Date(`${start}T00:00:00Z`);
     for (let i = 0; i < nights; i++) {
       if (d.getUTCFullYear() === month.year && d.getUTCMonth() === month.monthIndex) {
@@ -336,11 +356,10 @@ export function mergeImportedIntoMonth(
             price: perNight,
             channelId: ch.id,
             bookingId: `ical:${res.id ?? `${res.source_id}:${start}`}`,
-            ...(res.status === "noshow" ? { status: "noshow" as const } : {}),
+            ...(status !== "confirmed" ? { status } : {}),
             ...(res.override_notes ? { note: res.override_notes } : {}),
-            ...(res.canceled_with_refund
+            ...(status === "refunded"
               ? {
-                  canceledWithRefund: true,
                   refundDirection: (res.refund_direction ?? "to_guest") as "to_guest" | "to_host",
                   refundAmount: refundPerNight,
                 }

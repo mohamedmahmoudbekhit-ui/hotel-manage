@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useHotel } from "@/lib/hotel/store";
-import { findChannel, monthKey, pickTextColor, resolveImportedChannel, slotCells } from "@/lib/hotel/utils";
+import { cellStatus, findChannel, importedStatus, monthKey, pickTextColor, resolveImportedChannel, slotCells } from "@/lib/hotel/utils";
 import type { ImportedReservationRow } from "@/lib/hotel/calendar.functions";
 import { LogIn, LogOut, BedDouble, DoorOpen, RefreshCw } from "lucide-react";
 
@@ -35,9 +35,12 @@ export function DailyView({
       const m = months[monthKey(d.getFullYear(), d.getMonth())];
       // A night may hold several bookings (e.g. a replacement); the first
       // active one drives the operational status shown for the room.
-      // Canceled-with-refund nights never happened, so they are not occupancy.
-      const list = slotCells(m?.cells?.[room]?.[d.getDate()]).filter((c) => !c.canceledWithRefund);
-      return list.find((c) => c.status !== "noshow") ?? list[0] ?? null;
+      // Canceled and canceled-with-refund nights never happened, so they are
+      // not occupancy.
+      const list = slotCells(m?.cells?.[room]?.[d.getDate()]).filter(
+        (c) => cellStatus(c) !== "canceled" && cellStatus(c) !== "refunded",
+      );
+      return list.find((c) => cellStatus(c) !== "noshow") ?? list[0] ?? null;
     };
 
     const todayIso = iso(date);
@@ -54,6 +57,8 @@ export function DailyView({
       let staying: { label: string; color: string; note: string | null } | null = null;
 
       for (const r of impByRoom.get(room) ?? []) {
+        const st = importedStatus(r);
+        if (st === "canceled" || st === "refunded") continue;
         const start = (r.start_date ?? "").slice(0, 10);
         const end = (r.end_date ?? "").slice(0, 10); // checkout day (exclusive night)
         const ch = resolveImportedChannel(settings, r);

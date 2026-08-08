@@ -1,5 +1,5 @@
 import type { MonthData, Settings } from "./types";
-import { cellRevenueLocal, findChannel, MONTH_NAMES, nightsBetween, resolveImportedChannel, slotCells } from "./utils";
+import { cellRevenueLocal, cellStatus, findChannel, importedStatus, MONTH_NAMES, nightsBetween, resolveImportedChannel, slotCells } from "./utils";
 import type { ImportedReservationRow } from "./calendar.functions";
 
 export interface BookingExportRow {
@@ -22,6 +22,13 @@ export interface ExportFilters {
   sourceKey: string; // "all" | channel id | ical source id
   room: string; // "all" | room name
 }
+
+const STATUS_LABEL: Record<string, string> = {
+  confirmed: "Confirmed",
+  canceled: "Canceled",
+  noshow: "No Show / Early Departure",
+  refunded: "Canceled with Refund",
+};
 
 function iso(y: number, mIndex: number, day: number) {
   return `${y}-${String(mIndex + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
@@ -49,7 +56,7 @@ export function buildBookingRows(
   for (const room of settings.rooms) {
     // Group nights by bookingId so overlapping / replacement bookings on the
     // same night each export as their own row.
-    interface Run { startDay: number; endDay: number; channelId: string; note?: string; amount: number; nights: number; noshow: boolean; canceled: boolean }
+    interface Run { startDay: number; endDay: number; channelId: string; note?: string; amount: number; nights: number; status: string }
     const runs = new Map<string, Run>();
     const order: string[] = [];
 
@@ -66,8 +73,7 @@ export function buildBookingRows(
         } else {
           runs.set(key, {
             startDay: d, endDay: d, channelId: cell.channelId, note: cell.note,
-            amount: revenue, nights: 1, noshow: cell.status === "noshow",
-            canceled: cell.canceledWithRefund === true,
+            amount: revenue, nights: 1, status: cellStatus(cell),
           });
           order.push(key);
         }
@@ -84,7 +90,7 @@ export function buildBookingRows(
         checkOut: addDays(iso(month.year, month.monthIndex, run.endDay), 1),
         source: ch.name,
         sourceKey: ch.id,
-        status: run.canceled ? "Canceled (refund)" : run.noshow ? "No-show" : "Confirmed",
+        status: STATUS_LABEL[run.status] ?? "Confirmed",
         guests: "—",
         amount: run.amount,
         nights: run.nights,
@@ -100,10 +106,15 @@ export function buildBookingRows(
     const nights = nightsBetween(start, end);
     if (nights <= 0) continue;
     const ch = resolveImportedChannel(settings, r);
-    const canceled = r.canceled_with_refund === true;
+    const status = importedStatus(r);
     const refund = Number(r.refund_amount) || 0;
     // Canceled bookings drop their original amount; only the signed refund counts.
-    const total = canceled ? (r.refund_direction === "to_host" ? refund : -refund) : (r.override_price ?? 0);
+    const total =
+      status === "refunded"
+        ? (r.refund_direction === "to_host" ? refund : -refund)
+        : status === "canceled"
+          ? 0
+          : (r.override_price ?? 0);
     // Imported prices are entered in the mapped channel's currency.
     const amountLocal = ch.currency === "USD" ? total * month.usdRate : total;
     rows.push({
@@ -113,7 +124,7 @@ export function buildBookingRows(
       checkOut: end,
       source: ch.name,
       sourceKey: r.source_id,
-      status: canceled ? "Canceled (refund)" : r.status === "noshow" ? "No-show" : "Confirmed",
+      status: STATUS_LABEL[status] ?? "Confirmed",
       guests: "—",
       amount: amountLocal,
       nights,

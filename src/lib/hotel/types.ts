@@ -6,8 +6,14 @@ export interface Channel {
   color: string; // hex e.g. "#e11d48"
 }
 
-/** Lifecycle of a reservation night. No-show keeps its revenue in all reports. */
-export type BookingStatus = "active" | "noshow";
+/**
+ * Single source of truth for a reservation night's lifecycle.
+ * - confirmed: normal booking (revenue, count, occupancy).
+ * - noshow: no-show / early departure — still a real booking.
+ * - canceled: never happened (no revenue, no count, no occupancy).
+ * - refunded: canceled with refund — only the signed refund adjusts revenue.
+ */
+export type BookingStatus = "confirmed" | "noshow" | "canceled" | "refunded";
 
 /** Which side received the money back when a booking is canceled with a refund. */
 export type RefundDirection = "to_guest" | "to_host";
@@ -22,11 +28,11 @@ export interface Cell {
    * bookingId may be rendered as one connected block on the calendar.
    */
   bookingId?: string;
-  /** "noshow" = no-show / early departure. Kept for history and revenue. */
+  /** Booking status. Absent means "confirmed". */
   status?: BookingStatus;
   /**
-   * Canceled with refund. The original `price` is kept untouched but is fully
-   * excluded from revenue; only the refund adjustment counts.
+   * Legacy flag kept only for reading old saved state; `status: "refunded"`
+   * is the source of truth and the only value written going forward.
    */
   canceledWithRefund?: boolean;
   refundDirection?: RefundDirection;

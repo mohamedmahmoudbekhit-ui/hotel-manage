@@ -38,7 +38,7 @@ export interface ImportedReservationRow {
   override_price: number | null;
   override_notes: string | null;
   override_channel_id: string | null;
-  status: "active" | "noshow";
+  status: "confirmed" | "noshow" | "canceled" | "refunded";
   canceled_with_refund: boolean;
   refund_direction: "to_guest" | "to_host" | null;
   refund_amount: number | null;
@@ -251,8 +251,13 @@ export const listImportedForMonth = createServerFn({ method: "POST" })
         override_price: ov?.price != null ? Number(ov.price) : null,
         override_notes: ov?.notes ?? null,
         override_channel_id: ov?.channel_id ?? null,
-        status: ov?.status === "noshow" ? "noshow" : "active",
-        canceled_with_refund: ov?.canceled_with_refund === true,
+        status:
+          ov?.status === "noshow" || ov?.status === "canceled" || ov?.status === "refunded"
+            ? ov.status
+            : ov?.canceled_with_refund === true
+              ? "refunded"
+              : "confirmed",
+        canceled_with_refund: ov?.status === "refunded" || ov?.canceled_with_refund === true,
         refund_direction: ov?.refund_direction === "to_host" ? "to_host" : ov?.refund_direction === "to_guest" ? "to_guest" : null,
         refund_amount: ov?.refund_amount != null ? Number(ov.refund_amount) : null,
       });
@@ -266,12 +271,11 @@ const overrideSchema = z
     price: z.number().nonnegative().nullable(),
     notes: z.string().max(2000).nullable(),
     channel_id: z.string().trim().min(1).max(80).nullable(),
-    status: z.enum(["active", "noshow"]),
-    canceled_with_refund: z.boolean().optional().default(false),
+    status: z.enum(["confirmed", "noshow", "canceled", "refunded"]),
     refund_direction: z.enum(["to_guest", "to_host"]).nullable().optional().default(null),
     refund_amount: z.number().positive().nullable().optional().default(null),
   })
-  .refine((v) => !v.canceled_with_refund || (v.refund_direction != null && v.refund_amount != null), {
+  .refine((v) => v.status !== "refunded" || (v.refund_direction != null && v.refund_amount != null), {
     message: "Refund direction and a positive refund amount are required",
   });
 
@@ -298,10 +302,12 @@ export const saveImportedOverride = createServerFn({ method: "POST" })
           price: data.price,
           notes: data.notes,
           channel_id: data.channel_id,
-          status: data.status,
-          canceled_with_refund: data.canceled_with_refund,
-          refund_direction: data.canceled_with_refund ? data.refund_direction : null,
-          refund_amount: data.canceled_with_refund ? data.refund_amount : null,
+          // "active" is the legacy stored value for a confirmed reservation.
+          status: data.status === "confirmed" ? "active" : data.status,
+          // Derived from the status, which is the single source of truth.
+          canceled_with_refund: data.status === "refunded",
+          refund_direction: data.status === "refunded" ? data.refund_direction : null,
+          refund_amount: data.status === "refunded" ? data.refund_amount : null,
         },
         { onConflict: "reservation_id" },
       );

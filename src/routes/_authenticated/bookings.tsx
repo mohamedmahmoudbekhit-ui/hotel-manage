@@ -1045,6 +1045,13 @@ function AddBookingDialog({
   const [refundDirection, setRefundDirection] = useState<RefundDirection | "">("");
   const [refundAmount, setRefundAmount] = useState("");
 
+  // Re-seed the dates from the selected month each time the dialog opens.
+  useEffect(() => {
+    if (open) { setFrom(today); setTo(tomorrow); }
+  }, [open, today, tomorrow]);
+
+
+
   // Nights = check-out - check-in. The check-out day is not a stayed night.
   const nights = useMemo(() => nightsBetween(from, to), [from, to]);
   const minCheckout = useMemo(() => {

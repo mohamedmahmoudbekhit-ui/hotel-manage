@@ -399,32 +399,47 @@ function BookingsPage() {
                           currency={settings.currency}
                         />
                       ) : (
-                        <div className="flex flex-col gap-0.5">
-                          {list.map((c, i) => {
-                            // Only nights of the SAME reservation connect vertically.
-                            const contPrev = !!c.bookingId && prev.some((p) => p.bookingId === c.bookingId);
-                            const contNext = !!c.bookingId && next.some((n) => n.bookingId === c.bookingId);
-                            const position: "start" | "middle" | "end" | "single" =
-                              !contPrev && !contNext ? "single" : !contPrev ? "start" : !contNext ? "end" : "middle";
-                            return (
-                              <CellEditor
-                                key={c.bookingId ?? i}
-                                cell={c}
-                                position={position}
-                                onSave={(nc) => updateCell(room, day, nc, c.bookingId)}
-                                onUpdateBooking={(patch) => c.bookingId && updateBooking(c.bookingId, patch)}
-                                refund={c.bookingId ? refundOf(c.bookingId) : null}
-                                status={c.bookingId ? statusOf(c.bookingId) : cellStatus(c)}
-                                onSetStatus={(st, r) => c.bookingId && setBookingStatus(c.bookingId, st, r)}
-                                onDelete={() => updateCell(room, day, null, c.bookingId)}
-                                usdRate={currentMonth.usdRate}
-                                channels={settings.channels}
-                                currency={settings.currency}
-                              />
-                            );
-                          })}
+                        <div className="flex flex-col gap-1">
+                          {(() => {
+                            // Place each booking on its stable month-long lane so
+                            // consecutive bookings never intersect visually.
+                            const lanes = lanesByRoom.get(room);
+                            const slots: ({ c: Cell; i: number } | null)[] = [];
+                            list.forEach((c, i) => {
+                              const key = c.bookingId ?? `d${day}-${i}`;
+                              let lane = lanes?.get(key) ?? i;
+                              while (slots[lane]) lane += 1;
+                              slots[lane] = { c, i };
+                            });
+                            return slots.map((slot, lane) => {
+                              if (!slot) return <div key={`gap-${lane}`} className="h-11" aria-hidden />;
+                              const { c, i } = slot;
+                              // Only nights of the SAME reservation connect vertically.
+                              const contPrev = !!c.bookingId && prev.some((p) => p.bookingId === c.bookingId);
+                              const contNext = !!c.bookingId && next.some((n) => n.bookingId === c.bookingId);
+                              const position: "start" | "middle" | "end" | "single" =
+                                !contPrev && !contNext ? "single" : !contPrev ? "start" : !contNext ? "end" : "middle";
+                              return (
+                                <CellEditor
+                                  key={c.bookingId ?? i}
+                                  cell={c}
+                                  position={position}
+                                  onSave={(nc) => updateCell(room, day, nc, c.bookingId)}
+                                  onUpdateBooking={(patch) => c.bookingId && updateBooking(c.bookingId, patch)}
+                                  refund={c.bookingId ? refundOf(c.bookingId) : null}
+                                  status={c.bookingId ? statusOf(c.bookingId) : cellStatus(c)}
+                                  onSetStatus={(st, r) => c.bookingId && setBookingStatus(c.bookingId, st, r)}
+                                  onDelete={() => updateCell(room, day, null, c.bookingId)}
+                                  usdRate={currentMonth.usdRate}
+                                  channels={settings.channels}
+                                  currency={settings.currency}
+                                />
+                              );
+                            });
+                          })()}
                         </div>
                       )}
+
                     </td>
                   );
                 })}

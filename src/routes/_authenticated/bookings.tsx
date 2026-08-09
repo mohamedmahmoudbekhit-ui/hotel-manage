@@ -882,8 +882,8 @@ function CellEditor({
             </div>
           </div>
         </div>
-      </PopoverContent>
-    </Popover>
+    </BookingSheet>
+
   );
 }
 

@@ -73,16 +73,21 @@ export function DailyView({
 
       const today = cellAt(room, date);
       const yesterday = cellAt(room, prev);
+      // Same booking continuing = occupied. A different booking starting while
+      // yesterday's booking ended = turnover (check-out + check-in same day).
+      const sameBooking =
+        !!today && !!yesterday && (today.bookingId ?? "a") === (yesterday.bookingId ?? "b");
       if (today) {
         const ch = findChannel(settings, today.channelId);
         const info: Info = { label: ch.name, color: ch.color, note: today.note ?? null, guest: today.guestName ?? null };
-        if (yesterday) staying = staying ?? info;
+        if (sameBooking) staying = staying ?? info;
         else arrival = arrival ?? info;
       }
-      if (yesterday && !today) {
+      if (yesterday && !sameBooking) {
         const ch = findChannel(settings, yesterday.channelId);
         departure = departure ?? { label: ch.name, color: ch.color, note: yesterday.note ?? null, guest: yesterday.guestName ?? null };
       }
+
 
 
       if (arrival && departure) return { room, status: "turnover", ...arrival };

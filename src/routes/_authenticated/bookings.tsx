@@ -593,6 +593,55 @@ function blockRounding(position: "start" | "middle" | "end" | "single") {
         ? "rounded-b-lg rounded-t-none border-t-0"
         : "rounded-none border-y-0";
 }
+
+/** Contrasting outline so each booking block reads as one bordered unit. */
+function blockOutline(fg: string) {
+  return fg.toLowerCase() === "#fff" || fg.toLowerCase() === "#ffffff"
+    ? "rgba(255,255,255,0.65)"
+    : "rgba(0,0,0,0.45)";
+}
+
+/**
+ * Booking details container: right-side drawer on desktop/tablet, bottom
+ * sheet on mobile. Presentation only — the form inside is unchanged.
+ */
+function BookingSheet({
+  open,
+  onOpenChange,
+  title,
+  trigger,
+  children,
+  footer,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  title: string;
+  trigger: React.ReactNode;
+  children: React.ReactNode;
+  footer?: React.ReactNode;
+}) {
+  const isMobile = useIsMobile();
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetTrigger asChild>{trigger}</SheetTrigger>
+      <SheetContent
+        side={isMobile ? "bottom" : "right"}
+        className={
+          isMobile
+            ? "max-h-[88dvh] overflow-y-auto rounded-t-2xl"
+            : "w-full overflow-y-auto sm:max-w-md"
+        }
+      >
+        <SheetHeader>
+          <SheetTitle>{title}</SheetTitle>
+        </SheetHeader>
+        <div className="mt-4">{children}</div>
+        {footer ? <SheetFooter className="mt-4 gap-2">{footer}</SheetFooter> : null}
+      </SheetContent>
+    </Sheet>
+  );
+}
+
 export const STATUS_OPTIONS: { value: BookingStatus; label: string }[] = [
   { value: "confirmed", label: "Confirmed" },
   { value: "canceled", label: "Canceled" },

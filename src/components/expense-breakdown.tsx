@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useHotel } from "@/lib/hotel/store";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,10 @@ export function ExpenseBreakdown() {
   const { t, formatMonthKey } = useI18n();
   const [newLabel, setNewLabel] = useState("");
   const [newAmount, setNewAmount] = useState("");
-  const [newDate, setNewDate] = useState("");
+  // New expenses default to the month currently selected, not the system month.
+  const monthFirstDay = `${currentMonth.year}-${String(currentMonth.monthIndex + 1).padStart(2, "0")}-01`;
+  const [newDate, setNewDate] = useState(monthFirstDay);
+  useEffect(() => { setNewDate(monthFirstDay); }, [monthFirstDay]);
 
   const handleAdd = () => {
     const label = newLabel.trim();
@@ -21,8 +24,9 @@ export function ExpenseBreakdown() {
     if (!label) { toast.error(t("expenses.description")); return; }
     if (!isFinite(amount) || amount <= 0) { toast.error(t("expenses.amount")); return; }
     addExpense({ label, amount, date: newDate || undefined });
-    setNewLabel(""); setNewAmount(""); setNewDate("");
+    setNewLabel(""); setNewAmount(""); setNewDate(monthFirstDay);
   };
+
 
   return (
     <section className="rounded-2xl border bg-card p-4 shadow-soft sm:p-6">

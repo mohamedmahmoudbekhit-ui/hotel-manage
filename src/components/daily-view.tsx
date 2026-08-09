@@ -122,6 +122,7 @@ export function DailyView({
               <th className="px-4 py-3 text-start text-xs font-semibold uppercase tracking-wider text-muted-foreground">Room</th>
               <th className="px-4 py-3 text-start text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
               <th className="px-4 py-3 text-start text-xs font-semibold uppercase tracking-wider text-muted-foreground">Channel</th>
+              <th className="px-4 py-3 text-start text-xs font-semibold uppercase tracking-wider text-muted-foreground">Guest name</th>
               <th className="px-4 py-3 text-start text-xs font-semibold uppercase tracking-wider text-muted-foreground">Note</th>
             </tr>
           </thead>
@@ -142,12 +143,14 @@ export function DailyView({
                     <span className="text-xs text-muted-foreground">—</span>
                   )}
                 </td>
+                <td className="max-w-[220px] truncate px-4 py-3 text-xs">{r.guest || "—"}</td>
                 <td className="max-w-[280px] truncate px-4 py-3 text-xs text-muted-foreground">{r.note || "—"}</td>
               </tr>
             ))}
             {rows.length === 0 && (
-              <tr><td colSpan={4} className="px-4 py-6 text-center text-sm text-muted-foreground">No rooms configured.</td></tr>
+              <tr><td colSpan={5} className="px-4 py-6 text-center text-sm text-muted-foreground">No rooms configured.</td></tr>
             )}
+
           </tbody>
         </table>
       </div>

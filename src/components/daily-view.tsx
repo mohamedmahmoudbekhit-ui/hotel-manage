@@ -54,9 +54,10 @@ export function DailyView({
     }
 
     return settings.rooms.map((room): RoomDay => {
-      let arrival: { label: string; color: string; note: string | null } | null = null;
-      let departure: { label: string; color: string; note: string | null } | null = null;
-      let staying: { label: string; color: string; note: string | null } | null = null;
+      type Info = { label: string; color: string; note: string | null; guest: string | null };
+      let arrival: Info | null = null;
+      let departure: Info | null = null;
+      let staying: Info | null = null;
 
       for (const r of impByRoom.get(room) ?? []) {
         const st = importedStatus(r);
@@ -64,7 +65,7 @@ export function DailyView({
         const start = (r.start_date ?? "").slice(0, 10);
         const end = (r.end_date ?? "").slice(0, 10); // checkout day (exclusive night)
         const ch = resolveImportedChannel(settings, r);
-        const info = { label: ch.name, color: ch.color || "#64748b", note: r.override_notes ?? null };
+        const info: Info = { label: ch.name, color: ch.color || "#64748b", note: r.override_notes ?? null, guest: r.summary ?? null };
         if (todayIso === start) arrival = arrival ?? info;
         else if (todayIso === end) departure = departure ?? info;
         else if (todayIso > start && todayIso < end) staying = staying ?? info;
@@ -74,13 +75,15 @@ export function DailyView({
       const yesterday = cellAt(room, prev);
       if (today) {
         const ch = findChannel(settings, today.channelId);
-        const info = { label: ch.name, color: ch.color, note: today.note ?? null };
+        const info: Info = { label: ch.name, color: ch.color, note: today.note ?? null, guest: today.guestName ?? null };
         if (yesterday) staying = staying ?? info;
         else arrival = arrival ?? info;
-      } else if (yesterday) {
-        const ch = findChannel(settings, yesterday.channelId);
-        departure = departure ?? { label: ch.name, color: ch.color, note: yesterday.note ?? null };
       }
+      if (yesterday && !today) {
+        const ch = findChannel(settings, yesterday.channelId);
+        departure = departure ?? { label: ch.name, color: ch.color, note: yesterday.note ?? null, guest: yesterday.guestName ?? null };
+      }
+
 
       if (arrival && departure) return { room, status: "turnover", ...arrival };
       if (arrival) return { room, status: "checkin", ...arrival };

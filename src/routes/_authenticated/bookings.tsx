@@ -797,11 +797,11 @@ function CellEditor({
           <button className="my-1 flex h-9 w-full items-center justify-center rounded-lg border border-dashed border-border/60 text-muted-foreground/60 transition hover:border-primary/40 hover:bg-primary/5 hover:text-primary">
             <Plus className="h-3.5 w-3.5" />
           </button>
-        )}
-      </PopoverTrigger>
-
-      <PopoverContent className="max-h-[75dvh] w-[min(20rem,calc(100vw-2rem))] overflow-y-auto" align="start" collisionPadding={12}>
+        )
+      }
+    >
         <div className="space-y-3">
+
           <div className="space-y-1.5">
             <Label className="text-xs">Guest name</Label>
             <Input value={guestName} onChange={(e) => setGuestName(e.target.value)} placeholder="Optional" />

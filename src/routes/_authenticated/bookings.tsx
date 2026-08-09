@@ -5,7 +5,9 @@ import { useHotel } from "@/lib/hotel/store";
 import { MonthSelector } from "@/components/month-selector";
 import { cellRevenueLocal, cellStatus, computeMonthTotals, findChannel, formatCurrency, nightsBetween, pickTextColor, resolveImportedChannel, slotCells } from "@/lib/hotel/utils";
 import type { BookingStatus, Cell, Channel, RefundDirection } from "@/lib/hotel/types";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { useIsMobile } from "@/hooks/use-mobile";
+
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -86,6 +88,41 @@ function BookingsPage() {
     }
     return map;
   }, [imported, currentMonth.year, currentMonth.monthIndex]);
+
+  /**
+   * Stable vertical lane per booking, per room, for the whole month, so a
+   * booking keeps the same row inside its cell on every one of its nights and
+   * never visually crosses another booking.
+   */
+  const lanesByRoom = useMemo(() => {
+    const byRoom = new Map<string, Map<string, number>>();
+    for (const room of settings.rooms) {
+      const spans = new Map<string, { start: number; end: number }>();
+      for (let d = 1; d <= currentMonth.daysInMonth; d++) {
+        slotCells(currentMonth.cells[room]?.[d]).forEach((c, i) => {
+          const key = c.bookingId ?? `d${d}-${i}`;
+          const cur = spans.get(key);
+          if (cur) cur.end = d;
+          else spans.set(key, { start: d, end: d });
+        });
+      }
+      const intervals = Array.from(spans, ([key, v]) => ({ key, ...v })).sort(
+        (a, b) => a.start - b.start || a.end - b.end || a.key.localeCompare(b.key),
+      );
+      const laneEnd: number[] = [];
+      const lanes = new Map<string, number>();
+      for (const it of intervals) {
+        let lane = laneEnd.findIndex((e) => e < it.start);
+        if (lane === -1) lane = laneEnd.length;
+        laneEnd[lane] = it.end;
+        lanes.set(it.key, lane);
+      }
+      byRoom.set(room, lanes);
+    }
+    return byRoom;
+  }, [currentMonth.cells, currentMonth.daysInMonth, settings.rooms]);
+
+
 
   const [view, setView] = useState<"month" | "day">("month");
   const [dayIso, setDayIso] = useState<string>(() => {
@@ -202,6 +239,9 @@ function BookingsPage() {
             rooms={settings.rooms}
             channels={settings.channels}
             currency={settings.currency}
+            monthYear={currentMonth.year}
+            monthIndex={currentMonth.monthIndex}
+
             onAdd={(p) => {
               const res = addBookingRange(p);
               if (res.written === 0) {
@@ -362,32 +402,47 @@ function BookingsPage() {
                           currency={settings.currency}
                         />
                       ) : (
-                        <div className="flex flex-col gap-0.5">
-                          {list.map((c, i) => {
-                            // Only nights of the SAME reservation connect vertically.
-                            const contPrev = !!c.bookingId && prev.some((p) => p.bookingId === c.bookingId);
-                            const contNext = !!c.bookingId && next.some((n) => n.bookingId === c.bookingId);
-                            const position: "start" | "middle" | "end" | "single" =
-                              !contPrev && !contNext ? "single" : !contPrev ? "start" : !contNext ? "end" : "middle";
-                            return (
-                              <CellEditor
-                                key={c.bookingId ?? i}
-                                cell={c}
-                                position={position}
-                                onSave={(nc) => updateCell(room, day, nc, c.bookingId)}
-                                onUpdateBooking={(patch) => c.bookingId && updateBooking(c.bookingId, patch)}
-                                refund={c.bookingId ? refundOf(c.bookingId) : null}
-                                status={c.bookingId ? statusOf(c.bookingId) : cellStatus(c)}
-                                onSetStatus={(st, r) => c.bookingId && setBookingStatus(c.bookingId, st, r)}
-                                onDelete={() => updateCell(room, day, null, c.bookingId)}
-                                usdRate={currentMonth.usdRate}
-                                channels={settings.channels}
-                                currency={settings.currency}
-                              />
-                            );
-                          })}
+                        <div className="flex flex-col gap-1">
+                          {(() => {
+                            // Place each booking on its stable month-long lane so
+                            // consecutive bookings never intersect visually.
+                            const lanes = lanesByRoom.get(room);
+                            const slots: ({ c: Cell; i: number } | null)[] = [];
+                            list.forEach((c, i) => {
+                              const key = c.bookingId ?? `d${day}-${i}`;
+                              let lane = lanes?.get(key) ?? i;
+                              while (slots[lane]) lane += 1;
+                              slots[lane] = { c, i };
+                            });
+                            return slots.map((slot, lane) => {
+                              if (!slot) return <div key={`gap-${lane}`} className="h-11" aria-hidden />;
+                              const { c, i } = slot;
+                              // Only nights of the SAME reservation connect vertically.
+                              const contPrev = !!c.bookingId && prev.some((p) => p.bookingId === c.bookingId);
+                              const contNext = !!c.bookingId && next.some((n) => n.bookingId === c.bookingId);
+                              const position: "start" | "middle" | "end" | "single" =
+                                !contPrev && !contNext ? "single" : !contPrev ? "start" : !contNext ? "end" : "middle";
+                              return (
+                                <CellEditor
+                                  key={c.bookingId ?? i}
+                                  cell={c}
+                                  position={position}
+                                  onSave={(nc) => updateCell(room, day, nc, c.bookingId)}
+                                  onUpdateBooking={(patch) => c.bookingId && updateBooking(c.bookingId, patch)}
+                                  refund={c.bookingId ? refundOf(c.bookingId) : null}
+                                  status={c.bookingId ? statusOf(c.bookingId) : cellStatus(c)}
+                                  onSetStatus={(st, r) => c.bookingId && setBookingStatus(c.bookingId, st, r)}
+                                  onDelete={() => updateCell(room, day, null, c.bookingId)}
+                                  usdRate={currentMonth.usdRate}
+                                  channels={settings.channels}
+                                  currency={settings.currency}
+                                />
+                              );
+                            });
+                          })()}
                         </div>
                       )}
+
                     </td>
                   );
                 })}
@@ -500,11 +555,14 @@ function ImportedBlock({ res, channel, position, onChanged, currency }: { res: I
   const hasNote = !!res.override_notes;
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
+    <BookingSheet
+      open={open}
+      onOpenChange={setOpen}
+      title={`${res.source_name} · ${label}`}
+      trigger={
         <button
-          className={`relative flex h-11 w-full flex-col justify-center border px-2 text-start ${roundedClass}`}
-          style={{ backgroundColor: color, color: textColor, borderColor: color }}
+          className={`relative flex h-11 w-full flex-col justify-center border-2 px-2 text-start ${roundedClass}`}
+          style={{ backgroundColor: color, color: textColor, borderColor: blockOutline(textColor) }}
         >
           <span className="flex items-center gap-1 truncate text-[10px] font-semibold uppercase tracking-wide opacity-90">
             {showLabel ? (
@@ -528,12 +586,19 @@ function ImportedBlock({ res, channel, position, onChanged, currency }: { res: I
             <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-current opacity-90" />
           )}
         </button>
-
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{res.source_name} · {label}</DialogTitle>
-        </DialogHeader>
+      }
+      footer={
+        <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-between">
+          <Button variant="destructive" onClick={doRemove} disabled={saving}>
+            <Trash2 className="me-1 h-4 w-4" /> Remove
+          </Button>
+          <div className="flex gap-2">
+            <Button variant="ghost" onClick={() => setOpen(false)} disabled={saving}>Discard</Button>
+            <Button onClick={doSave} disabled={saving}>Save</Button>
+          </div>
+        </div>
+      }
+    >
         <div className="space-y-3 text-sm">
           {res.summary && <div className="text-muted-foreground">{res.summary}</div>}
           <div className="text-xs text-muted-foreground">
@@ -568,19 +633,10 @@ function ImportedBlock({ res, channel, position, onChanged, currency }: { res: I
             Color and currency are inherited from the “{channel.name}” channel in Settings. The total price is split evenly across the stayed nights (check-out day excluded).
           </p>
         </div>
-        <DialogFooter className="gap-2 sm:justify-between">
-          <Button variant="destructive" onClick={doRemove} disabled={saving}>
-            <Trash2 className="me-1 h-4 w-4" /> Remove
-          </Button>
-          <div className="flex gap-2">
-            <Button variant="ghost" onClick={() => setOpen(false)} disabled={saving}>Discard</Button>
-            <Button onClick={doSave} disabled={saving}>Save</Button>
-          </div>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    </BookingSheet>
   );
 }
+
 
 function blockRounding(position: "start" | "middle" | "end" | "single") {
   return position === "single"
@@ -591,6 +647,55 @@ function blockRounding(position: "start" | "middle" | "end" | "single") {
         ? "rounded-b-lg rounded-t-none border-t-0"
         : "rounded-none border-y-0";
 }
+
+/** Contrasting outline so each booking block reads as one bordered unit. */
+function blockOutline(fg: string) {
+  return fg.toLowerCase() === "#fff" || fg.toLowerCase() === "#ffffff"
+    ? "rgba(255,255,255,0.65)"
+    : "rgba(0,0,0,0.45)";
+}
+
+/**
+ * Booking details container: right-side drawer on desktop/tablet, bottom
+ * sheet on mobile. Presentation only — the form inside is unchanged.
+ */
+function BookingSheet({
+  open,
+  onOpenChange,
+  title,
+  trigger,
+  children,
+  footer,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  title: string;
+  trigger: React.ReactNode;
+  children: React.ReactNode;
+  footer?: React.ReactNode;
+}) {
+  const isMobile = useIsMobile();
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetTrigger asChild>{trigger}</SheetTrigger>
+      <SheetContent
+        side={isMobile ? "bottom" : "right"}
+        className={
+          isMobile
+            ? "max-h-[88dvh] overflow-y-auto rounded-t-2xl"
+            : "w-full overflow-y-auto sm:max-w-md"
+        }
+      >
+        <SheetHeader>
+          <SheetTitle>{title}</SheetTitle>
+        </SheetHeader>
+        <div className="mt-4">{children}</div>
+        {footer ? <SheetFooter className="mt-4 gap-2">{footer}</SheetFooter> : null}
+      </SheetContent>
+    </Sheet>
+  );
+}
+
 export const STATUS_OPTIONS: { value: BookingStatus; label: string }[] = [
   { value: "confirmed", label: "Confirmed" },
   { value: "canceled", label: "Canceled" },
@@ -755,13 +860,17 @@ function CellEditor({
 
 
   return (
-    <Popover open={open} onOpenChange={(o) => { setOpen(o); if (o) reset(); }}>
-      <PopoverTrigger asChild>
-        {cell && cellChannel ? (
+    <BookingSheet
+      open={open}
+      onOpenChange={(o) => { setOpen(o); if (o) reset(); }}
+      title={cell ? "Booking details" : "Add booking"}
+      trigger={
+        cell && cellChannel ? (
           <button
-            className={`relative flex h-11 w-full flex-col justify-center border px-2 text-start shadow-sm transition hover:opacity-90 ${blockRounding(position)}`}
-            style={{ background: cellChannel.color, color: fg, borderColor: cellChannel.color }}
+            className={`relative flex h-11 w-full flex-col justify-center border-2 px-2 text-start shadow-sm transition hover:opacity-90 ${blockRounding(position)}`}
+            style={{ background: cellChannel.color, color: fg, borderColor: blockOutline(fg) }}
           >
+
             {cell.note && (
               <span
                 aria-label="has note"
@@ -791,11 +900,11 @@ function CellEditor({
           <button className="my-1 flex h-9 w-full items-center justify-center rounded-lg border border-dashed border-border/60 text-muted-foreground/60 transition hover:border-primary/40 hover:bg-primary/5 hover:text-primary">
             <Plus className="h-3.5 w-3.5" />
           </button>
-        )}
-      </PopoverTrigger>
-
-      <PopoverContent className="max-h-[75dvh] w-[min(20rem,calc(100vw-2rem))] overflow-y-auto" align="start" collisionPadding={12}>
+        )
+      }
+    >
         <div className="space-y-3">
+
           <div className="space-y-1.5">
             <Label className="text-xs">Guest name</Label>
             <Input value={guestName} onChange={(e) => setGuestName(e.target.value)} placeholder="Optional" />
@@ -876,8 +985,8 @@ function CellEditor({
             </div>
           </div>
         </div>
-      </PopoverContent>
-    </Popover>
+    </BookingSheet>
+
   );
 }
 
@@ -898,20 +1007,36 @@ function AddBookingDialog({
   rooms,
   channels,
   currency,
+  monthYear,
+  monthIndex,
   onAdd,
 }: {
   rooms: string[];
   channels: Channel[];
   currency: string;
+  /** Currently selected calendar month — drives the default dates. */
+  monthYear: number;
+  monthIndex: number;
   onAdd: (p: AddBookingParams) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const today = new Date().toISOString().slice(0, 10);
+  // Default dates follow the month shown in the calendar (today when the
+  // selected month is the current one), never the system month otherwise.
+  const { today, tomorrow } = useMemo(() => {
+    const now = new Date();
+    const inMonth = now.getFullYear() === monthYear && now.getMonth() === monthIndex;
+    const start = inMonth ? new Date(monthYear, monthIndex, now.getDate()) : new Date(monthYear, monthIndex, 1);
+    const next = new Date(start);
+    next.setDate(next.getDate() + 1);
+    const iso = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    return { today: iso(start), tomorrow: iso(next) };
+  }, [monthYear, monthIndex]);
   const [room, setRoom] = useState<string>(rooms[0] ?? "");
   const [channelId, setChannelId] = useState<string>(channels[0]?.id ?? "");
-  const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
   const [from, setFrom] = useState<string>(today);
   const [to, setTo] = useState<string>(tomorrow);
+
   const [price, setPrice] = useState<string>("");
   const [note, setNote] = useState<string>("");
   const [guestName, setGuestName] = useState<string>("");
@@ -919,6 +1044,13 @@ function AddBookingDialog({
   const [status, setStatus] = useState<BookingStatus>("confirmed");
   const [refundDirection, setRefundDirection] = useState<RefundDirection | "">("");
   const [refundAmount, setRefundAmount] = useState("");
+
+  // Re-seed the dates from the selected month each time the dialog opens.
+  useEffect(() => {
+    if (open) { setFrom(today); setTo(tomorrow); }
+  }, [open, today, tomorrow]);
+
+
 
   // Nights = check-out - check-in. The check-out day is not a stayed night.
   const nights = useMemo(() => nightsBetween(from, to), [from, to]);

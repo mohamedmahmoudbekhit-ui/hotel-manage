@@ -13,7 +13,9 @@ interface RoomDay {
   label?: string;
   color?: string;
   note?: string | null;
+  guest?: string | null;
 }
+
 
 const iso = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -52,9 +54,10 @@ export function DailyView({
     }
 
     return settings.rooms.map((room): RoomDay => {
-      let arrival: { label: string; color: string; note: string | null } | null = null;
-      let departure: { label: string; color: string; note: string | null } | null = null;
-      let staying: { label: string; color: string; note: string | null } | null = null;
+      type Info = { label: string; color: string; note: string | null; guest: string | null };
+      let arrival: Info | null = null;
+      let departure: Info | null = null;
+      let staying: Info | null = null;
 
       for (const r of impByRoom.get(room) ?? []) {
         const st = importedStatus(r);
@@ -62,7 +65,7 @@ export function DailyView({
         const start = (r.start_date ?? "").slice(0, 10);
         const end = (r.end_date ?? "").slice(0, 10); // checkout day (exclusive night)
         const ch = resolveImportedChannel(settings, r);
-        const info = { label: ch.name, color: ch.color || "#64748b", note: r.override_notes ?? null };
+        const info: Info = { label: ch.name, color: ch.color || "#64748b", note: r.override_notes ?? null, guest: r.summary ?? null };
         if (todayIso === start) arrival = arrival ?? info;
         else if (todayIso === end) departure = departure ?? info;
         else if (todayIso > start && todayIso < end) staying = staying ?? info;
@@ -70,15 +73,22 @@ export function DailyView({
 
       const today = cellAt(room, date);
       const yesterday = cellAt(room, prev);
+      // Same booking continuing = occupied. A different booking starting while
+      // yesterday's booking ended = turnover (check-out + check-in same day).
+      const sameBooking =
+        !!today && !!yesterday && (today.bookingId ?? "a") === (yesterday.bookingId ?? "b");
       if (today) {
         const ch = findChannel(settings, today.channelId);
-        const info = { label: ch.name, color: ch.color, note: today.note ?? null };
-        if (yesterday) staying = staying ?? info;
+        const info: Info = { label: ch.name, color: ch.color, note: today.note ?? null, guest: today.guestName ?? null };
+        if (sameBooking) staying = staying ?? info;
         else arrival = arrival ?? info;
-      } else if (yesterday) {
-        const ch = findChannel(settings, yesterday.channelId);
-        departure = departure ?? { label: ch.name, color: ch.color, note: yesterday.note ?? null };
       }
+      if (yesterday && !sameBooking) {
+        const ch = findChannel(settings, yesterday.channelId);
+        departure = departure ?? { label: ch.name, color: ch.color, note: yesterday.note ?? null, guest: yesterday.guestName ?? null };
+      }
+
+
 
       if (arrival && departure) return { room, status: "turnover", ...arrival };
       if (arrival) return { room, status: "checkin", ...arrival };
@@ -112,6 +122,7 @@ export function DailyView({
               <th className="px-4 py-3 text-start text-xs font-semibold uppercase tracking-wider text-muted-foreground">Room</th>
               <th className="px-4 py-3 text-start text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
               <th className="px-4 py-3 text-start text-xs font-semibold uppercase tracking-wider text-muted-foreground">Channel</th>
+              <th className="px-4 py-3 text-start text-xs font-semibold uppercase tracking-wider text-muted-foreground">Guest name</th>
               <th className="px-4 py-3 text-start text-xs font-semibold uppercase tracking-wider text-muted-foreground">Note</th>
             </tr>
           </thead>
@@ -132,12 +143,14 @@ export function DailyView({
                     <span className="text-xs text-muted-foreground">—</span>
                   )}
                 </td>
+                <td className="max-w-[220px] truncate px-4 py-3 text-xs">{r.guest || "—"}</td>
                 <td className="max-w-[280px] truncate px-4 py-3 text-xs text-muted-foreground">{r.note || "—"}</td>
               </tr>
             ))}
             {rows.length === 0 && (
-              <tr><td colSpan={4} className="px-4 py-6 text-center text-sm text-muted-foreground">No rooms configured.</td></tr>
+              <tr><td colSpan={5} className="px-4 py-6 text-center text-sm text-muted-foreground">No rooms configured.</td></tr>
             )}
+
           </tbody>
         </table>
       </div>

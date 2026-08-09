@@ -89,6 +89,41 @@ function BookingsPage() {
     return map;
   }, [imported, currentMonth.year, currentMonth.monthIndex]);
 
+  /**
+   * Stable vertical lane per booking, per room, for the whole month, so a
+   * booking keeps the same row inside its cell on every one of its nights and
+   * never visually crosses another booking.
+   */
+  const lanesByRoom = useMemo(() => {
+    const byRoom = new Map<string, Map<string, number>>();
+    for (const room of settings.rooms) {
+      const spans = new Map<string, { start: number; end: number }>();
+      for (let d = 1; d <= currentMonth.daysInMonth; d++) {
+        slotCells(currentMonth.cells[room]?.[d]).forEach((c, i) => {
+          const key = c.bookingId ?? `d${d}-${i}`;
+          const cur = spans.get(key);
+          if (cur) cur.end = d;
+          else spans.set(key, { start: d, end: d });
+        });
+      }
+      const intervals = Array.from(spans, ([key, v]) => ({ key, ...v })).sort(
+        (a, b) => a.start - b.start || a.end - b.end || a.key.localeCompare(b.key),
+      );
+      const laneEnd: number[] = [];
+      const lanes = new Map<string, number>();
+      for (const it of intervals) {
+        let lane = laneEnd.findIndex((e) => e < it.start);
+        if (lane === -1) lane = laneEnd.length;
+        laneEnd[lane] = it.end;
+        lanes.set(it.key, lane);
+      }
+      byRoom.set(room, lanes);
+    }
+    return byRoom;
+  }, [currentMonth.cells, currentMonth.daysInMonth, settings.rooms]);
+
+
+
   const [view, setView] = useState<"month" | "day">("month");
   const [dayIso, setDayIso] = useState<string>(() => {
     const now = new Date();

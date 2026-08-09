@@ -502,11 +502,14 @@ function ImportedBlock({ res, channel, position, onChanged, currency }: { res: I
   const hasNote = !!res.override_notes;
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
+    <BookingSheet
+      open={open}
+      onOpenChange={setOpen}
+      title={`${res.source_name} · ${label}`}
+      trigger={
         <button
-          className={`relative flex h-11 w-full flex-col justify-center border px-2 text-start ${roundedClass}`}
-          style={{ backgroundColor: color, color: textColor, borderColor: color }}
+          className={`relative flex h-11 w-full flex-col justify-center border-2 px-2 text-start ${roundedClass}`}
+          style={{ backgroundColor: color, color: textColor, borderColor: blockOutline(textColor) }}
         >
           <span className="flex items-center gap-1 truncate text-[10px] font-semibold uppercase tracking-wide opacity-90">
             {showLabel ? (
@@ -530,12 +533,19 @@ function ImportedBlock({ res, channel, position, onChanged, currency }: { res: I
             <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-current opacity-90" />
           )}
         </button>
-
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{res.source_name} · {label}</DialogTitle>
-        </DialogHeader>
+      }
+      footer={
+        <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-between">
+          <Button variant="destructive" onClick={doRemove} disabled={saving}>
+            <Trash2 className="me-1 h-4 w-4" /> Remove
+          </Button>
+          <div className="flex gap-2">
+            <Button variant="ghost" onClick={() => setOpen(false)} disabled={saving}>Discard</Button>
+            <Button onClick={doSave} disabled={saving}>Save</Button>
+          </div>
+        </div>
+      }
+    >
         <div className="space-y-3 text-sm">
           {res.summary && <div className="text-muted-foreground">{res.summary}</div>}
           <div className="text-xs text-muted-foreground">
@@ -570,19 +580,10 @@ function ImportedBlock({ res, channel, position, onChanged, currency }: { res: I
             Color and currency are inherited from the “{channel.name}” channel in Settings. The total price is split evenly across the stayed nights (check-out day excluded).
           </p>
         </div>
-        <DialogFooter className="gap-2 sm:justify-between">
-          <Button variant="destructive" onClick={doRemove} disabled={saving}>
-            <Trash2 className="me-1 h-4 w-4" /> Remove
-          </Button>
-          <div className="flex gap-2">
-            <Button variant="ghost" onClick={() => setOpen(false)} disabled={saving}>Discard</Button>
-            <Button onClick={doSave} disabled={saving}>Save</Button>
-          </div>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    </BookingSheet>
   );
 }
+
 
 function blockRounding(position: "start" | "middle" | "end" | "single") {
   return position === "single"

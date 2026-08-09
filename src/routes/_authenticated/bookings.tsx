@@ -757,13 +757,17 @@ function CellEditor({
 
 
   return (
-    <Popover open={open} onOpenChange={(o) => { setOpen(o); if (o) reset(); }}>
-      <PopoverTrigger asChild>
-        {cell && cellChannel ? (
+    <BookingSheet
+      open={open}
+      onOpenChange={(o) => { setOpen(o); if (o) reset(); }}
+      title={cell ? "Booking details" : "Add booking"}
+      trigger={
+        cell && cellChannel ? (
           <button
-            className={`relative flex h-11 w-full flex-col justify-center border px-2 text-start shadow-sm transition hover:opacity-90 ${blockRounding(position)}`}
-            style={{ background: cellChannel.color, color: fg, borderColor: cellChannel.color }}
+            className={`relative flex h-11 w-full flex-col justify-center border-2 px-2 text-start shadow-sm transition hover:opacity-90 ${blockRounding(position)}`}
+            style={{ background: cellChannel.color, color: fg, borderColor: blockOutline(fg) }}
           >
+
             {cell.note && (
               <span
                 aria-label="has note"

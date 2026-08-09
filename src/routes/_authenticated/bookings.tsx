@@ -1004,20 +1004,36 @@ function AddBookingDialog({
   rooms,
   channels,
   currency,
+  monthYear,
+  monthIndex,
   onAdd,
 }: {
   rooms: string[];
   channels: Channel[];
   currency: string;
+  /** Currently selected calendar month — drives the default dates. */
+  monthYear: number;
+  monthIndex: number;
   onAdd: (p: AddBookingParams) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const today = new Date().toISOString().slice(0, 10);
+  // Default dates follow the month shown in the calendar (today when the
+  // selected month is the current one), never the system month otherwise.
+  const { today, tomorrow } = useMemo(() => {
+    const now = new Date();
+    const inMonth = now.getFullYear() === monthYear && now.getMonth() === monthIndex;
+    const start = inMonth ? new Date(monthYear, monthIndex, now.getDate()) : new Date(monthYear, monthIndex, 1);
+    const next = new Date(start);
+    next.setDate(next.getDate() + 1);
+    const iso = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    return { today: iso(start), tomorrow: iso(next) };
+  }, [monthYear, monthIndex]);
   const [room, setRoom] = useState<string>(rooms[0] ?? "");
   const [channelId, setChannelId] = useState<string>(channels[0]?.id ?? "");
-  const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
   const [from, setFrom] = useState<string>(today);
   const [to, setTo] = useState<string>(tomorrow);
+
   const [price, setPrice] = useState<string>("");
   const [note, setNote] = useState<string>("");
   const [guestName, setGuestName] = useState<string>("");

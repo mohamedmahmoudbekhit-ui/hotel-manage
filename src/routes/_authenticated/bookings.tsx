@@ -239,6 +239,9 @@ function BookingsPage() {
             rooms={settings.rooms}
             channels={settings.channels}
             currency={settings.currency}
+            monthYear={currentMonth.year}
+            monthIndex={currentMonth.monthIndex}
+
             onAdd={(p) => {
               const res = addBookingRange(p);
               if (res.written === 0) {

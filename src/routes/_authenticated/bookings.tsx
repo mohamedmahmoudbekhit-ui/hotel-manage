@@ -1010,6 +1010,14 @@ interface AddBookingParams {
   refund?: { direction: RefundDirection; amount: number } | null;
 }
 
+/** ISO date one day after the given ISO date. */
+function nextDayIso(iso: string): string {
+  const d = new Date(`${iso}T00:00:00Z`);
+  if (isNaN(d.getTime())) return iso;
+  d.setUTCDate(d.getUTCDate() + 1);
+  return d.toISOString().slice(0, 10);
+}
+
 function AddBookingDialog({
   rooms,
   channels,
@@ -1017,6 +1025,9 @@ function AddBookingDialog({
   monthYear,
   monthIndex,
   onAdd,
+  trigger,
+  defaultRoom,
+  defaultFrom,
 }: {
   rooms: string[];
   channels: Channel[];
@@ -1025,6 +1036,11 @@ function AddBookingDialog({
   monthYear: number;
   monthIndex: number;
   onAdd: (p: AddBookingParams) => void;
+  /** Optional custom trigger (mobile calendar day cells). */
+  trigger?: React.ReactNode;
+  /** Preselected room / check-in date (mobile calendar). */
+  defaultRoom?: string;
+  defaultFrom?: string;
 }) {
   const [open, setOpen] = useState(false);
   // Default dates follow the month shown in the calendar (today when the
@@ -1039,10 +1055,10 @@ function AddBookingDialog({
       `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     return { today: iso(start), tomorrow: iso(next) };
   }, [monthYear, monthIndex]);
-  const [room, setRoom] = useState<string>(rooms[0] ?? "");
+  const [room, setRoom] = useState<string>(defaultRoom ?? rooms[0] ?? "");
   const [channelId, setChannelId] = useState<string>(channels[0]?.id ?? "");
-  const [from, setFrom] = useState<string>(today);
-  const [to, setTo] = useState<string>(tomorrow);
+  const [from, setFrom] = useState<string>(defaultFrom ?? today);
+  const [to, setTo] = useState<string>(defaultFrom ? nextDayIso(defaultFrom) : tomorrow);
 
   const [price, setPrice] = useState<string>("");
   const [note, setNote] = useState<string>("");
@@ -1052,10 +1068,14 @@ function AddBookingDialog({
   const [refundDirection, setRefundDirection] = useState<RefundDirection | "">("");
   const [refundAmount, setRefundAmount] = useState("");
 
-  // Re-seed the dates from the selected month each time the dialog opens.
+  // Re-seed the dates from the selected month (or the tapped day) on open.
   useEffect(() => {
-    if (open) { setFrom(today); setTo(tomorrow); }
-  }, [open, today, tomorrow]);
+    if (open) {
+      setFrom(defaultFrom ?? today);
+      setTo(defaultFrom ? nextDayIso(defaultFrom) : tomorrow);
+      if (defaultRoom) setRoom(defaultRoom);
+    }
+  }, [open, today, tomorrow, defaultFrom, defaultRoom]);
 
 
 

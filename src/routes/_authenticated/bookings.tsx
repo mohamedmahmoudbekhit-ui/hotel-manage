@@ -479,6 +479,29 @@ function BookingsPage() {
         <span className="ms-auto text-muted-foreground">{t("common.tapCell")}</span>
       </div>
 
+      {isMobile ? (
+        mobileRoom ? (
+          <MobileRoomCalendar
+            room={mobileRoom}
+            monthLabel={formatMonthKey(currentMonth.key)}
+            year={currentMonth.year}
+            monthIndex={currentMonth.monthIndex}
+            daysInMonth={currentMonth.daysInMonth}
+            onBack={() => setMobileRoom(null)}
+            renderDay={renderMobileDay}
+          />
+        ) : (
+          <MobileRoomsOverview
+            rooms={visibleRooms}
+            monthLabel={formatMonthKey(currentMonth.key)}
+            year={currentMonth.year}
+            monthIndex={currentMonth.monthIndex}
+            daysInMonth={currentMonth.daysInMonth}
+            onSelect={setMobileRoom}
+            renderMiniDay={renderMiniDay}
+          />
+        )
+      ) : (
       <div className="max-h-[70vh] overflow-auto overscroll-contain rounded-2xl border bg-card shadow-soft">
         <table className="w-full min-w-max border-separate border-spacing-0 text-sm">
 

@@ -793,6 +793,7 @@ function CellEditor({
   usdRate,
   channels,
   currency,
+  trigger,
 }: {
   cell: Cell | null;
   position?: "start" | "middle" | "end" | "single";
@@ -805,6 +806,8 @@ function CellEditor({
   usdRate: number;
   channels: Channel[];
   currency: string;
+  /** Optional custom trigger (mobile calendar day cells). */
+  trigger?: React.ReactNode;
 }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);

@@ -45,6 +45,12 @@ function Dashboard() {
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {analyticsSettings.channels.map((ch) => {
           const fg = pickTextColor(ch.color);
+          // revenueByChannel is stored in local currency; show the channel's own
+          // currency as the primary value and the local equivalent underneath.
+          const localRevenue = totals.revenueByChannel[ch.id] ?? 0;
+          const rate = analyticsMonth.usdRate || 1;
+          const isForeign = ch.currency === "USD" && cur !== "USD";
+          const primary = isForeign ? formatCurrency(localRevenue / rate, "USD") : formatCurrency(localRevenue, cur);
           return (
             <div
               key={ch.id}
@@ -54,7 +60,10 @@ function Dashboard() {
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{ch.name} {t("kpi.revenueSuffix")}</div>
-                  <div className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">{formatCurrency(totals.revenueByChannel[ch.id] ?? 0, cur)}</div>
+                  <div className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">{primary}</div>
+                  {isForeign && (
+                    <div className="mt-0.5 text-xs text-muted-foreground">≈ {formatCurrency(localRevenue, cur)}</div>
+                  )}
                   <div className="mt-1 text-xs text-muted-foreground">{totals.bookingsByChannel[ch.id] ?? 0} {t("common.bookings")}</div>
                 </div>
                 <div
@@ -68,6 +77,7 @@ function Dashboard() {
           );
         })}
       </section>
+
 
       <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="rounded-2xl border bg-card p-5 shadow-soft lg:col-span-2">

@@ -680,17 +680,24 @@ function BookingSheet({
       <SheetTrigger asChild>{trigger}</SheetTrigger>
       <SheetContent
         side={isMobile ? "bottom" : "right"}
-        className={
+        className={cn(
+          "flex max-w-full flex-col overflow-x-hidden p-0",
           isMobile
-            ? "max-h-[88dvh] overflow-y-auto rounded-t-2xl"
-            : "w-full overflow-y-auto sm:max-w-md"
-        }
+            ? "inset-x-0 h-auto max-h-[92dvh] w-full rounded-t-2xl"
+            : "h-full w-full sm:max-w-md",
+        )}
       >
-        <SheetHeader>
-          <SheetTitle>{title}</SheetTitle>
+        <SheetHeader className="shrink-0 border-b px-4 py-4 text-left sm:px-6">
+          <SheetTitle className="pr-8 break-words">{title}</SheetTitle>
         </SheetHeader>
-        <div className="mt-4">{children}</div>
-        {footer ? <SheetFooter className="mt-4 gap-2">{footer}</SheetFooter> : null}
+        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-4 py-4 sm:px-6 [&_*]:max-w-full">
+          {children}
+        </div>
+        {footer ? (
+          <SheetFooter className="shrink-0 gap-2 border-t bg-background px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6 [&>*]:w-full sm:[&>*]:w-auto">
+            {footer}
+          </SheetFooter>
+        ) : null}
       </SheetContent>
     </Sheet>
   );

@@ -872,6 +872,7 @@ function CellEditor({
       onOpenChange={(o) => { setOpen(o); if (o) reset(); }}
       title={cell ? "Booking details" : "Add booking"}
       trigger={
+        trigger ?? (
         cell && cellChannel ? (
           <button
             className={`relative flex h-11 w-full flex-col justify-center border-2 px-2 text-start shadow-sm transition hover:opacity-90 ${blockRounding(position)}`}
@@ -907,7 +908,7 @@ function CellEditor({
           <button className="my-1 flex h-9 w-full items-center justify-center rounded-lg border border-dashed border-border/60 text-muted-foreground/60 transition hover:border-primary/40 hover:bg-primary/5 hover:text-primary">
             <Plus className="h-3.5 w-3.5" />
           </button>
-        )
+        ))
       }
     >
         <div className="space-y-3">

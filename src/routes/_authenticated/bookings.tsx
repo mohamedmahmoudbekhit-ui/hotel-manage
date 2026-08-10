@@ -7,6 +7,7 @@ import { cellRevenueLocal, cellStatus, computeMonthTotals, findChannel, formatCu
 import type { BookingStatus, Cell, Channel, RefundDirection } from "@/lib/hotel/types";
 import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";

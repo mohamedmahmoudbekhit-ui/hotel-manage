@@ -469,7 +469,7 @@ const PLATFORM_LABEL: Record<string, string> = {
   other: "iCal",
 };
 
-function ImportedBlock({ res, channel, position, onChanged, currency }: { res: ImportedReservationRow; channel: Channel; position: "start" | "middle" | "end" | "single"; onChanged: () => void; currency: string }) {
+function ImportedBlock({ res, channel, position, onChanged, currency, trigger }: { res: ImportedReservationRow; channel: Channel; position: "start" | "middle" | "end" | "single"; onChanged: () => void; currency: string; trigger?: React.ReactNode }) {
   const { settings } = useHotel();
   const { t } = useI18n();
   const label = channel.name || PLATFORM_LABEL[res.platform_type] || res.source_name;

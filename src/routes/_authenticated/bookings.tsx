@@ -7,6 +7,7 @@ import { cellRevenueLocal, cellStatus, computeMonthTotals, findChannel, formatCu
 import type { BookingStatus, Cell, Channel, RefundDirection } from "@/lib/hotel/types";
 import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -19,7 +20,6 @@ import { DailyView } from "@/components/daily-view";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { applyFilters, buildBookingRows, downloadBlob, exportFileBase, exportPdf, toCsv, type ExportFilters } from "@/lib/hotel/export";
 
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { useI18n } from "@/lib/i18n";
 import { saveImportedOverride, removeImportedReservation, type ImportedReservationRow } from "@/lib/hotel/calendar.functions";
@@ -680,17 +680,24 @@ function BookingSheet({
       <SheetTrigger asChild>{trigger}</SheetTrigger>
       <SheetContent
         side={isMobile ? "bottom" : "right"}
-        className={
+        className={cn(
+          "flex max-w-full flex-col overflow-x-hidden p-0",
           isMobile
-            ? "max-h-[88dvh] overflow-y-auto rounded-t-2xl"
-            : "w-full overflow-y-auto sm:max-w-md"
-        }
+            ? "inset-x-0 h-auto max-h-[92dvh] w-full rounded-t-2xl"
+            : "h-full w-full sm:max-w-md",
+        )}
       >
-        <SheetHeader>
-          <SheetTitle>{title}</SheetTitle>
+        <SheetHeader className="shrink-0 border-b px-4 py-4 text-left sm:px-6">
+          <SheetTitle className="pr-8 break-words">{title}</SheetTitle>
         </SheetHeader>
-        <div className="mt-4">{children}</div>
-        {footer ? <SheetFooter className="mt-4 gap-2">{footer}</SheetFooter> : null}
+        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-4 py-4 sm:px-6 [&_*]:max-w-full">
+          {children}
+        </div>
+        {footer ? (
+          <SheetFooter className="shrink-0 gap-2 border-t bg-background px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6 [&>*]:w-full sm:[&>*]:w-auto">
+            {footer}
+          </SheetFooter>
+        ) : null}
       </SheetContent>
     </Sheet>
   );
@@ -1106,16 +1113,23 @@ function AddBookingDialog({
 
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (o) reset(); }}>
-      <DialogTrigger asChild>
+    <BookingSheet
+      open={open}
+      onOpenChange={(o) => { setOpen(o); if (o) reset(); }}
+      title="Add booking"
+      trigger={
         <Button size="sm" className="gap-1.5">
           <CalendarPlus className="h-4 w-4" /> Add booking
         </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Add booking</DialogTitle>
-        </DialogHeader>
+      }
+      footer={
+        <>
+          <Button variant="outline" size="sm" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button size="sm" onClick={submit} disabled={!room || !channelId || nights <= 0 || !(priceNum > 0)}>Save booking</Button>
+        </>
+      }
+    >
+
         <div className="space-y-3">
           <div className="space-y-1.5">
             <Label className="text-xs">Guest name</Label>
@@ -1200,11 +1214,7 @@ function AddBookingDialog({
           />
 
         </div>
-        <DialogFooter>
-          <Button variant="outline" size="sm" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button size="sm" onClick={submit} disabled={!room || !channelId || nights <= 0 || !(priceNum > 0)}>Save booking</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    </BookingSheet>
+
   );
 }

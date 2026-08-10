@@ -1074,10 +1074,10 @@ function AddBookingDialog({
   const channelCurrency = selectedChannel?.currency === "LOCAL" ? currency : "USD";
 
   const reset = () => {
-    setRoom(rooms[0] ?? "");
+    setRoom(defaultRoom ?? rooms[0] ?? "");
     setChannelId(channels[0]?.id ?? "");
-    setFrom(today);
-    setTo(tomorrow);
+    setFrom(defaultFrom ?? today);
+    setTo(defaultFrom ? nextDayIso(defaultFrom) : tomorrow);
     setPrice("");
     setNote("");
     setGuestName("");

@@ -1114,16 +1114,23 @@ function AddBookingDialog({
 
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (o) reset(); }}>
-      <DialogTrigger asChild>
+    <BookingSheet
+      open={open}
+      onOpenChange={(o) => { setOpen(o); if (o) reset(); }}
+      title="Add booking"
+      trigger={
         <Button size="sm" className="gap-1.5">
           <CalendarPlus className="h-4 w-4" /> Add booking
         </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Add booking</DialogTitle>
-        </DialogHeader>
+      }
+      footer={
+        <>
+          <Button variant="outline" size="sm" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button size="sm" onClick={submit} disabled={!room || !channelId || nights <= 0 || !(priceNum > 0)}>Save booking</Button>
+        </>
+      }
+    >
+
         <div className="space-y-3">
           <div className="space-y-1.5">
             <Label className="text-xs">Guest name</Label>

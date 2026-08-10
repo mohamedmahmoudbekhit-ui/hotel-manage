@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useHotel } from "@/lib/hotel/store";
 import { MonthSelector } from "@/components/month-selector";
-import { cellRevenueLocal, cellStatus, computeMonthTotals, findChannel, formatCurrency, nightsBetween, pickTextColor, resolveImportedChannel, slotCells } from "@/lib/hotel/utils";
+import { cellRevenueLocal, cellStatus, computeMonthTotals, findChannel, formatCurrency, importedStatus, isCanceledCell, nightsBetween, pickTextColor, resolveImportedChannel, slotCells } from "@/lib/hotel/utils";
 import type { BookingStatus, Cell, Channel, RefundDirection } from "@/lib/hotel/types";
 import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -207,6 +207,127 @@ function BookingsPage() {
     }
   };
 
+  // ---- Mobile-only calendar experience (presentation layer only) ----
+  const isMobile = useIsMobile();
+  const [mobileRoom, setMobileRoom] = useState<string | null>(null);
+  useEffect(() => {
+    if (mobileRoom && !visibleRooms.includes(mobileRoom)) setMobileRoom(null);
+  }, [mobileRoom, visibleRooms]);
+
+  const isoOf = (day: number) =>
+    `${currentMonth.year}-${String(currentMonth.monthIndex + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+
+  /** Resolve what occupies a room-night, for the mobile calendar only. */
+  const mobileDay = (room: string, day: number) => {
+    const list = slotCells(currentMonth.cells[room]?.[day]);
+    const importedHere = list.length === 0 ? importedByRoomDay.get(room)?.get(day) ?? null : null;
+    const cell = list.find((c) => !isCanceledCell(c)) ?? list[0] ?? null;
+    if (importedHere) {
+      const ch = resolveImportedChannel(analyticsSettings, importedHere.res);
+      const st = importedStatus(importedHere.res);
+      return { kind: "imported" as const, res: importedHere.res, position: importedHere.position, color: ch.color || importedHere.res.source_color || "#64748b", canceled: st === "canceled" || st === "refunded", channel: ch };
+    }
+    if (cell) {
+      const ch = findChannel(settings, cell.channelId);
+      return { kind: "cell" as const, cell, color: ch.color, canceled: isCanceledCell(cell), channel: ch };
+    }
+    return { kind: "free" as const, color: null, canceled: false };
+  };
+
+  const daySquareStyle = (info: ReturnType<typeof mobileDay>) => {
+    if (!info.color) return undefined;
+    return info.canceled
+      ? { background: `${info.color}33`, color: "inherit", borderColor: info.color, borderStyle: "dashed" as const }
+      : { background: info.color, color: pickTextColor(info.color), borderColor: info.color };
+  };
+
+  /** Interactive day square used inside the mobile room-detail calendar. */
+  const renderMobileDay = (room: string, day: number) => {
+    const info = mobileDay(room, day);
+    const square = (
+      <button
+        type="button"
+        className={cn(
+          "flex aspect-square w-full flex-col items-center justify-center rounded-xl border text-base font-semibold tabular-nums transition active:scale-95",
+          info.color ? "shadow-sm" : "border-dashed border-border/70 bg-muted/30 text-muted-foreground",
+        )}
+        style={daySquareStyle(info)}
+        aria-label={`${room} — ${isoOf(day)}`}
+      >
+        {day}
+      </button>
+    );
+    if (info.kind === "imported") {
+      return (
+        <ImportedBlock
+          key={`i-${day}`}
+          res={info.res}
+          channel={info.channel}
+          position={info.position}
+          onChanged={reloadImported}
+          currency={settings.currency}
+          trigger={square}
+        />
+      );
+    }
+    if (info.kind === "cell") {
+      const c = info.cell;
+      return (
+        <CellEditor
+          key={`c-${day}`}
+          cell={c}
+          position="single"
+          onSave={(nc) => updateCell(room, day, nc, c.bookingId)}
+          onUpdateBooking={(patch) => c.bookingId && updateBooking(c.bookingId, patch)}
+          refund={c.bookingId ? refundOf(c.bookingId) : null}
+          status={c.bookingId ? statusOf(c.bookingId) : cellStatus(c)}
+          onSetStatus={(st, r) => c.bookingId && setBookingStatus(c.bookingId, st, r)}
+          onDelete={() => updateCell(room, day, null, c.bookingId)}
+          usdRate={currentMonth.usdRate}
+          channels={settings.channels}
+          currency={settings.currency}
+          trigger={square}
+        />
+      );
+    }
+    return (
+      <AddBookingDialog
+        key={`a-${day}`}
+        rooms={settings.rooms}
+        channels={settings.channels}
+        currency={settings.currency}
+        monthYear={currentMonth.year}
+        monthIndex={currentMonth.monthIndex}
+        defaultRoom={room}
+        defaultFrom={isoOf(day)}
+        trigger={square}
+        onAdd={(p) => {
+          const res = addBookingRange(p);
+          if (res.written === 0) toast.error("Could not add booking. Dates may conflict with existing bookings.");
+          else if (res.skipped > 0) toast.success(`Booking added for ${res.written} night(s). ${res.skipped} conflicting night(s) skipped.`);
+          else toast.success(`Booking added across ${res.written} night(s).`);
+        }}
+      />
+    );
+  };
+
+  /** Non-interactive mini square for the rooms overview. */
+  const renderMiniDay = (room: string, day: number) => {
+    const info = mobileDay(room, day);
+    return (
+      <div
+        key={day}
+        className={cn(
+          "flex aspect-square items-center justify-center rounded-md border text-[10px] font-medium tabular-nums",
+          info.color ? "" : "border-dashed border-border/60 bg-muted/30 text-muted-foreground",
+        )}
+        style={daySquareStyle(info)}
+      >
+        {day}
+      </div>
+    );
+  };
+
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-4 px-4 py-6 sm:px-6 lg:px-8">
@@ -358,6 +479,29 @@ function BookingsPage() {
         <span className="ms-auto text-muted-foreground">{t("common.tapCell")}</span>
       </div>
 
+      {isMobile ? (
+        mobileRoom ? (
+          <MobileRoomCalendar
+            room={mobileRoom}
+            monthLabel={formatMonthKey(currentMonth.key)}
+            year={currentMonth.year}
+            monthIndex={currentMonth.monthIndex}
+            daysInMonth={currentMonth.daysInMonth}
+            onBack={() => setMobileRoom(null)}
+            renderDay={renderMobileDay}
+          />
+        ) : (
+          <MobileRoomsOverview
+            rooms={visibleRooms}
+            monthLabel={formatMonthKey(currentMonth.key)}
+            year={currentMonth.year}
+            monthIndex={currentMonth.monthIndex}
+            daysInMonth={currentMonth.daysInMonth}
+            onSelect={setMobileRoom}
+            renderMiniDay={renderMiniDay}
+          />
+        )
+      ) : (
       <div className="max-h-[70vh] overflow-auto overscroll-contain rounded-2xl border bg-card shadow-soft">
         <table className="w-full min-w-max border-separate border-spacing-0 text-sm">
 
@@ -454,6 +598,7 @@ function BookingsPage() {
           </tbody>
         </table>
       </div>
+      )}
       </>
       )}
     </div>
@@ -469,7 +614,7 @@ const PLATFORM_LABEL: Record<string, string> = {
   other: "iCal",
 };
 
-function ImportedBlock({ res, channel, position, onChanged, currency }: { res: ImportedReservationRow; channel: Channel; position: "start" | "middle" | "end" | "single"; onChanged: () => void; currency: string }) {
+function ImportedBlock({ res, channel, position, onChanged, currency, trigger }: { res: ImportedReservationRow; channel: Channel; position: "start" | "middle" | "end" | "single"; onChanged: () => void; currency: string; trigger?: React.ReactNode }) {
   const { settings } = useHotel();
   const { t } = useI18n();
   const label = channel.name || PLATFORM_LABEL[res.platform_type] || res.source_name;
@@ -560,6 +705,7 @@ function ImportedBlock({ res, channel, position, onChanged, currency }: { res: I
       onOpenChange={setOpen}
       title={`${res.source_name} · ${label}`}
       trigger={
+        trigger ?? (
         <button
           className={`relative flex h-11 w-full flex-col justify-center border-2 px-2 text-start ${roundedClass}`}
           style={{ backgroundColor: color, color: textColor, borderColor: blockOutline(textColor) }}
@@ -586,6 +732,7 @@ function ImportedBlock({ res, channel, position, onChanged, currency }: { res: I
             <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-current opacity-90" />
           )}
         </button>
+        )
       }
       footer={
         <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-between">
@@ -793,6 +940,7 @@ function CellEditor({
   usdRate,
   channels,
   currency,
+  trigger,
 }: {
   cell: Cell | null;
   position?: "start" | "middle" | "end" | "single";
@@ -805,6 +953,8 @@ function CellEditor({
   usdRate: number;
   channels: Channel[];
   currency: string;
+  /** Optional custom trigger (mobile calendar day cells). */
+  trigger?: React.ReactNode;
 }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
@@ -872,6 +1022,7 @@ function CellEditor({
       onOpenChange={(o) => { setOpen(o); if (o) reset(); }}
       title={cell ? "Booking details" : "Add booking"}
       trigger={
+        trigger ?? (
         cell && cellChannel ? (
           <button
             className={`relative flex h-11 w-full flex-col justify-center border-2 px-2 text-start shadow-sm transition hover:opacity-90 ${blockRounding(position)}`}
@@ -907,7 +1058,7 @@ function CellEditor({
           <button className="my-1 flex h-9 w-full items-center justify-center rounded-lg border border-dashed border-border/60 text-muted-foreground/60 transition hover:border-primary/40 hover:bg-primary/5 hover:text-primary">
             <Plus className="h-3.5 w-3.5" />
           </button>
-        )
+        ))
       }
     >
         <div className="space-y-3">
@@ -1010,6 +1161,14 @@ interface AddBookingParams {
   refund?: { direction: RefundDirection; amount: number } | null;
 }
 
+/** ISO date one day after the given ISO date. */
+function nextDayIso(iso: string): string {
+  const d = new Date(`${iso}T00:00:00Z`);
+  if (isNaN(d.getTime())) return iso;
+  d.setUTCDate(d.getUTCDate() + 1);
+  return d.toISOString().slice(0, 10);
+}
+
 function AddBookingDialog({
   rooms,
   channels,
@@ -1017,6 +1176,9 @@ function AddBookingDialog({
   monthYear,
   monthIndex,
   onAdd,
+  trigger,
+  defaultRoom,
+  defaultFrom,
 }: {
   rooms: string[];
   channels: Channel[];
@@ -1025,6 +1187,11 @@ function AddBookingDialog({
   monthYear: number;
   monthIndex: number;
   onAdd: (p: AddBookingParams) => void;
+  /** Optional custom trigger (mobile calendar day cells). */
+  trigger?: React.ReactNode;
+  /** Preselected room / check-in date (mobile calendar). */
+  defaultRoom?: string;
+  defaultFrom?: string;
 }) {
   const [open, setOpen] = useState(false);
   // Default dates follow the month shown in the calendar (today when the
@@ -1039,10 +1206,10 @@ function AddBookingDialog({
       `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     return { today: iso(start), tomorrow: iso(next) };
   }, [monthYear, monthIndex]);
-  const [room, setRoom] = useState<string>(rooms[0] ?? "");
+  const [room, setRoom] = useState<string>(defaultRoom ?? rooms[0] ?? "");
   const [channelId, setChannelId] = useState<string>(channels[0]?.id ?? "");
-  const [from, setFrom] = useState<string>(today);
-  const [to, setTo] = useState<string>(tomorrow);
+  const [from, setFrom] = useState<string>(defaultFrom ?? today);
+  const [to, setTo] = useState<string>(defaultFrom ? nextDayIso(defaultFrom) : tomorrow);
 
   const [price, setPrice] = useState<string>("");
   const [note, setNote] = useState<string>("");
@@ -1052,10 +1219,14 @@ function AddBookingDialog({
   const [refundDirection, setRefundDirection] = useState<RefundDirection | "">("");
   const [refundAmount, setRefundAmount] = useState("");
 
-  // Re-seed the dates from the selected month each time the dialog opens.
+  // Re-seed the dates from the selected month (or the tapped day) on open.
   useEffect(() => {
-    if (open) { setFrom(today); setTo(tomorrow); }
-  }, [open, today, tomorrow]);
+    if (open) {
+      setFrom(defaultFrom ?? today);
+      setTo(defaultFrom ? nextDayIso(defaultFrom) : tomorrow);
+      if (defaultRoom) setRoom(defaultRoom);
+    }
+  }, [open, today, tomorrow, defaultFrom, defaultRoom]);
 
 
 
@@ -1074,10 +1245,10 @@ function AddBookingDialog({
   const channelCurrency = selectedChannel?.currency === "LOCAL" ? currency : "USD";
 
   const reset = () => {
-    setRoom(rooms[0] ?? "");
+    setRoom(defaultRoom ?? rooms[0] ?? "");
     setChannelId(channels[0]?.id ?? "");
-    setFrom(today);
-    setTo(tomorrow);
+    setFrom(defaultFrom ?? today);
+    setTo(defaultFrom ? nextDayIso(defaultFrom) : tomorrow);
     setPrice("");
     setNote("");
     setGuestName("");
@@ -1118,9 +1289,11 @@ function AddBookingDialog({
       onOpenChange={(o) => { setOpen(o); if (o) reset(); }}
       title="Add booking"
       trigger={
-        <Button size="sm" className="gap-1.5">
-          <CalendarPlus className="h-4 w-4" /> Add booking
-        </Button>
+        trigger ?? (
+          <Button size="sm" className="gap-1.5">
+            <CalendarPlus className="h-4 w-4" /> Add booking
+          </Button>
+        )
       }
       footer={
         <>
@@ -1216,5 +1389,113 @@ function AddBookingDialog({
         </div>
     </BookingSheet>
 
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Mobile-only calendar presentation
+// ---------------------------------------------------------------------------
+
+const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+/** Blank leading cells so day 1 lands under its weekday (Monday-first). */
+function leadingBlanks(year: number, monthIndex: number) {
+  return (new Date(year, monthIndex, 1).getDay() + 6) % 7;
+}
+
+function WeekdayHeader({ className }: { className?: string }) {
+  return (
+    <div className={cn("grid grid-cols-7 gap-1 text-center text-[10px] font-semibold uppercase tracking-wide text-muted-foreground", className)}>
+      {WEEKDAYS.map((d) => <span key={d}>{d}</span>)}
+    </div>
+  );
+}
+
+/** Level 1 — every room with a compact colour-only month grid. */
+function MobileRoomsOverview({
+  rooms,
+  monthLabel,
+  year,
+  monthIndex,
+  daysInMonth,
+  onSelect,
+  renderMiniDay,
+}: {
+  rooms: string[];
+  monthLabel: string;
+  year: number;
+  monthIndex: number;
+  daysInMonth: number;
+  onSelect: (room: string) => void;
+  renderMiniDay: (room: string, day: number) => React.ReactNode;
+}) {
+  const blanks = leadingBlanks(year, monthIndex);
+  return (
+    <div className="space-y-3">
+      <p className="text-sm font-semibold">{monthLabel}</p>
+      {rooms.map((room) => (
+        <button
+          key={room}
+          type="button"
+          onClick={() => onSelect(room)}
+          className="w-full rounded-2xl border bg-card p-3 text-start shadow-soft transition active:scale-[0.99]"
+        >
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <span className="truncate text-sm font-bold">{room}</span>
+            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+          </div>
+          <WeekdayHeader className="mb-1" />
+          <div className="grid grid-cols-7 gap-1">
+            {Array.from({ length: blanks }, (_, i) => <span key={`b${i}`} aria-hidden />)}
+            {Array.from({ length: daysInMonth }, (_, i) => renderMiniDay(room, i + 1))}
+          </div>
+        </button>
+      ))}
+      {rooms.length === 0 && (
+        <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">No rooms match the current filters.</p>
+      )}
+    </div>
+  );
+}
+
+/** Level 2 — one room, touch-friendly month grid. */
+function MobileRoomCalendar({
+  room,
+  monthLabel,
+  year,
+  monthIndex,
+  daysInMonth,
+  onBack,
+  renderDay,
+}: {
+  room: string;
+  monthLabel: string;
+  year: number;
+  monthIndex: number;
+  daysInMonth: number;
+  onBack: () => void;
+  renderDay: (room: string, day: number) => React.ReactNode;
+}) {
+  const blanks = leadingBlanks(year, monthIndex);
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <Button variant="outline" size="sm" onClick={onBack} className="gap-1">
+          <ChevronLeft className="h-4 w-4" /> Back
+        </Button>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-bold">{room}</p>
+          <p className="truncate text-xs text-muted-foreground">{monthLabel}</p>
+        </div>
+      </div>
+      <div className="rounded-2xl border bg-card p-3 shadow-soft">
+        <WeekdayHeader className="mb-2" />
+        <div className="grid grid-cols-7 gap-1.5">
+          {Array.from({ length: blanks }, (_, i) => <span key={`b${i}`} aria-hidden />)}
+          {Array.from({ length: daysInMonth }, (_, i) => renderDay(room, i + 1))}
+        </div>
+      </div>
+      <p className="text-xs text-muted-foreground">Tap a coloured day for booking details, or an empty day to add a booking.</p>
+    </div>
   );
 }

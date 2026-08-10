@@ -1118,9 +1118,11 @@ function AddBookingDialog({
       onOpenChange={(o) => { setOpen(o); if (o) reset(); }}
       title="Add booking"
       trigger={
-        <Button size="sm" className="gap-1.5">
-          <CalendarPlus className="h-4 w-4" /> Add booking
-        </Button>
+        trigger ?? (
+          <Button size="sm" className="gap-1.5">
+            <CalendarPlus className="h-4 w-4" /> Add booking
+          </Button>
+        )
       }
       footer={
         <>

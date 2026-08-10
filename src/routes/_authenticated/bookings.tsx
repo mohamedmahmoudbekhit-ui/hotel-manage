@@ -560,6 +560,7 @@ function ImportedBlock({ res, channel, position, onChanged, currency }: { res: I
       onOpenChange={setOpen}
       title={`${res.source_name} · ${label}`}
       trigger={
+        trigger ?? (
         <button
           className={`relative flex h-11 w-full flex-col justify-center border-2 px-2 text-start ${roundedClass}`}
           style={{ backgroundColor: color, color: textColor, borderColor: blockOutline(textColor) }}
@@ -586,6 +587,7 @@ function ImportedBlock({ res, channel, position, onChanged, currency }: { res: I
             <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-current opacity-90" />
           )}
         </button>
+        )
       }
       footer={
         <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-between">

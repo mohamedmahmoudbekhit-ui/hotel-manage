@@ -207,6 +207,127 @@ function BookingsPage() {
     }
   };
 
+  // ---- Mobile-only calendar experience (presentation layer only) ----
+  const isMobile = useIsMobile();
+  const [mobileRoom, setMobileRoom] = useState<string | null>(null);
+  useEffect(() => {
+    if (mobileRoom && !visibleRooms.includes(mobileRoom)) setMobileRoom(null);
+  }, [mobileRoom, visibleRooms]);
+
+  const isoOf = (day: number) =>
+    `${currentMonth.year}-${String(currentMonth.monthIndex + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+
+  /** Resolve what occupies a room-night, for the mobile calendar only. */
+  const mobileDay = (room: string, day: number) => {
+    const list = slotCells(currentMonth.cells[room]?.[day]);
+    const importedHere = list.length === 0 ? importedByRoomDay.get(room)?.get(day) ?? null : null;
+    const cell = list.find((c) => !isCanceledCell(c)) ?? list[0] ?? null;
+    if (importedHere) {
+      const ch = resolveImportedChannel(analyticsSettings, importedHere.res);
+      const st = importedStatus(importedHere.res);
+      return { kind: "imported" as const, res: importedHere.res, position: importedHere.position, color: ch.color || importedHere.res.source_color || "#64748b", canceled: st === "canceled" || st === "refunded", channel: ch };
+    }
+    if (cell) {
+      const ch = findChannel(settings, cell.channelId);
+      return { kind: "cell" as const, cell, color: ch.color, canceled: isCanceledCell(cell), channel: ch };
+    }
+    return { kind: "free" as const, color: null, canceled: false };
+  };
+
+  const daySquareStyle = (info: ReturnType<typeof mobileDay>) => {
+    if (!info.color) return undefined;
+    return info.canceled
+      ? { background: `${info.color}33`, color: "inherit", borderColor: info.color, borderStyle: "dashed" as const }
+      : { background: info.color, color: pickTextColor(info.color), borderColor: info.color };
+  };
+
+  /** Interactive day square used inside the mobile room-detail calendar. */
+  const renderMobileDay = (room: string, day: number) => {
+    const info = mobileDay(room, day);
+    const square = (
+      <button
+        type="button"
+        className={cn(
+          "flex aspect-square w-full flex-col items-center justify-center rounded-xl border text-base font-semibold tabular-nums transition active:scale-95",
+          info.color ? "shadow-sm" : "border-dashed border-border/70 bg-muted/30 text-muted-foreground",
+        )}
+        style={daySquareStyle(info)}
+        aria-label={`${room} — ${isoOf(day)}`}
+      >
+        {day}
+      </button>
+    );
+    if (info.kind === "imported") {
+      return (
+        <ImportedBlock
+          key={`i-${day}`}
+          res={info.res}
+          channel={info.channel}
+          position={info.position}
+          onChanged={reloadImported}
+          currency={settings.currency}
+          trigger={square}
+        />
+      );
+    }
+    if (info.kind === "cell") {
+      const c = info.cell;
+      return (
+        <CellEditor
+          key={`c-${day}`}
+          cell={c}
+          position="single"
+          onSave={(nc) => updateCell(room, day, nc, c.bookingId)}
+          onUpdateBooking={(patch) => c.bookingId && updateBooking(c.bookingId, patch)}
+          refund={c.bookingId ? refundOf(c.bookingId) : null}
+          status={c.bookingId ? statusOf(c.bookingId) : cellStatus(c)}
+          onSetStatus={(st, r) => c.bookingId && setBookingStatus(c.bookingId, st, r)}
+          onDelete={() => updateCell(room, day, null, c.bookingId)}
+          usdRate={currentMonth.usdRate}
+          channels={settings.channels}
+          currency={settings.currency}
+          trigger={square}
+        />
+      );
+    }
+    return (
+      <AddBookingDialog
+        key={`a-${day}`}
+        rooms={settings.rooms}
+        channels={settings.channels}
+        currency={settings.currency}
+        monthYear={currentMonth.year}
+        monthIndex={currentMonth.monthIndex}
+        defaultRoom={room}
+        defaultFrom={isoOf(day)}
+        trigger={square}
+        onAdd={(p) => {
+          const res = addBookingRange(p);
+          if (res.written === 0) toast.error("Could not add booking. Dates may conflict with existing bookings.");
+          else if (res.skipped > 0) toast.success(`Booking added for ${res.written} night(s). ${res.skipped} conflicting night(s) skipped.`);
+          else toast.success(`Booking added across ${res.written} night(s).`);
+        }}
+      />
+    );
+  };
+
+  /** Non-interactive mini square for the rooms overview. */
+  const renderMiniDay = (room: string, day: number) => {
+    const info = mobileDay(room, day);
+    return (
+      <div
+        key={day}
+        className={cn(
+          "flex aspect-square items-center justify-center rounded-md border text-[10px] font-medium tabular-nums",
+          info.color ? "" : "border-dashed border-border/60 bg-muted/30 text-muted-foreground",
+        )}
+        style={daySquareStyle(info)}
+      >
+        {day}
+      </div>
+    );
+  };
+
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-4 px-4 py-6 sm:px-6 lg:px-8">

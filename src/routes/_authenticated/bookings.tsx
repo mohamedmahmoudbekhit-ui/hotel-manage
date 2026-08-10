@@ -1215,11 +1215,7 @@ function AddBookingDialog({
           />
 
         </div>
-        <DialogFooter>
-          <Button variant="outline" size="sm" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button size="sm" onClick={submit} disabled={!room || !channelId || nights <= 0 || !(priceNum > 0)}>Save booking</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    </BookingSheet>
+
   );
 }

@@ -148,7 +148,7 @@ function AppShell() {
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-background" dir={dir}>
         <AppSidebar side={dir === "rtl" ? "right" : "left"} />
-        <div className="flex flex-1 flex-col">
+        <div className="flex min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-background/80 px-4 backdrop-blur">
             <SidebarTrigger />
             <div className="min-w-0 truncate text-sm font-medium text-muted-foreground">
@@ -163,7 +163,7 @@ function AppShell() {
               <span className="hidden text-xs sm:inline">{t("auth.signOut")}</span>
             </Button>
           </header>
-          <main className="flex-1"><Outlet /></main>
+          <main className="min-w-0 flex-1"><Outlet /></main>
         </div>
       </div>
     </SidebarProvider>

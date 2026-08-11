@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { LayoutDashboard, CalendarDays, LineChart, BarChart3, Settings as SettingsIcon, Hotel, Receipt, Users } from "lucide-react";
 import {
@@ -10,6 +11,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { useI18n } from "@/lib/i18n";
 import { useHotel } from "@/lib/hotel/store";
@@ -18,7 +20,13 @@ export function AppSidebar({ side = "left" }: { side?: "left" | "right" }) {
   const pathname = useRouterState({ select: (r) => r.location.pathname });
   const { t } = useI18n();
   const { hotelName, logoUrl, isBookingAgent } = useHotel();
+  const { isMobile, setOpenMobile } = useSidebar();
   const isActive = (p: string) => (p === "/" ? pathname === "/" : pathname.startsWith(p));
+
+  // On mobile the sidebar is a sheet: close it as soon as a destination is chosen.
+  useEffect(() => {
+    if (isMobile) setOpenMobile(false);
+  }, [pathname, isMobile, setOpenMobile]);
 
   const items = isBookingAgent
     ? [{ title: t("nav.bookings"), url: "/bookings", icon: CalendarDays }]

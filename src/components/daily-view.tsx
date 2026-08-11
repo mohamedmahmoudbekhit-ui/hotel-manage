@@ -115,7 +115,43 @@ export function DailyView({
       </div>
 
 
-      <div className="overflow-x-auto rounded-2xl border bg-card shadow-soft">
+      {/* Mobile: stacked cards so nothing overflows the viewport. */}
+      <div className="space-y-2 md:hidden">
+        {rows.map((r) => (
+          <div key={r.room} className="rounded-xl border bg-card p-3 shadow-soft">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              <span className="min-w-0 flex-1 truncate text-sm font-bold">{r.room}</span>
+              <StatusBadge status={r.status} />
+            </div>
+            {r.label && (
+              <div className="mt-2">
+                <span
+                  className="inline-flex max-w-full items-center gap-1.5 truncate rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                  style={{ background: r.color, color: pickTextColor(r.color ?? "#64748b") }}
+                >
+                  {r.label}
+                </span>
+              </div>
+            )}
+            <dl className="mt-2 space-y-1 text-xs">
+              <div className="flex min-w-0 gap-2">
+                <dt className="shrink-0 text-muted-foreground">Guest</dt>
+                <dd className="min-w-0 flex-1 break-words text-end">{r.guest || "—"}</dd>
+              </div>
+              <div className="flex min-w-0 gap-2">
+                <dt className="shrink-0 text-muted-foreground">Note</dt>
+                <dd className="min-w-0 flex-1 break-words text-end text-muted-foreground">{r.note || "—"}</dd>
+              </div>
+            </dl>
+          </div>
+        ))}
+        {rows.length === 0 && (
+          <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">No rooms configured.</p>
+        )}
+      </div>
+
+      <div className="hidden overflow-x-auto rounded-2xl border bg-card shadow-soft md:block">
+
         <table className="w-full min-w-[640px] text-sm">
           <thead className="bg-muted/60">
             <tr>

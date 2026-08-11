@@ -318,11 +318,12 @@ function BookingsPage() {
       <div
         key={day}
         className={cn(
-          "flex aspect-square items-center justify-center rounded-md border text-[10px] font-medium tabular-nums",
+          "flex aspect-square items-center justify-center rounded-[3px] border text-[8px] font-medium leading-none tabular-nums",
           info.color ? "" : "border-dashed border-border/60 bg-muted/30 text-muted-foreground",
         )}
         style={daySquareStyle(info)}
       >
+
         {day}
       </div>
     );

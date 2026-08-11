@@ -10,6 +10,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { useI18n } from "@/lib/i18n";
 import { useHotel } from "@/lib/hotel/store";

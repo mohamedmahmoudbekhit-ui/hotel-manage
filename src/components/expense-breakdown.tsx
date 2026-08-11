@@ -49,6 +49,13 @@ export function ExpenseBreakdown() {
         </div>
       </div>
 
+      <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_140px_160px_auto]">
+        <Input placeholder={t("expenses.placeholderLabel")} value={newLabel} onChange={(e) => setNewLabel(e.target.value)} />
+        <Input type="number" step="0.01" placeholder={t("expenses.amount")} value={newAmount} onChange={(e) => setNewAmount(e.target.value)} />
+        <Input type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} />
+        <Button onClick={handleAdd}><Plus className="me-1 h-4 w-4" /> {t("expenses.add")}</Button>
+      </div>
+
       <div className="mt-4 overflow-x-auto rounded-xl border">
         <table className="w-full min-w-[560px] text-sm">
           <thead className="bg-muted/50 text-xs uppercase tracking-wider text-muted-foreground">
@@ -84,13 +91,6 @@ export function ExpenseBreakdown() {
             )}
           </tbody>
         </table>
-      </div>
-
-      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_140px_160px_auto]">
-        <Input placeholder={t("expenses.placeholderLabel")} value={newLabel} onChange={(e) => setNewLabel(e.target.value)} />
-        <Input type="number" step="0.01" placeholder={t("expenses.amount")} value={newAmount} onChange={(e) => setNewAmount(e.target.value)} />
-        <Input type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} />
-        <Button onClick={handleAdd}><Plus className="me-1 h-4 w-4" /> {t("expenses.add")}</Button>
       </div>
     </section>
   );

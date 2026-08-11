@@ -25,8 +25,7 @@ export function MonthSelector() {
     if (!latest) return;
     let y = latest.year, m = latest.monthIndex + 1;
     if (m > 11) { m = 0; y += 1; }
-    addMonth(y, m);
-    setCurrentMonthKey(`${y}-${String(m + 1).padStart(2, "0")}`);
+    addMonth(y, m); // existing logic also selects the newly created month
   };
 
   return (

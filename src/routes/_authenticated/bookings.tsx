@@ -1404,15 +1404,21 @@ function leadingBlanks(year: number, monthIndex: number) {
   return (new Date(year, monthIndex, 1).getDay() + 6) % 7;
 }
 
-function WeekdayHeader({ className }: { className?: string }) {
+function WeekdayHeader({ className, compact }: { className?: string; compact?: boolean }) {
   return (
-    <div className={cn("grid grid-cols-7 gap-1 text-center text-[10px] font-semibold uppercase tracking-wide text-muted-foreground", className)}>
-      {WEEKDAYS.map((d) => <span key={d}>{d}</span>)}
+    <div
+      className={cn(
+        "grid grid-cols-7 text-center font-semibold uppercase tracking-wide text-muted-foreground",
+        compact ? "gap-[2px] text-[7px] leading-none" : "gap-1 text-[10px]",
+        className,
+      )}
+    >
+      {WEEKDAYS.map((d) => <span key={d}>{compact ? d.charAt(0) : d}</span>)}
     </div>
   );
 }
 
-/** Level 1 — every room with a compact colour-only month grid. */
+/** Level 1 — compact property overview: two rooms per row, colour-only grids. */
 function MobileRoomsOverview({
   rooms,
   monthLabel,
@@ -1432,32 +1438,35 @@ function MobileRoomsOverview({
 }) {
   const blanks = leadingBlanks(year, monthIndex);
   return (
-    <div className="space-y-3">
+    <div className="min-w-0 space-y-3">
       <p className="text-sm font-semibold">{monthLabel}</p>
-      {rooms.map((room) => (
-        <button
-          key={room}
-          type="button"
-          onClick={() => onSelect(room)}
-          className="w-full rounded-2xl border bg-card p-3 text-start shadow-soft transition active:scale-[0.99]"
-        >
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <span className="truncate text-sm font-bold">{room}</span>
-            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-          </div>
-          <WeekdayHeader className="mb-1" />
-          <div className="grid grid-cols-7 gap-1">
-            {Array.from({ length: blanks }, (_, i) => <span key={`b${i}`} aria-hidden />)}
-            {Array.from({ length: daysInMonth }, (_, i) => renderMiniDay(room, i + 1))}
-          </div>
-        </button>
-      ))}
+      <div className="grid grid-cols-[repeat(2,minmax(0,1fr))] gap-2">
+        {rooms.map((room) => (
+          <button
+            key={room}
+            type="button"
+            onClick={() => onSelect(room)}
+            className="min-w-0 rounded-xl border bg-card p-2 text-start shadow-soft transition active:scale-[0.99]"
+          >
+            <div className="mb-1.5 flex min-w-0 items-center gap-1">
+              <span className="min-w-0 flex-1 truncate text-xs font-bold">{room}</span>
+              <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            </div>
+            <WeekdayHeader compact className="mb-1" />
+            <div className="grid grid-cols-7 gap-[2px]">
+              {Array.from({ length: blanks }, (_, i) => <span key={`b${i}`} aria-hidden />)}
+              {Array.from({ length: daysInMonth }, (_, i) => renderMiniDay(room, i + 1))}
+            </div>
+          </button>
+        ))}
+      </div>
       {rooms.length === 0 && (
         <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">No rooms match the current filters.</p>
       )}
     </div>
   );
 }
+
 
 /** Level 2 — one room, touch-friendly month grid. */
 function MobileRoomCalendar({

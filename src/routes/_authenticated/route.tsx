@@ -163,7 +163,7 @@ function AppShell() {
               <span className="hidden text-xs sm:inline">{t("auth.signOut")}</span>
             </Button>
           </header>
-          <main className="flex-1"><Outlet /></main>
+          <main className="min-w-0 flex-1"><Outlet /></main>
         </div>
       </div>
     </SidebarProvider>

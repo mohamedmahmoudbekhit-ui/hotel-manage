@@ -19,6 +19,7 @@ import { useHotel } from "@/lib/hotel/store";
 export function AppSidebar({ side = "left" }: { side?: "left" | "right" }) {
   const pathname = useRouterState({ select: (r) => r.location.pathname });
   const { t } = useI18n();
+  const { hotelName, logoUrl, isBookingAgent } = useHotel();
   const { isMobile, setOpenMobile } = useSidebar();
   const isActive = (p: string) => (p === "/" ? pathname === "/" : pathname.startsWith(p));
 

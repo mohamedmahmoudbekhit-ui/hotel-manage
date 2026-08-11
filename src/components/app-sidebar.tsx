@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { LayoutDashboard, CalendarDays, LineChart, BarChart3, Settings as SettingsIcon, Hotel, Receipt, Users } from "lucide-react";
 import {

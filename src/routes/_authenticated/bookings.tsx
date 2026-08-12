@@ -145,6 +145,7 @@ function BookingsPage() {
   const monthStart = `${currentMonth.year}-${String(currentMonth.monthIndex + 1).padStart(2, "0")}-01`;
   const monthEnd = `${currentMonth.year}-${String(currentMonth.monthIndex + 1).padStart(2, "0")}-${String(currentMonth.daysInMonth).padStart(2, "0")}`;
   const [filters, setFilters] = useState<ExportFilters>({ from: monthStart, to: monthEnd, sourceKey: "all", room: "all" });
+  const [filtersOpen, setFiltersOpen] = useState(false);
   useEffect(() => {
     setFilters((f) => ({ ...f, from: monthStart, to: monthEnd }));
   }, [monthStart, monthEnd]);

@@ -91,8 +91,16 @@ export async function syncCalendarSource(
 
   const existingByUid = new Map((existing ?? []).map((r) => [r.external_uid, r]));
 
-  const toInsert: Array<Record<string, unknown>> = [];
-  const toUpdate: Array<{ id: string; patch: Record<string, unknown> }> = [];
+  type InsertRow = {
+    organization_id: string; room_id: string; source_id: string; platform_type: string;
+    external_uid: string; summary: string | null; start_date: string; end_date: string;
+  };
+  type PatchRow = {
+    start_date: string; end_date: string; summary: string | null;
+    room_id: string; platform_type: string; updated_at: string;
+  };
+  const toInsert: InsertRow[] = [];
+  const toUpdate: Array<{ id: string; patch: PatchRow }> = [];
 
   for (const [uid, e] of byUid) {
     const local = existingByUid.get(uid);

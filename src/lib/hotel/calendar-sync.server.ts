@@ -175,7 +175,11 @@ export async function syncCalendarSource(
 
   await supabaseAdmin
     .from("calendar_sources")
-    .update({ last_sync_at: new Date().toISOString(), last_sync_error: null })
+    .update({
+      last_sync_at: new Date().toISOString(),
+      last_success_at: new Date().toISOString(),
+      last_sync_error: null,
+    })
     .eq("id", source.id);
 
   await log({ status: "success", found: events.length, imported, removed });

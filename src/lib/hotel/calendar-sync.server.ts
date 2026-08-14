@@ -73,50 +73,113 @@ export async function syncCalendarSource(
     return fail(`Could not parse the calendar file: ${e instanceof Error ? e.message : String(e)}`);
   }
 
-  const rows = events.map((e) => ({
-    organization_id: source.organization_id,
-    room_id: source.room_id,
-    source_id: source.id,
-    platform_type: source.platform_type,
-    external_uid: e.uid,
-    summary: e.summary || null,
-    start_date: e.start,
-    end_date: e.end,
-    updated_at: new Date().toISOString(),
-  }));
-
-  let imported = 0;
-  if (rows.length > 0) {
-    const { error: upErr } = await supabaseAdmin
-      .from("ical_reservations")
-      .upsert(rows, { onConflict: "source_id,external_uid" });
-    if (upErr) return fail(upErr.message);
-    imported = rows.length;
+  // ---- Reconciliation: the current feed is the source of truth for THIS source ----
+  // Dedupe by UID (some feeds repeat a UID across recurrence lines); last one wins.
+  const byUid = new Map<string, { start: string; end: string; summary: string }>();
+  for (const e of events) {
+    if (!e.uid) continue;
+    byUid.set(e.uid, { start: e.start, end: e.end, summary: e.summary || "" });
   }
 
-  // Remove reservations for this source that no longer appear in the feed
-  const keepUids = rows.map((r) => r.external_uid);
+  // Existing local records for THIS source only (never touches manual bookings
+  // or other integrations' records).
+  const { data: existing, error: exErr } = await supabaseAdmin
+    .from("ical_reservations")
+    .select("id, external_uid, start_date, end_date, summary, room_id, platform_type")
+    .eq("source_id", source.id);
+  if (exErr) return fail(exErr.message);
+
+  const existingByUid = new Map((existing ?? []).map((r) => [r.external_uid, r]));
+
+  type InsertRow = {
+    organization_id: string; room_id: string; source_id: string; platform_type: string;
+    external_uid: string; summary: string | null; start_date: string; end_date: string;
+  };
+  type PatchRow = {
+    start_date: string; end_date: string; summary: string | null;
+    room_id: string; platform_type: string; updated_at: string;
+  };
+  const toInsert: InsertRow[] = [];
+  const toUpdate: Array<{ id: string; patch: PatchRow }> = [];
+
+  for (const [uid, e] of byUid) {
+    const local = existingByUid.get(uid);
+    if (!local) {
+      toInsert.push({
+        organization_id: source.organization_id,
+        room_id: source.room_id,
+        source_id: source.id,
+        platform_type: source.platform_type,
+        external_uid: uid,
+        summary: e.summary || null,
+        start_date: e.start,
+        end_date: e.end,
+      });
+      continue;
+    }
+    const changed =
+      local.start_date !== e.start ||
+      local.end_date !== e.end ||
+      (local.summary ?? "") !== e.summary ||
+      local.room_id !== source.room_id ||
+      local.platform_type !== source.platform_type;
+    if (changed) {
+      toUpdate.push({
+        id: local.id,
+        patch: {
+          start_date: e.start,
+          end_date: e.end,
+          summary: e.summary || null,
+          room_id: source.room_id,
+          platform_type: source.platform_type,
+          updated_at: new Date().toISOString(),
+        },
+      });
+    }
+  }
+
+  // Stale: present locally for this source but gone from the current valid feed.
+  const staleIds = (existing ?? [])
+    .filter((r) => !byUid.has(r.external_uid))
+    .map((r) => r.id);
+
+  if (toInsert.length > 0) {
+    const { error } = await supabaseAdmin.from("ical_reservations").insert(toInsert);
+    if (error) return fail(error.message);
+  }
+
+  for (const u of toUpdate) {
+    const { error } = await supabaseAdmin
+      .from("ical_reservations")
+      .update(u.patch)
+      .eq("id", u.id)
+      .eq("source_id", source.id);
+    if (error) return fail(error.message);
+  }
+
   let removed = 0;
-  if (keepUids.length > 0) {
-    const { data: del } = await supabaseAdmin
+  if (staleIds.length > 0) {
+    // Overrides cascade-delete with the reservation row.
+    const { data: del, error } = await supabaseAdmin
       .from("ical_reservations")
       .delete()
       .eq("source_id", source.id)
-      .not("external_uid", "in", `(${keepUids.map((u) => `"${u.replace(/"/g, '\\"')}"`).join(",")})`)
+      .in("id", staleIds)
       .select("id");
-    removed = del?.length ?? 0;
-  } else {
-    const { data: del } = await supabaseAdmin
-      .from("ical_reservations")
-      .delete()
-      .eq("source_id", source.id)
-      .select("id");
+    if (error) return fail(error.message);
     removed = del?.length ?? 0;
   }
+
+  const imported = toInsert.length + toUpdate.length;
+
 
   await supabaseAdmin
     .from("calendar_sources")
-    .update({ last_sync_at: new Date().toISOString(), last_sync_error: null })
+    .update({
+      last_sync_at: new Date().toISOString(),
+      last_success_at: new Date().toISOString(),
+      last_sync_error: null,
+    })
     .eq("id", source.id);
 
   await log({ status: "success", found: events.length, imported, removed });

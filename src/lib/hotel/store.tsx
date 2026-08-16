@@ -42,6 +42,10 @@ interface Ctx extends StateShape {
   statusOf: (bookingId: string) => BookingStatus;
   /** Current refund of a booking, with the amount as the booking total. */
   refundOf: (bookingId: string) => { direction: RefundDirection; amount: number } | null;
+  /** Whole-booking info for the edit form (dates, room, total, channel...). */
+  bookingInfo: (bookingId: string) => BookingInfo | null;
+  /** Rewrite a whole booking as one unit (dates/room/channel/total price). */
+  updateBookingRange: (bookingId: string, params: { room: string; from: string; to: string; channelId: string; price: number; note?: string; guestName?: string; status?: BookingStatus; refund?: { direction: RefundDirection; amount: number } | null }) => { written: number; skipped: number; nights: number };
   addBookingRange: (params: { room: string; from: string; to: string; channelId: string; price: number; note?: string; guestName?: string; allowOverlap?: boolean; status?: BookingStatus; refund?: { direction: RefundDirection; amount: number } | null }) => { written: number; skipped: number; nights: number };
 
   updateMonthMeta: (patch: Partial<Pick<MonthData, "expenses" | "usdRate" | "managementPct">>) => void;
@@ -57,6 +61,50 @@ interface Ctx extends StateShape {
   setHotelName: (name: string) => void;
   setLogoUrl: (url: string | undefined) => void;
   signOut: () => Promise<void>;
+}
+
+export interface BookingInfo {
+  bookingId: string;
+  room: string;
+  /** Check-in ISO date (first night). */
+  from: string;
+  /** Check-out ISO date (last night + 1). */
+  to: string;
+  nights: number;
+  /** Sum of the nightly prices, in the channel currency. */
+  total: number;
+  channelId: string;
+  note?: string;
+  guestName?: string;
+  status: BookingStatus;
+  refund: { direction: RefundDirection; amount: number } | null;
+}
+
+/**
+ * Split a total across N nights so the nightly values always sum back to the
+ * exact total (remainder cents go to the first nights).
+ */
+function distributeTotal(total: number, nights: number): number[] {
+  const cents = Math.round(total * 100);
+  const base = Math.floor(cents / nights);
+  let rest = cents - base * nights;
+  return Array.from({ length: nights }, () => {
+    const extra = rest > 0 ? 1 : 0;
+    rest -= extra;
+    return (base + extra) / 100;
+  });
+}
+
+/** ISO date list of the nights of a stay (check-out excluded). */
+function nightDates(from: string, nights: number): Date[] {
+  const start = new Date(`${from}T00:00:00Z`);
+  const out: Date[] = [];
+  const cursor = new Date(start);
+  for (let i = 0; i < nights; i++) {
+    out.push(new Date(cursor));
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+  return out;
 }
 
 const HotelContext = createContext<Ctx | null>(null);
@@ -424,6 +472,118 @@ export function HotelProvider({ children }: { children: ReactNode }) {
   );
 
 
+  /** Collect a whole booking (all its nights across months) as one reservation. */
+  const bookingInfo = useCallback(
+    (bookingId: string): BookingInfo | null => {
+      let room: string | null = null;
+      let first: Date | null = null;
+      let last: Date | null = null;
+      let total = 0;
+      let nights = 0;
+      let sample: Cell | null = null;
+      for (const month of Object.values(state.months)) {
+        for (const [r, days] of Object.entries(month.cells)) {
+          for (const [day, slot] of Object.entries(days)) {
+            for (const cell of slotCells(slot)) {
+              if (cell.bookingId !== bookingId) continue;
+              room = r;
+              sample = sample ?? cell;
+              nights += 1;
+              total += Number(cell.price) || 0;
+              const d = new Date(Date.UTC(month.year, month.monthIndex, Number(day)));
+              if (!first || d < first) first = d;
+              if (!last || d > last) last = d;
+            }
+          }
+        }
+      }
+      if (!room || !sample || !first || !last) return null;
+      const checkout = new Date(last);
+      checkout.setUTCDate(checkout.getUTCDate() + 1);
+      return {
+        bookingId,
+        room,
+        from: first.toISOString().slice(0, 10),
+        to: checkout.toISOString().slice(0, 10),
+        nights,
+        total: Math.round(total * 100) / 100,
+        channelId: sample.channelId,
+        ...(sample.note ? { note: sample.note } : {}),
+        ...(sample.guestName ? { guestName: sample.guestName } : {}),
+        status: cellStatus(sample),
+        refund: refundOf(bookingId),
+      };
+    },
+    [state.months, refundOf],
+  );
+
+  /**
+   * Rewrite a booking as ONE reservation: its nights are cleared and re-written
+   * over the new range, with the total price redistributed across the nights.
+   */
+  const updateBookingRange = useCallback(
+    (
+      bookingId: string,
+      params: { room: string; from: string; to: string; channelId: string; price: number; note?: string; guestName?: string; status?: BookingStatus; refund?: { direction: RefundDirection; amount: number } | null },
+    ) => {
+      const nights = nightsBetween(params.from, params.to);
+      if (nights <= 0) return { written: 0, skipped: 0, nights: 0 };
+      const nightly = distributeTotal(params.price, nights);
+      const status: BookingStatus = params.status ?? "confirmed";
+      const refundNightly =
+        status === "refunded" && params.refund ? distributeTotal(params.refund.amount, nights) : null;
+      let written = 0;
+      let skipped = 0;
+      setState((s) => {
+        // 1. clear every existing night of this booking
+        const nextMonths: Record<string, MonthData> = {};
+        for (const [key, month] of Object.entries(s.months)) {
+          const cells: MonthData["cells"] = {};
+          for (const [room, days] of Object.entries(month.cells)) {
+            cells[room] = {};
+            for (const [day, slot] of Object.entries(days)) {
+              cells[room][Number(day)] = toSlot(slotCells(slot).filter((c) => c.bookingId !== bookingId));
+            }
+          }
+          nextMonths[key] = { ...month, cells };
+        }
+        // 2. write the new range
+        nightDates(params.from, nights).forEach((dt, i) => {
+          const y = dt.getUTCFullYear();
+          const mi = dt.getUTCMonth();
+          const day = dt.getUTCDate();
+          const key = `${MONTH_NAMES[mi]} ${y}`;
+          const month = nextMonths[key] ?? emptyMonth(y, mi, s.settings);
+          const rooms = { ...month.cells };
+          if (!rooms[params.room]) {
+            rooms[params.room] = {};
+            for (let dd = 1; dd <= month.daysInMonth; dd++) rooms[params.room][dd] = null;
+          }
+          const existing = slotCells(rooms[params.room][day]);
+          if (existing.length > 0) { skipped += 1; nextMonths[key] = { ...month, cells: rooms }; return; }
+          const added: Cell = {
+            price: nightly[i]!,
+            channelId: params.channelId,
+            bookingId,
+            ...(params.note ? { note: params.note } : {}),
+            ...(params.guestName ? { guestName: params.guestName } : {}),
+            ...(status !== "confirmed" ? { status } : {}),
+            ...(refundNightly && params.refund
+              ? { refundDirection: params.refund.direction, refundAmount: refundNightly[i]! }
+              : {}),
+          };
+          rooms[params.room] = { ...rooms[params.room], [day]: toSlot([added]) };
+          nextMonths[key] = { ...month, cells: rooms };
+          written += 1;
+        });
+        return { ...s, months: nextMonths };
+      });
+      return { written, skipped, nights };
+    },
+    [],
+  );
+
+
   const addBookingRange = useCallback((params: { room: string; from: string; to: string; channelId: string; price: number; note?: string; guestName?: string; allowOverlap?: boolean; status?: BookingStatus; refund?: { direction: RefundDirection; amount: number } | null }) => {
     const start = new Date(`${params.from}T00:00:00Z`);
     const end = new Date(`${params.to}T00:00:00Z`);
@@ -672,6 +832,8 @@ export function HotelProvider({ children }: { children: ReactNode }) {
     refundOf,
 
     addBookingRange,
+    bookingInfo,
+    updateBookingRange,
     updateMonthMeta,
     updateSettings,
     addChannel,

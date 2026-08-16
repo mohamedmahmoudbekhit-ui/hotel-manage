@@ -989,7 +989,25 @@ function CellEditor({
     refund?.amount != null ? String(refund.amount) : cell?.refundAmount != null ? String(cell.refundAmount) : "",
   );
 
+  // ---- Whole-booking edit (multi-night reservations are ONE booking) ----
+  const { bookingInfo, updateBookingRange, settings: hotelSettings } = useHotel();
+  const info = cell?.bookingId ? bookingInfo(cell.bookingId) : null;
+  const [bRoom, setBRoom] = useState<string>(info?.room ?? "");
+  const [bFrom, setBFrom] = useState<string>(info?.from ?? "");
+  const [bTo, setBTo] = useState<string>(info?.to ?? "");
+  const [bTotal, setBTotal] = useState<string>(info ? String(info.total) : "");
+  const bNights = nightsBetween(bFrom, bTo);
+  const bTotalNum = parseFloat(bTotal) || 0;
+  const bPerNight = bNights > 0 ? bTotalNum / bNights : 0;
+
   const reset = () => {
+    const i = cell?.bookingId ? bookingInfo(cell.bookingId) : null;
+    if (i) {
+      setBRoom(i.room);
+      setBFrom(i.from);
+      setBTo(i.to);
+      setBTotal(String(i.total));
+    }
     setPrice(cell?.price.toString() ?? "");
     setChannelId(cell?.channelId ?? defaultChannel);
     setNote(cell?.note ?? "");
@@ -1003,9 +1021,32 @@ function CellEditor({
   const refundValid = status !== "refunded" || (refundDirection !== "" && isFinite(refundNum) && refundNum > 0);
 
   const save = () => {
+    if (!refundValid) { toast.error("Enter a refund direction and a positive refund amount."); return; }
+    if (info) {
+      // One reservation: the total price drives the nightly distribution.
+      if (!bRoom || !channelId) return;
+      if (bNights <= 0) { toast.error("Check-out must be at least one day after check-in."); return; }
+      if (!(bTotalNum > 0)) { toast.error("Enter a total price greater than zero."); return; }
+      const refundPayloadB = status === "refunded" && refundDirection !== "" ? { direction: refundDirection, amount: refundNum } : null;
+      const res = updateBookingRange(info.bookingId, {
+        room: bRoom,
+        from: bFrom,
+        to: bTo,
+        channelId,
+        price: bTotalNum,
+        ...(note.trim() ? { note: note.trim() } : {}),
+        ...(guestName.trim() ? { guestName: guestName.trim() } : {}),
+        status,
+        refund: refundPayloadB,
+      });
+      if (res.written === 0) toast.error("Could not update the booking. The new dates conflict with existing bookings.");
+      else if (res.skipped > 0) toast.success(`Booking updated. ${res.skipped} conflicting night(s) skipped.`);
+      else toast.success("Booking updated.");
+      setOpen(false);
+      return;
+    }
     const p = parseFloat(price);
     if (!isFinite(p) || p <= 0) return;
-    if (!refundValid) { toast.error("Enter a refund direction and a positive refund amount."); return; }
     const trimmedNote = note.trim();
     const patch = { channelId, note: trimmedNote || undefined, guestName: guestName.trim() || undefined };
     const refundPayload = status === "refunded" && refundDirection !== "" ? { direction: refundDirection, amount: refundNum } : null;
@@ -1087,6 +1128,50 @@ function CellEditor({
             <Label className="text-xs">Guest name</Label>
             <Input value={guestName} onChange={(e) => setGuestName(e.target.value)} placeholder="Optional" />
           </div>
+          {info ? (
+            <>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Room</Label>
+                <Select value={bRoom} onValueChange={setBRoom}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {hotelSettings.rooms.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Check-in</Label>
+                  <Input type="date" value={bFrom} onChange={(e) => {
+                    const v = e.target.value;
+                    setBFrom(v);
+                    if (v && bTo <= v) setBTo(nextDayIso(v));
+                  }} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Check-out</Label>
+                  <Input type="date" value={bTo} min={bFrom ? nextDayIso(bFrom) : undefined} onChange={(e) => setBTo(e.target.value)} />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Total price ({editorCurrency})</Label>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  step="0.01"
+                  min="0"
+                  value={bTotal}
+                  onChange={(e) => setBTotal(e.target.value)}
+                  placeholder="0.00"
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  {bNights > 0
+                    ? `${bNights} night${bNights === 1 ? "" : "s"}${bTotalNum > 0 ? ` · ${bPerNight.toFixed(2)} ${editorCurrency} / night` : ""} · check-out day is not charged`
+                    : "Check-out must be at least one day after check-in."}
+                </p>
+              </div>
+            </>
+          ) : (
           <div className="space-y-1.5">
             <Label htmlFor="price" className="text-xs">{t("bookings.price")}</Label>
             <Input
@@ -1105,6 +1190,7 @@ function CellEditor({
                 : `${t("bookings.inUsd")} (× ${usdRate} = ${(parseFloat(price) * usdRate || 0).toFixed(0)} ${currency})`}
             </p>
           </div>
+          )}
           <div className="space-y-1.5">
             <Label className="text-xs">{t("bookings.channel")}</Label>
             <Select value={channelId} onValueChange={setChannelId}>
@@ -1140,7 +1226,17 @@ function CellEditor({
             setAmount={setRefundAmount}
             currencyLabel={editorCurrency}
           />
-          {parseFloat(price) > 0 && status !== "refunded" && status !== "canceled" && (
+          {info && bTotalNum > 0 && status !== "refunded" && status !== "canceled" && (
+            <div className="rounded-md bg-muted p-2 text-xs">
+              {t("bookings.revenue")}: <span className="font-semibold">
+                {formatCurrency(
+                  cellRevenueLocal({ price: bTotalNum, channelId }, usdRate, { channels } as never),
+                  currency,
+                )}
+              </span>
+            </div>
+          )}
+          {!info && parseFloat(price) > 0 && status !== "refunded" && status !== "canceled" && (
             <div className="rounded-md bg-muted p-2 text-xs">
               {t("bookings.revenue")}: <span className="font-semibold">
                 {formatCurrency(

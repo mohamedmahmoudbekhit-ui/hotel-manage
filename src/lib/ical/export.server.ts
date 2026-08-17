@@ -52,7 +52,7 @@ export function collectRoomBookings(data: unknown, roomName: string): FeedBookin
     const days = month?.cells?.[roomName];
     if (!days) continue;
     for (const [dayKey, cell] of Object.entries(days)) {
-      if (!cell) continue;
+      if (!cell || !blocksRoom(cell)) continue;
       const day = Number(dayKey);
       if (!Number.isFinite(day)) continue;
       byDate.set(iso(month.year, month.monthIndex, day), cell);

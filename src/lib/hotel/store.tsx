@@ -855,6 +855,7 @@ export function HotelProvider({ children }: { children: ReactNode }) {
     addBookingRange,
     bookingInfo,
     updateBookingRange,
+    deleteBooking,
     updateMonthMeta,
     updateSettings,
     addChannel,

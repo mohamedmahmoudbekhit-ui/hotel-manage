@@ -7,6 +7,16 @@ interface CellLike {
   channelId?: string;
   note?: string;
   bookingId?: string;
+  /** Absent means confirmed. Canceled/refunded nights release the room. */
+  status?: "confirmed" | "noshow" | "canceled" | "refunded";
+  canceledWithRefund?: boolean;
+}
+
+/** A night only blocks the room when the booking still stands. */
+function blocksRoom(cell: CellLike): boolean {
+  if (cell.status === "canceled" || cell.status === "refunded") return false;
+  if (!cell.status && cell.canceledWithRefund) return false;
+  return true;
 }
 
 interface MonthLike {

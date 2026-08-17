@@ -35,12 +35,18 @@ export const Route = createFileRoute("/api/public/ical/$roomId/{$token}.ics")({
         const bookings = collectRoomBookings(state?.data ?? null, room.room_name);
         const body = buildIcs(room.room_name, bookings);
 
+        // Availability must never be served stale: OTAs poll on their own
+        // schedule, so every fetch reads the live database state.
         return new Response(body, {
           status: 200,
           headers: {
             "Content-Type": "text/calendar; charset=utf-8",
             "Content-Disposition": `inline; filename="room-${room.id}.ics"`,
-            "Cache-Control": "public, max-age=300",
+            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+            "CDN-Cache-Control": "no-store",
+            "Pragma": "no-cache",
+            "Expires": "0",
+            "Last-Modified": new Date().toUTCString(),
           },
         });
       },

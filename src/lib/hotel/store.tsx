@@ -46,6 +46,8 @@ interface Ctx extends StateShape {
   bookingInfo: (bookingId: string) => BookingInfo | null;
   /** Rewrite a whole booking as one unit (dates/room/channel/total price). */
   updateBookingRange: (bookingId: string, params: { room: string; from: string; to: string; channelId: string; price: number; note?: string; guestName?: string; status?: BookingStatus; refund?: { direction: RefundDirection; amount: number } | null }) => { written: number; skipped: number; nights: number };
+  /** Delete a whole reservation (every night sharing the bookingId). */
+  deleteBooking: (bookingId: string) => void;
   addBookingRange: (params: { room: string; from: string; to: string; channelId: string; price: number; note?: string; guestName?: string; allowOverlap?: boolean; status?: BookingStatus; refund?: { direction: RefundDirection; amount: number } | null }) => { written: number; skipped: number; nights: number };
 
   updateMonthMeta: (patch: Partial<Pick<MonthData, "expenses" | "usdRate" | "managementPct">>) => void;

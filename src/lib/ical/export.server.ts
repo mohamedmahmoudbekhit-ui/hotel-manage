@@ -19,10 +19,17 @@ function blocksRoom(cell: CellLike): boolean {
   return true;
 }
 
+type SlotLike = CellLike | CellLike[] | null;
+
 interface MonthLike {
   year: number;
   monthIndex: number;
-  cells?: Record<string, Record<string | number, CellLike | null>>;
+  cells?: Record<string, Record<string | number, SlotLike>>;
+}
+
+function slotCells(slot: SlotLike): CellLike[] {
+  if (!slot) return [];
+  return Array.isArray(slot) ? slot.filter(Boolean) : [slot];
 }
 
 export interface FeedBooking {

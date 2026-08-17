@@ -7,12 +7,29 @@ interface CellLike {
   channelId?: string;
   note?: string;
   bookingId?: string;
+  /** Absent means confirmed. Canceled/refunded nights release the room. */
+  status?: "confirmed" | "noshow" | "canceled" | "refunded";
+  canceledWithRefund?: boolean;
 }
+
+/** A night only blocks the room when the booking still stands. */
+function blocksRoom(cell: CellLike): boolean {
+  if (cell.status === "canceled" || cell.status === "refunded") return false;
+  if (!cell.status && cell.canceledWithRefund) return false;
+  return true;
+}
+
+type SlotLike = CellLike | CellLike[] | null;
 
 interface MonthLike {
   year: number;
   monthIndex: number;
-  cells?: Record<string, Record<string | number, CellLike | null>>;
+  cells?: Record<string, Record<string | number, SlotLike>>;
+}
+
+function slotCells(slot: SlotLike): CellLike[] {
+  if (!slot) return [];
+  return Array.isArray(slot) ? slot.filter(Boolean) : [slot];
 }
 
 export interface FeedBooking {
@@ -33,51 +50,54 @@ function addDay(dateIso: string): string {
   return d.toISOString().slice(0, 10);
 }
 
-/** Collect confirmed manual reservations for one room out of the hotel state blob. */
+/** Collect blocking manual reservations for one room out of the hotel state blob. */
 export function collectRoomBookings(data: unknown, roomName: string): FeedBooking[] {
   const months = (data as { months?: Record<string, MonthLike> } | null)?.months ?? {};
-  // date -> cell for this room
-  const byDate = new Map<string, CellLike>();
+  // bookingId -> nights held by that booking (a day can hold several bookings)
+  const byBooking = new Map<string, { nights: Set<string>; cell: CellLike }>();
   for (const month of Object.values(months)) {
     const days = month?.cells?.[roomName];
     if (!days) continue;
-    for (const [dayKey, cell] of Object.entries(days)) {
-      if (!cell) continue;
+    for (const [dayKey, slot] of Object.entries(days)) {
       const day = Number(dayKey);
       if (!Number.isFinite(day)) continue;
-      byDate.set(iso(month.year, month.monthIndex, day), cell);
+      const date = iso(month.year, month.monthIndex, day);
+      for (const cell of slotCells(slot)) {
+        if (!blocksRoom(cell)) continue;
+        const id = cell.bookingId ?? `${roomName}-${date}`;
+        const entry = byBooking.get(id);
+        if (entry) entry.nights.add(date);
+        else byBooking.set(id, { nights: new Set([date]), cell });
+      }
     }
   }
 
-  const dates = Array.from(byDate.keys()).sort();
   const out: FeedBooking[] = [];
-  let run: { id: string; nights: string[]; cell: CellLike } | null = null;
-
-  const flush = () => {
-    if (!run) return;
-    const start = run.nights[0]!;
-    const end = addDay(run.nights[run.nights.length - 1]!);
-    out.push({
-      uid: `${run.id}@hotel-management`,
-      start,
-      end,
-      summary: "Reserved",
-      ...(run.cell.note ? { note: run.cell.note } : {}),
-    });
-    run = null;
-  };
-
-  for (const date of dates) {
-    const cell = byDate.get(date)!;
-    const id = cell.bookingId ?? `${roomName}-${date}`;
-    if (run && run.id === id && addDay(run.nights[run.nights.length - 1]!) === date) {
-      run.nights.push(date);
-      continue;
+  for (const [id, { nights, cell }] of byBooking) {
+    // A booking's nights are contiguous, but split on any gap defensively so a
+    // released middle night never stays blocked in the feed.
+    const sorted = Array.from(nights).sort();
+    let run: string[] = [];
+    let part = 0;
+    const flush = () => {
+      if (run.length === 0) return;
+      part += 1;
+      out.push({
+        uid: `${id}${part > 1 ? `-${part}` : ""}@hotel-management`,
+        start: run[0]!,
+        end: addDay(run[run.length - 1]!),
+        summary: "Reserved",
+        ...(cell.note ? { note: cell.note } : {}),
+      });
+      run = [];
+    };
+    for (const date of sorted) {
+      if (run.length > 0 && addDay(run[run.length - 1]!) !== date) flush();
+      run.push(date);
     }
     flush();
-    run = { id, nights: [date], cell };
   }
-  flush();
+  out.sort((a, b) => (a.start === b.start ? a.uid.localeCompare(b.uid) : a.start.localeCompare(b.start)));
   return out;
 }
 

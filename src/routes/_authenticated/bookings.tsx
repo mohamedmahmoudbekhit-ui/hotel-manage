@@ -21,6 +21,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { applyFilters, buildBookingRows, downloadBlob, exportFileBase, exportPdf, toCsv, type ExportFilters } from "@/lib/hotel/export";
 
 import { toast } from "sonner";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useI18n } from "@/lib/i18n";
 import { saveImportedOverride, removeImportedReservation, type ImportedReservationRow } from "@/lib/hotel/calendar.functions";
 
@@ -990,7 +991,7 @@ function CellEditor({
   );
 
   // ---- Whole-booking edit (multi-night reservations are ONE booking) ----
-  const { bookingInfo, updateBookingRange, settings: hotelSettings } = useHotel();
+  const { bookingInfo, updateBookingRange, deleteBooking, settings: hotelSettings } = useHotel();
   const info = cell?.bookingId ? bookingInfo(cell.bookingId) : null;
   const [bRoom, setBRoom] = useState<string>(info?.room ?? "");
   const [bFrom, setBFrom] = useState<string>(info?.from ?? "");
@@ -1249,9 +1250,37 @@ function CellEditor({
 
           <div className="flex items-center justify-between gap-2 pt-1">
             {cell ? (
-              <Button variant="ghost" size="sm" onClick={() => { onDelete(); setOpen(false); }} className="text-destructive hover:text-destructive">
-                <Trash2 className="me-1 h-3.5 w-3.5" /> {t("common.remove")}
-              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
+                    <Trash2 className="me-1 h-3.5 w-3.5" /> {t("common.remove")}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>
+                      {info ? "Delete the entire booking?" : "Delete this night?"}
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {info
+                        ? `This deletes the whole reservation${info.guestName ? ` for ${info.guestName}` : ""} — all ${info.nights} night(s) from ${info.from} to ${info.to} in ${info.room}. Every one of those dates becomes available again.`
+                        : "This removes the booking on this date."}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => {
+                        if (info) deleteBooking(info.bookingId);
+                        else onDelete();
+                        setOpen(false);
+                      }}
+                    >
+                      {info ? "Delete booking" : t("common.remove")}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             ) : <span />}
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={() => setOpen(false)}>{t("common.cancel")}</Button>

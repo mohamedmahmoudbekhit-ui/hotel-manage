@@ -46,6 +46,8 @@ interface Ctx extends StateShape {
   bookingInfo: (bookingId: string) => BookingInfo | null;
   /** Rewrite a whole booking as one unit (dates/room/channel/total price). */
   updateBookingRange: (bookingId: string, params: { room: string; from: string; to: string; channelId: string; price: number; note?: string; guestName?: string; status?: BookingStatus; refund?: { direction: RefundDirection; amount: number } | null }) => { written: number; skipped: number; nights: number };
+  /** Delete a whole reservation (every night sharing the bookingId). */
+  deleteBooking: (bookingId: string) => void;
   addBookingRange: (params: { room: string; from: string; to: string; channelId: string; price: number; note?: string; guestName?: string; allowOverlap?: boolean; status?: BookingStatus; refund?: { direction: RefundDirection; amount: number } | null }) => { written: number; skipped: number; nights: number };
 
   updateMonthMeta: (patch: Partial<Pick<MonthData, "expenses" | "usdRate" | "managementPct">>) => void;
@@ -583,6 +585,25 @@ export function HotelProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  /** Remove every night of a reservation, wherever it spans months. */
+  const deleteBooking = useCallback((bookingId: string) => {
+    if (!bookingId) return;
+    setState((s) => {
+      const nextMonths: Record<string, MonthData> = {};
+      for (const [key, month] of Object.entries(s.months)) {
+        const cells: MonthData["cells"] = {};
+        for (const [room, days] of Object.entries(month.cells)) {
+          cells[room] = {};
+          for (const [day, slot] of Object.entries(days)) {
+            cells[room][Number(day)] = toSlot(slotCells(slot).filter((c) => c.bookingId !== bookingId));
+          }
+        }
+        nextMonths[key] = { ...month, cells };
+      }
+      return { ...s, months: nextMonths };
+    });
+  }, []);
+
 
   const addBookingRange = useCallback((params: { room: string; from: string; to: string; channelId: string; price: number; note?: string; guestName?: string; allowOverlap?: boolean; status?: BookingStatus; refund?: { direction: RefundDirection; amount: number } | null }) => {
     const start = new Date(`${params.from}T00:00:00Z`);
@@ -834,6 +855,7 @@ export function HotelProvider({ children }: { children: ReactNode }) {
     addBookingRange,
     bookingInfo,
     updateBookingRange,
+    deleteBooking,
     updateMonthMeta,
     updateSettings,
     addChannel,

@@ -259,6 +259,7 @@ function BookingsPage() {
         className={cn(
           "flex aspect-square w-full flex-col items-center justify-center rounded-xl border text-base font-semibold tabular-nums transition active:scale-95",
           info.color ? "shadow-sm" : "border-dashed border-border/70 bg-muted/30 text-muted-foreground",
+          todayDay === day && "ring-2 ring-inset ring-primary",
         )}
         style={daySquareStyle(info)}
         aria-label={`${room} — ${isoOf(day)}`}
@@ -266,6 +267,7 @@ function BookingsPage() {
         {day}
       </button>
     );
+
     if (info.kind === "imported") {
       return (
         <ImportedBlock

@@ -219,6 +219,13 @@ function BookingsPage() {
   const isoOf = (day: number) =>
     `${currentMonth.year}-${String(currentMonth.monthIndex + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 
+  /** Today's day number when the displayed month is the current month; null otherwise. */
+  const todayDay = useMemo(() => {
+    const now = new Date();
+    return now.getFullYear() === currentMonth.year && now.getMonth() === currentMonth.monthIndex ? now.getDate() : null;
+  }, [currentMonth.year, currentMonth.monthIndex]);
+
+
   /** Resolve what occupies a room-night, for the mobile calendar only. */
   const mobileDay = (room: string, day: number) => {
     const list = slotCells(currentMonth.cells[room]?.[day]);
@@ -252,6 +259,7 @@ function BookingsPage() {
         className={cn(
           "flex aspect-square w-full flex-col items-center justify-center rounded-xl border text-base font-semibold tabular-nums transition active:scale-95",
           info.color ? "shadow-sm" : "border-dashed border-border/70 bg-muted/30 text-muted-foreground",
+          todayDay === day && "ring-2 ring-inset ring-primary",
         )}
         style={daySquareStyle(info)}
         aria-label={`${room} — ${isoOf(day)}`}
@@ -259,6 +267,7 @@ function BookingsPage() {
         {day}
       </button>
     );
+
     if (info.kind === "imported") {
       return (
         <ImportedBlock
@@ -322,9 +331,11 @@ function BookingsPage() {
         className={cn(
           "flex aspect-square items-center justify-center rounded-[3px] border text-[8px] font-medium leading-none tabular-nums",
           info.color ? "" : "border-dashed border-border/60 bg-muted/30 text-muted-foreground",
+          todayDay === day && "ring-2 ring-inset ring-primary",
         )}
         style={daySquareStyle(info)}
       >
+
 
         {day}
       </div>
@@ -537,7 +548,7 @@ function BookingsPage() {
           <tbody>
             {visibleDays.map((day) => (
               <tr key={day} className="group">
-                <td className="sticky start-0 z-10 border-t bg-card px-2 py-2 text-xs font-semibold text-muted-foreground group-hover:bg-muted/40 sm:px-3">{day}</td>
+                <td className={cn("sticky start-0 z-10 border-t bg-card px-2 py-2 text-xs font-semibold text-muted-foreground group-hover:bg-muted/40 sm:px-3", todayDay === day && "ring-2 ring-offset-2 ring-offset-card ring-primary")}>{day}</td>
                 {visibleRooms.map((room) => {
                   // A night can hold more than one booking (e.g. a replacement
                   // after a no-show); each is rendered as its own block.

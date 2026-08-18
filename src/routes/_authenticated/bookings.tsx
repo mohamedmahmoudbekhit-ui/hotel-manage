@@ -219,6 +219,13 @@ function BookingsPage() {
   const isoOf = (day: number) =>
     `${currentMonth.year}-${String(currentMonth.monthIndex + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 
+  /** Today's day number when the displayed month is the current month; null otherwise. */
+  const todayDay = useMemo(() => {
+    const now = new Date();
+    return now.getFullYear() === currentMonth.year && now.getMonth() === currentMonth.monthIndex ? now.getDate() : null;
+  }, [currentMonth.year, currentMonth.monthIndex]);
+
+
   /** Resolve what occupies a room-night, for the mobile calendar only. */
   const mobileDay = (room: string, day: number) => {
     const list = slotCells(currentMonth.cells[room]?.[day]);

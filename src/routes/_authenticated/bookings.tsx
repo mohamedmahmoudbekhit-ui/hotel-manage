@@ -544,7 +544,7 @@ function BookingsPage() {
           <tbody>
             {visibleDays.map((day) => (
               <tr key={day} className="group">
-                <td className="sticky start-0 z-10 border-t bg-card px-2 py-2 text-xs font-semibold text-muted-foreground group-hover:bg-muted/40 sm:px-3">{day}</td>
+                <td className={cn("sticky start-0 z-10 border-t bg-card px-2 py-2 text-xs font-semibold text-muted-foreground group-hover:bg-muted/40 sm:px-3", todayDay === day && "ring-2 ring-inset ring-primary")}>{day}</td>
                 {visibleRooms.map((room) => {
                   // A night can hold more than one booking (e.g. a replacement
                   // after a no-show); each is rendered as its own block.

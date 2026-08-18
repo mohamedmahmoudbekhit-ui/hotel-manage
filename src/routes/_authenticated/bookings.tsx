@@ -331,9 +331,11 @@ function BookingsPage() {
         className={cn(
           "flex aspect-square items-center justify-center rounded-[3px] border text-[8px] font-medium leading-none tabular-nums",
           info.color ? "" : "border-dashed border-border/60 bg-muted/30 text-muted-foreground",
+          todayDay === day && "ring-2 ring-inset ring-primary",
         )}
         style={daySquareStyle(info)}
       >
+
 
         {day}
       </div>

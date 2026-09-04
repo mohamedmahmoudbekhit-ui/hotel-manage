@@ -43,7 +43,7 @@ function channelLabel(ch: Channel, currency: string): string {
 
 function BookingsPage() {
   const {
-    currentMonth, settings, updateCell, updateBooking, addBookingRange, hotelName,
+    currentMonth, settings, updateCell, updateBooking, addBookingRange,
     refundOf, setBookingStatus, statusOf,
     imported: allImported, reloadImported, analyticsMonth, analyticsSettings,
   } = useHotel();
@@ -471,6 +471,7 @@ function BookingsPage() {
 
 
 
+      <div ref={calendarRef} className="space-y-4 bg-background">
       {view === "day" ? (
         <>
           <p className="text-sm text-muted-foreground">
@@ -618,6 +619,7 @@ function BookingsPage() {
       )}
       </>
       )}
+      </div>
     </div>
 
   );

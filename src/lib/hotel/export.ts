@@ -265,3 +265,99 @@ export async function exportPdf(opts: {
   doc.save(opts.filename);
 }
 
+
+/**
+ * Visual snapshot export: renders the live Bookings calendar node into a PDF
+ * page so the file mirrors exactly what is on screen (channel colours, blocks,
+ * prices, room columns, day rows). No data is re-derived here.
+ */
+export async function exportCalendarSnapshotPdf(opts: {
+  node: HTMLElement;
+  filename: string;
+}) {
+  const [{ toPng }, { jsPDF }] = await Promise.all([import("html-to-image"), import("jspdf")]);
+  const node = opts.node;
+
+  // The calendar lives in a scroll container; capture its full content.
+  const scrollers = [node, ...Array.from(node.querySelectorAll<HTMLElement>("*"))].filter(
+    (el) => el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1,
+  );
+  const restore = scrollers.map((el) => ({
+    el,
+    maxHeight: el.style.maxHeight,
+    overflow: el.style.overflow,
+    height: el.style.height,
+    width: el.style.width,
+  }));
+  for (const el of scrollers) {
+    el.style.maxHeight = "none";
+    el.style.overflow = "visible";
+    el.style.height = `${el.scrollHeight}px`;
+    el.style.width = `${el.scrollWidth}px`;
+  }
+
+  let dataUrl: string;
+  let width: number;
+  let height: number;
+  try {
+    width = Math.max(node.scrollWidth, node.offsetWidth);
+    height = Math.max(node.scrollHeight, node.offsetHeight);
+    dataUrl = await toPng(node, {
+      pixelRatio: 2,
+      cacheBust: true,
+      width,
+      height,
+      backgroundColor: getComputedStyle(document.body).backgroundColor || "#ffffff",
+      style: { margin: "0" },
+    });
+  } finally {
+    for (const r of restore) {
+      r.el.style.maxHeight = r.maxHeight;
+      r.el.style.overflow = r.overflow;
+      r.el.style.height = r.height;
+      r.el.style.width = r.width;
+    }
+  }
+
+  const margin = 24;
+  const landscape = width >= height;
+  const doc = new jsPDF({ orientation: landscape ? "landscape" : "portrait", unit: "pt", format: "a4" });
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const availW = pageW - margin * 2;
+  const availH = pageH - margin * 2;
+  const scale = Math.min(availW / width, availH / height);
+  const drawW = width * scale;
+  const drawH = height * scale;
+
+  if (drawH <= availH) {
+    doc.addImage(dataUrl, "PNG", margin + (availW - drawW) / 2, margin, drawW, drawH);
+  } else {
+    // Very tall calendars: slice across pages at the fitted width.
+    const sliceH = availH / (availW / width);
+    const img = new Image();
+    await new Promise<void>((res, rej) => {
+      img.onload = () => res();
+      img.onerror = () => rej(new Error("Failed to render calendar image"));
+      img.src = dataUrl;
+    });
+    const ratio = img.width / width;
+    let y = 0;
+    let first = true;
+    while (y < height) {
+      const h = Math.min(sliceH, height - y);
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(width * ratio);
+      canvas.height = Math.round(h * ratio);
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Canvas unavailable");
+      ctx.drawImage(img, 0, Math.round(y * ratio), canvas.width, canvas.height, 0, 0, canvas.width, canvas.height);
+      if (!first) doc.addPage();
+      first = false;
+      doc.addImage(canvas.toDataURL("image/png"), "PNG", margin, margin, availW, h * (availW / width));
+      y += h;
+    }
+  }
+
+  doc.save(opts.filename);
+}

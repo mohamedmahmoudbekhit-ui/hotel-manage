@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useHotel } from "@/lib/hotel/store";
 import { MonthSelector } from "@/components/month-selector";
@@ -18,7 +18,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Trash2, CalendarClock, CalendarPlus, ChevronLeft, ChevronRight, ChevronDown, Download, FileSpreadsheet, FileText, X } from "lucide-react";
 import { DailyView } from "@/components/daily-view";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { applyFilters, buildBookingRows, downloadBlob, exportFileBase, exportPdf, toCsv, type ExportFilters } from "@/lib/hotel/export";
+import { applyFilters, buildBookingRows, downloadBlob, exportCalendarSnapshotPdf, exportFileBase, toCsv, type ExportFilters } from "@/lib/hotel/export";
 
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -43,7 +43,7 @@ function channelLabel(ch: Channel, currency: string): string {
 
 function BookingsPage() {
   const {
-    currentMonth, settings, updateCell, updateBooking, addBookingRange, hotelName,
+    currentMonth, settings, updateCell, updateBooking, addBookingRange,
     refundOf, setBookingStatus, statusOf,
     imported: allImported, reloadImported, analyticsMonth, analyticsSettings,
   } = useHotel();
@@ -176,34 +176,19 @@ function BookingsPage() {
     [currentMonth, settings, imported, filters],
   );
 
-  const periodLabel = `${formatMonthKey(currentMonth.key)}${filtersActive && (filters.from !== monthStart || filters.to !== monthEnd) ? ` (${filters.from} → ${filters.to})` : ""}`;
-  const filterSummary = [
-    filters.room !== "all" ? `Room: ${filters.room}` : null,
-    filters.sourceKey !== "all"
-      ? `Source: ${settings.channels.find((c) => c.id === filters.sourceKey)?.name ?? importedSources.find((s) => s.id === filters.sourceKey)?.name ?? filters.sourceKey}`
-      : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
-
   const doExportCsv = () => {
     if (exportRows.length === 0) { toast.error("No bookings match the current filters."); return; }
     downloadBlob(toCsv(exportRows, settings.currency), `${exportFileBase(currentMonth)}.csv`, "text/csv;charset=utf-8;");
     toast.success(`Exported ${exportRows.length} booking(s) to CSV.`);
   };
 
+  const calendarRef = useRef<HTMLDivElement>(null);
   const doExportPdf = async () => {
-    if (exportRows.length === 0) { toast.error("No bookings match the current filters."); return; }
+    const node = calendarRef.current;
+    if (!node) { toast.error("Calendar is not ready yet."); return; }
     try {
-      await exportPdf({
-        rows: exportRows,
-        hotelName,
-        currency: settings.currency,
-        periodLabel,
-        filterSummary,
-        filename: `${exportFileBase(currentMonth)}.pdf`,
-      });
-      toast.success(`Exported ${exportRows.length} booking(s) to PDF.`);
+      await exportCalendarSnapshotPdf({ node, filename: `${exportFileBase(currentMonth)}.pdf` });
+      toast.success("Calendar exported to PDF.");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to generate PDF");
     }
@@ -486,6 +471,7 @@ function BookingsPage() {
 
 
 
+      <div ref={calendarRef} className="space-y-4 bg-background">
       {view === "day" ? (
         <>
           <p className="text-sm text-muted-foreground">
@@ -633,6 +619,7 @@ function BookingsPage() {
       )}
       </>
       )}
+      </div>
     </div>
 
   );

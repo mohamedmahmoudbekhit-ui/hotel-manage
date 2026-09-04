@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useHotel } from "@/lib/hotel/store";
 import { MonthSelector } from "@/components/month-selector";
@@ -175,16 +175,6 @@ function BookingsPage() {
     () => applyFilters(buildBookingRows(currentMonth, settings, imported), filters),
     [currentMonth, settings, imported, filters],
   );
-
-  const periodLabel = `${formatMonthKey(currentMonth.key)}${filtersActive && (filters.from !== monthStart || filters.to !== monthEnd) ? ` (${filters.from} → ${filters.to})` : ""}`;
-  const filterSummary = [
-    filters.room !== "all" ? `Room: ${filters.room}` : null,
-    filters.sourceKey !== "all"
-      ? `Source: ${settings.channels.find((c) => c.id === filters.sourceKey)?.name ?? importedSources.find((s) => s.id === filters.sourceKey)?.name ?? filters.sourceKey}`
-      : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
 
   const doExportCsv = () => {
     if (exportRows.length === 0) { toast.error("No bookings match the current filters."); return; }

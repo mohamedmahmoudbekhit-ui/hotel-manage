@@ -168,7 +168,7 @@ export function toCsv(rows: BookingExportRow[], currency: string): string {
   const lines = [header.map(csvCell).join(",")];
   for (const r of rows) {
     lines.push(
-      [r.guestName, r.room, r.checkIn, r.checkOut, r.source, r.status, r.nights, r.guests, r.currency, Math.round(r.amount)]
+      [r.guestName, r.room, r.checkIn, r.checkOut, r.source, r.status, r.nights, r.guests, r.currency, (Number(r.amount) || 0).toFixed(2)]
         .map(csvCell)
         .join(","),
     );

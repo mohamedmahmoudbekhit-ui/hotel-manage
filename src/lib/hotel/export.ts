@@ -221,7 +221,10 @@ export async function exportPdf(opts: {
   doc.setDrawColor(210);
   doc.line(40, opts.filterSummary ? 116 : 100, pageWidth - 40, opts.filterSummary ? 116 : 100);
 
-  const total = opts.rows.reduce((s, r) => s + r.amount, 0);
+  // Sum exact stored amounts first; format to 2 decimals only for display.
+  const total = opts.rows.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+  const money = (n: number) =>
+    (Number(n) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   autoTable(doc, {
     startY: opts.filterSummary ? 128 : 112,
@@ -235,9 +238,9 @@ export async function exportPdf(opts: {
       String(r.nights),
       r.source,
       r.status,
-      Math.round(r.amount).toLocaleString(),
+      money(r.amount),
     ]),
-    foot: [["", "", "", "", String(opts.rows.reduce((n, r) => n + r.nights, 0)), "", "Total", Math.round(total).toLocaleString()]],
+    foot: [["", "", "", "", String(opts.rows.reduce((n, r) => n + r.nights, 0)), "", "Total", money(total)]],
     showFoot: "lastPage",
     styles: { fontSize: 9, cellPadding: 5, overflow: "linebreak" },
     headStyles: { fillColor: [30, 41, 59], textColor: 255, fontStyle: "bold" },

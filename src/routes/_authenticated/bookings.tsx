@@ -1199,7 +1199,7 @@ function CellEditor({
             <p className="text-[10px] text-muted-foreground">
               {editorChannel.currency === "LOCAL"
                 ? `${t("bookings.inCurrency")} ${currency}`
-                : `${t("bookings.inUsd")} (× ${usdRate} = ${(parseFloat(price) * usdRate || 0).toFixed(0)} ${currency})`}
+                : `${t("bookings.inUsd")} (× ${usdRate} = ${(parseFloat(price) * usdRate || 0).toFixed(2)} ${currency})`}
             </p>
           </div>
           )}

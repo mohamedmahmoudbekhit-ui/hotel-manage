@@ -25,11 +25,11 @@ function ChartsPage() {
     .filter((d) => d.value > 0);
 
   const barData = analyticsSettings.channels.map((ch) => ({
-    name: ch.name, key: ch.id, color: ch.color, revenue: Math.round(totals.revenueByChannel[ch.id] ?? 0),
+    name: ch.name, key: ch.id, color: ch.color, revenue: totals.revenueByChannel[ch.id] ?? 0,
   }));
 
   const roomData = settings.rooms.map((r) => ({
-    name: r, revenue: Math.round(totals.revenueByRoom[r] ?? 0),
+    name: r, revenue: totals.revenueByRoom[r] ?? 0,
   }));
 
   const sortedMonths = Object.values(months).sort((a, b) =>
@@ -38,7 +38,7 @@ function ChartsPage() {
   const trendData = sortedMonths.map((m) => {
     const a = analyticsFor(m);
     const tt = computeMonthTotals(a.month, settings.rooms, a.settings);
-    return { name: formatMonthKey(m.key), occupancy: +tt.occupancyRate.toFixed(1), revenue: Math.round(tt.totalRevenue) };
+    return { name: formatMonthKey(m.key), occupancy: +tt.occupancyRate.toFixed(1), revenue: tt.totalRevenue };
   });
 
   return (

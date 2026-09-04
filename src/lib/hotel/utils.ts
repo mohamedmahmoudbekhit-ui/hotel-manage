@@ -192,13 +192,16 @@ export function computeMonthTotals(m: MonthData, rooms: string[], settings: Sett
 }
 
 export function formatCurrency(n: number, currency = "EGP") {
-  const rounded = Math.round(n);
-  return `${rounded.toLocaleString()} ${currency}`;
+  const safe = Number.isFinite(n) ? n : 0;
+  // Round only here, at display time; callers always pass exact summed values.
+  const shown = safe.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return `${shown} ${currency}`;
 }
 
 export function formatShort(n: number) {
-  if (Math.abs(n) >= 1000) return `${(n / 1000).toFixed(1)}k`;
-  return `${Math.round(n)}`;
+  const safe = Number.isFinite(n) ? n : 0;
+  if (Math.abs(safe) >= 1000) return `${(safe / 1000).toFixed(1)}k`;
+  return safe.toFixed(2);
 }
 
 export function emptyMonth(year: number, monthIndex: number, settings: Settings): MonthData {

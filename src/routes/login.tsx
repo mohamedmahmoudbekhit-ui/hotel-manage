@@ -45,8 +45,14 @@ function LoginPage() {
     e.preventDefault();
     setBusy(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw new Error(error.message);
+      const { error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
+      if (error) {
+        throw new Error(
+          /invalid login credentials/i.test(error.message)
+            ? "Email or password is incorrect. Check for typos or use \"Forgot password?\" to request a reset."
+            : error.message,
+        );
+      }
 
       // Platform administrators authenticate only in the separate admin portal.
       const { data: isSuperAdmin } = await supabase.rpc("ensure_super_admin_self");

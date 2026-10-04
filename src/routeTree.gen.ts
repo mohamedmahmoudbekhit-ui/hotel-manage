@@ -9,61 +9,35 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as ResetPasswordRouteImport } from './routes/reset-password'
-import { Route as NewPasswordRouteImport } from './routes/new-password'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
-import { Route as AuthRouteImport } from './routes/auth'
-import { Route as ActivateRouteImport } from './routes/activate'
-import { Route as AcceptInviteRouteImport } from './routes/accept-invite'
-import { Route as ControlRouteRouteImport } from './routes/control/route'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AcceptInviteRouteImport } from './routes/accept-invite'
+import { Route as ActivateRouteImport } from './routes/activate'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as ControlRouteRouteImport } from './routes/control/route'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as NewPasswordRouteImport } from './routes/new-password'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
-import { Route as ControlSetPasswordRouteImport } from './routes/control/set-password'
-import { Route as ControlLoginRouteImport } from './routes/control/login'
-import { Route as AuthenticatedUsersRouteImport } from './routes/_authenticated/users'
-import { Route as AuthenticatedSummaryRouteImport } from './routes/_authenticated/summary'
-import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
-import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
-import { Route as AuthenticatedExpensesRouteImport } from './routes/_authenticated/expenses'
-import { Route as AuthenticatedChartsRouteImport } from './routes/_authenticated/charts'
 import { Route as AuthenticatedBookingsRouteImport } from './routes/_authenticated/bookings'
+import { Route as AuthenticatedChartsRouteImport } from './routes/_authenticated/charts'
+import { Route as AuthenticatedExpensesRouteImport } from './routes/_authenticated/expenses'
+import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
+import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
+import { Route as AuthenticatedSummaryRouteImport } from './routes/_authenticated/summary'
+import { Route as AuthenticatedUsersRouteImport } from './routes/_authenticated/users'
 import { Route as ControlShellRouteRouteImport } from './routes/control/_shell/route'
+import { Route as ControlLoginRouteImport } from './routes/control/login'
+import { Route as ControlSetPasswordRouteImport } from './routes/control/set-password'
 import { Route as ControlShellIndexRouteImport } from './routes/control/_shell/index'
-import { Route as ControlShellSecurityRouteImport } from './routes/control/_shell/security'
-import { Route as ControlShellResetsRouteImport } from './routes/control/_shell/resets'
 import { Route as ControlShellHotelsRouteImport } from './routes/control/_shell/hotels'
+import { Route as ControlShellResetsRouteImport } from './routes/control/_shell/resets'
+import { Route as ControlShellSecurityRouteImport } from './routes/control/_shell/security'
 import { Route as ApiPublicHooksSyncIcalRouteImport } from './routes/api/public/hooks/sync-ical'
 import { Route as ApiPublicIcalRoomIdChar123tokenChar125DoticsRouteImport } from './routes/api/public/ical/$roomId/{$token}[.]ics'
 
-const ResetPasswordRoute = ResetPasswordRouteImport.update({
-  id: '/reset-password',
-  path: '/reset-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const NewPasswordRoute = NewPasswordRouteImport.update({
-  id: '/new-password',
-  path: '/new-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
-  id: '/forgot-password',
-  path: '/forgot-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthRoute = AuthRouteImport.update({
-  id: '/auth',
-  path: '/auth',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ActivateRoute = ActivateRouteImport.update({
-  id: '/activate',
-  path: '/activate',
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AcceptInviteRoute = AcceptInviteRouteImport.update({
@@ -71,13 +45,39 @@ const AcceptInviteRoute = AcceptInviteRouteImport.update({
   path: '/accept-invite',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ActivateRoute = ActivateRouteImport.update({
+  id: '/activate',
+  path: '/activate',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ControlRouteRoute = ControlRouteRouteImport.update({
   id: '/control',
   path: '/control',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
-  id: '/_authenticated',
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NewPasswordRoute = NewPasswordRouteImport.update({
+  id: '/new-password',
+  path: '/new-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
@@ -85,39 +85,9 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const ControlSetPasswordRoute = ControlSetPasswordRouteImport.update({
-  id: '/set-password',
-  path: '/set-password',
-  getParentRoute: () => ControlRouteRoute,
-} as any)
-const ControlLoginRoute = ControlLoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => ControlRouteRoute,
-} as any)
-const AuthenticatedUsersRoute = AuthenticatedUsersRouteImport.update({
-  id: '/users',
-  path: '/users',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedSummaryRoute = AuthenticatedSummaryRouteImport.update({
-  id: '/summary',
-  path: '/summary',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
-  id: '/onboarding',
-  path: '/onboarding',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedExpensesRoute = AuthenticatedExpensesRouteImport.update({
-  id: '/expenses',
-  path: '/expenses',
+const AuthenticatedBookingsRoute = AuthenticatedBookingsRouteImport.update({
+  id: '/bookings',
+  path: '/bookings',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedChartsRoute = AuthenticatedChartsRouteImport.update({
@@ -125,13 +95,43 @@ const AuthenticatedChartsRoute = AuthenticatedChartsRouteImport.update({
   path: '/charts',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedBookingsRoute = AuthenticatedBookingsRouteImport.update({
-  id: '/bookings',
-  path: '/bookings',
+const AuthenticatedExpensesRoute = AuthenticatedExpensesRouteImport.update({
+  id: '/expenses',
+  path: '/expenses',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedSummaryRoute = AuthenticatedSummaryRouteImport.update({
+  id: '/summary',
+  path: '/summary',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedUsersRoute = AuthenticatedUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const ControlShellRouteRoute = ControlShellRouteRouteImport.update({
   id: '/_shell',
+  getParentRoute: () => ControlRouteRoute,
+} as any)
+const ControlLoginRoute = ControlLoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => ControlRouteRoute,
+} as any)
+const ControlSetPasswordRoute = ControlSetPasswordRouteImport.update({
+  id: '/set-password',
+  path: '/set-password',
   getParentRoute: () => ControlRouteRoute,
 } as any)
 const ControlShellIndexRoute = ControlShellIndexRouteImport.update({
@@ -139,9 +139,9 @@ const ControlShellIndexRoute = ControlShellIndexRouteImport.update({
   path: '/',
   getParentRoute: () => ControlShellRouteRoute,
 } as any)
-const ControlShellSecurityRoute = ControlShellSecurityRouteImport.update({
-  id: '/security',
-  path: '/security',
+const ControlShellHotelsRoute = ControlShellHotelsRouteImport.update({
+  id: '/hotels',
+  path: '/hotels',
   getParentRoute: () => ControlShellRouteRoute,
 } as any)
 const ControlShellResetsRoute = ControlShellResetsRouteImport.update({
@@ -149,9 +149,9 @@ const ControlShellResetsRoute = ControlShellResetsRouteImport.update({
   path: '/resets',
   getParentRoute: () => ControlShellRouteRoute,
 } as any)
-const ControlShellHotelsRoute = ControlShellHotelsRouteImport.update({
-  id: '/hotels',
-  path: '/hotels',
+const ControlShellSecurityRoute = ControlShellSecurityRouteImport.update({
+  id: '/security',
+  path: '/security',
   getParentRoute: () => ControlShellRouteRoute,
 } as any)
 const ApiPublicHooksSyncIcalRoute = ApiPublicHooksSyncIcalRouteImport.update({
@@ -344,46 +344,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/reset-password': {
-      id: '/reset-password'
-      path: '/reset-password'
-      fullPath: '/reset-password'
-      preLoaderRoute: typeof ResetPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/new-password': {
-      id: '/new-password'
-      path: '/new-password'
-      fullPath: '/new-password'
-      preLoaderRoute: typeof NewPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/forgot-password': {
-      id: '/forgot-password'
-      path: '/forgot-password'
-      fullPath: '/forgot-password'
-      preLoaderRoute: typeof ForgotPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth': {
-      id: '/auth'
-      path: '/auth'
-      fullPath: '/auth'
-      preLoaderRoute: typeof AuthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/activate': {
-      id: '/activate'
-      path: '/activate'
-      fullPath: '/activate'
-      preLoaderRoute: typeof ActivateRouteImport
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/accept-invite': {
@@ -393,6 +358,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AcceptInviteRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/activate': {
+      id: '/activate'
+      path: '/activate'
+      fullPath: '/activate'
+      preLoaderRoute: typeof ActivateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/control': {
       id: '/control'
       path: '/control'
@@ -400,11 +379,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ControlRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated': {
-      id: '/_authenticated'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/new-password': {
+      id: '/new-password'
+      path: '/new-password'
+      fullPath: '/new-password'
+      preLoaderRoute: typeof NewPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/': {
@@ -414,53 +414,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/control/set-password': {
-      id: '/control/set-password'
-      path: '/set-password'
-      fullPath: '/control/set-password'
-      preLoaderRoute: typeof ControlSetPasswordRouteImport
-      parentRoute: typeof ControlRouteRoute
-    }
-    '/control/login': {
-      id: '/control/login'
-      path: '/login'
-      fullPath: '/control/login'
-      preLoaderRoute: typeof ControlLoginRouteImport
-      parentRoute: typeof ControlRouteRoute
-    }
-    '/_authenticated/users': {
-      id: '/_authenticated/users'
-      path: '/users'
-      fullPath: '/users'
-      preLoaderRoute: typeof AuthenticatedUsersRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/summary': {
-      id: '/_authenticated/summary'
-      path: '/summary'
-      fullPath: '/summary'
-      preLoaderRoute: typeof AuthenticatedSummaryRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/settings': {
-      id: '/_authenticated/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/onboarding': {
-      id: '/_authenticated/onboarding'
-      path: '/onboarding'
-      fullPath: '/onboarding'
-      preLoaderRoute: typeof AuthenticatedOnboardingRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/expenses': {
-      id: '/_authenticated/expenses'
-      path: '/expenses'
-      fullPath: '/expenses'
-      preLoaderRoute: typeof AuthenticatedExpensesRouteImport
+    '/_authenticated/bookings': {
+      id: '/_authenticated/bookings'
+      path: '/bookings'
+      fullPath: '/bookings'
+      preLoaderRoute: typeof AuthenticatedBookingsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/charts': {
@@ -470,11 +428,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedChartsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/bookings': {
-      id: '/_authenticated/bookings'
-      path: '/bookings'
-      fullPath: '/bookings'
-      preLoaderRoute: typeof AuthenticatedBookingsRouteImport
+    '/_authenticated/expenses': {
+      id: '/_authenticated/expenses'
+      path: '/expenses'
+      fullPath: '/expenses'
+      preLoaderRoute: typeof AuthenticatedExpensesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/onboarding': {
+      id: '/_authenticated/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof AuthenticatedOnboardingRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/settings': {
+      id: '/_authenticated/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/summary': {
+      id: '/_authenticated/summary'
+      path: '/summary'
+      fullPath: '/summary'
+      preLoaderRoute: typeof AuthenticatedSummaryRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/users': {
+      id: '/_authenticated/users'
+      path: '/users'
+      fullPath: '/users'
+      preLoaderRoute: typeof AuthenticatedUsersRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/control/_shell': {
@@ -484,6 +470,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ControlShellRouteRouteImport
       parentRoute: typeof ControlRouteRoute
     }
+    '/control/login': {
+      id: '/control/login'
+      path: '/login'
+      fullPath: '/control/login'
+      preLoaderRoute: typeof ControlLoginRouteImport
+      parentRoute: typeof ControlRouteRoute
+    }
+    '/control/set-password': {
+      id: '/control/set-password'
+      path: '/set-password'
+      fullPath: '/control/set-password'
+      preLoaderRoute: typeof ControlSetPasswordRouteImport
+      parentRoute: typeof ControlRouteRoute
+    }
     '/control/_shell/': {
       id: '/control/_shell/'
       path: '/'
@@ -491,11 +491,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ControlShellIndexRouteImport
       parentRoute: typeof ControlShellRouteRoute
     }
-    '/control/_shell/security': {
-      id: '/control/_shell/security'
-      path: '/security'
-      fullPath: '/control/security'
-      preLoaderRoute: typeof ControlShellSecurityRouteImport
+    '/control/_shell/hotels': {
+      id: '/control/_shell/hotels'
+      path: '/hotels'
+      fullPath: '/control/hotels'
+      preLoaderRoute: typeof ControlShellHotelsRouteImport
       parentRoute: typeof ControlShellRouteRoute
     }
     '/control/_shell/resets': {
@@ -505,11 +505,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ControlShellResetsRouteImport
       parentRoute: typeof ControlShellRouteRoute
     }
-    '/control/_shell/hotels': {
-      id: '/control/_shell/hotels'
-      path: '/hotels'
-      fullPath: '/control/hotels'
-      preLoaderRoute: typeof ControlShellHotelsRouteImport
+    '/control/_shell/security': {
+      id: '/control/_shell/security'
+      path: '/security'
+      fullPath: '/control/security'
+      preLoaderRoute: typeof ControlShellSecurityRouteImport
       parentRoute: typeof ControlShellRouteRoute
     }
     '/api/public/hooks/sync-ical': {
